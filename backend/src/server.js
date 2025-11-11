@@ -1,6 +1,8 @@
 import express from "express";
 import config from "./config/settings.js";
 import pool, { testConnection, closePool } from "./config/database.js";
+import { initCategoriesTable } from "./models/category.model.js";
+import categoryRoutes from "./routes/category.routes.js";
 
 const app = express();
 
@@ -34,9 +36,17 @@ app.get("/", (req, res) => {
   });
 });
 
+// API Routes
+app.use("/api/categories", categoryRoutes);
+
 const startServer = async () => {
   try {
+    // Test database connection
     await testConnection();
+    
+    // Initialize database schema
+    console.log('Initializing database schema...');
+    await initCategoriesTable();
 
     // Start listening
     app.listen(config.port, () => {
