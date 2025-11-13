@@ -126,6 +126,20 @@ class User {
     const result = await pool.query(query, [email.toLowerCase()]);
     return result.rows[0] || null;
   }
+
+  // Update user password
+  static async updatePassword(id, newHashedPassword) {
+    const query = `
+      UPDATE users
+      SET hashed_password = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING id, username, email, phone, full_name as "fullName", address, birthdate, role,
+                created_at as "createdAt", updated_at as "updatedAt"
+    `;
+    const values = [newHashedPassword, id];
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  }
 }
 
 export default User;

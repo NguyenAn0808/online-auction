@@ -1,13 +1,14 @@
 import express from "express";
 import {
-  // changePassword,
+  changePassword,
   // forgotPassword,
-  // refreshToken,
+  refreshToken,
   // resetPassword,
   signIn,
   signOut,
   signUp,
 } from "../controllers/authController.js";
+import { authenticate } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -17,6 +18,8 @@ const router = express.Router();
  *   post:
  *     summary: Register a new user
  *     tags: [Authentication]
+ *     security:
+ *       - SessionAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -47,6 +50,8 @@ router.post("/signup", signUp);
  *   post:
  *     summary: Login with username and password
  *     tags: [Authentication]
+ *     security:
+ *       - SessionAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -81,6 +86,8 @@ router.post("/signin", signIn);
  *   post:
  *     summary: Logout the current user
  *     tags: [Authentication]
+ *     security:
+ *       - SessionAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -100,13 +107,92 @@ router.post("/signin", signIn);
 
 router.post("/signout", signOut);
 
-// router.post("/changepassword", changePassword);
+/**
+ * @openapi
+ * /api/auth/change-password:
+ *   patch:
+ *     summary: Change password in user profile
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ChangePasswordRequest'
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Success'
+ *       400:
+ *         description: Bad request (e.g., missing fields)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized or current password incorrect
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.patch("/change-password", authenticate, changePassword);
 
+/**
+ * @openapi
+ * /api/auth/refresh:
+ *   post:
+ *     summary: Create new access token using refresh token
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/RefreshRequest'
+ *     responses:
+ *       204:
+ *         description: Logout successful (No content)
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *        description: Forbidden
+ *        content:
+ *         application/json:
+ *          schema:
+ *            $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post("/refresh", refreshToken);
 // router.post("/forgotpassword", forgotPassword);
 
 // router.post("/resetpassword", resetPassword);
-
-// router.post("/refresh", refreshToken);
 
 // router.post("/verifyOTP", verifyOTP);
 

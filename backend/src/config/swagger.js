@@ -77,6 +77,21 @@ const options = {
           },
           required: ["refreshToken"],
         },
+        ChangePasswordRequest: {
+          type: "object",
+          required: ["currentPassword", "newPassword"],
+          properties: {
+            currentPassword: { type: "string", format: "password" },
+            newPassword: { type: "string", format: "password", minLength: 6 },
+          },
+        },
+        RefreshRequest: {
+          type: "object",
+          properties: {
+            refreshToken: { type: "string" },
+          },
+          required: ["refreshToken"],
+        },
         SignInResponse: {
           type: "object",
           properties: {

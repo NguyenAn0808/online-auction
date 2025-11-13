@@ -94,9 +94,9 @@ export const signIn = async (req, res) => {
       });
     }
 
-    // Create access token and JWT
+    // Create access token (JWT)
     const accessToken = jwt.sign(
-      { user_id: user.id },
+      { id: user.id, username: user.username, role: user.role },
       config.ACCESS_TOKEN_SECRET,
       { expiresIn: ACCESS_TOKEN_TTL }
     );
@@ -114,14 +114,25 @@ export const signIn = async (req, res) => {
     // Return refresh token in HttpOnly cookie
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: "none", //backend, frontend deploy separately
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: REFRESH_TOKEN_TTL,
     });
 
-    return res
-      .status(200)
-      .json({ message: `User ${user.fullName} logged in successfully.` });
+    return res.status(200).json({
+      success: true,
+      message: `User ${user.fullName} logged in successfully`,
+      data: {
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          fullName: user.fullName,
+          role: user.role,
+        },
+        accessToken,
+      },
+    });
   } catch (error) {
     console.error("Error in signIn:", error);
     return res.status(500).json({
@@ -145,7 +156,7 @@ export const signOut = async (req, res) => {
 
     return res.sendStatus(204);
   } catch (error) {
-    console.error("Error in signIn:", error);
+    console.error("Error in sign out:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -153,10 +164,128 @@ export const signOut = async (req, res) => {
   }
 };
 
-// export const changePassword = async (req, res) => {};
+export const changePassword = async (req, res) => {
+  try {
+    // User is authenticated via authMiddleware
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User not authenticated",
+      });
+    }
+
+    // Get current and new passwords from request body
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing current or new password",
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be at least 6 characters long",
+      });
+    }
+
+    if (newPassword === currentPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be different from current password",
+      });
+    }
+
+    // Fetch user from DB
+    const user = await User.findByUsername(req.user.username);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Verify current password
+    const passwordCorrect = await bcrypt.compare(
+      currentPassword,
+      user.hashedPassword
+    );
+
+    if (!passwordCorrect) {
+      return res.status(401).json({
+        success: false,
+        message: "Current password is incorrect",
+      });
+    }
+
+    // Hash new password
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password in DB
+    await User.updatePassword(userId, hashedNewPassword);
+
+    await Session.deleteAllByUserId(userId);
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Password changed successfully. Please login again with your new password.",
+    });
+  } catch (error) {
+    console.error("Error in change password:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
 
 // export const forgotPassword = async (req, res) => {};
 
 // export const resetPassword = async (req, res) => {};
 
-// export const refreshToken = async (req, res) => {};
+export const refreshToken = async (req, res) => {
+  try {
+    // Get refresh token from cookies
+    const token = req.cookies?.refreshToken;
+
+    if (!token) {
+      return res.status(401).json({ message: "No refresh token provided" });
+    }
+
+    // Compare refresh token with sessions in DB
+    const session = await Session.findByRefreshToken(token);
+
+    if (!session) {
+      return res
+        .status(403)
+        .json({ message: "Invalid or expired refresh token" });
+    }
+
+    if (session.expiresAt < new Date()) {
+      return res.status(403).json({ message: "Refresh token has expired" });
+    }
+
+    // Create new access token
+    const accessToken = jwt.sign(
+      {
+        user_id: session.userId,
+      },
+      config.ACCESS_TOKEN_SECRET,
+      { expiresIn: ACCESS_TOKEN_TTL }
+    );
+
+    return res.status(200).json({ accessToken });
+  } catch (error) {
+    console.error("Error in refresh token:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
