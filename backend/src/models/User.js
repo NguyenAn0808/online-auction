@@ -1,0 +1,131 @@
+import pool from "../config/database.js";
+
+class User {
+  // Create users table if not exists
+  static async createTable() {
+    try {
+      // Create table
+      const createTableQuery = `
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          username VARCHAR(255) NOT NULL UNIQUE,
+          hashed_password VARCHAR(255) NOT NULL,
+          email VARCHAR(255) NOT NULL UNIQUE,
+          phone VARCHAR(50),
+          full_name VARCHAR(255) NOT NULL,
+          address TEXT,
+          birthdate DATE,
+          role VARCHAR(50) DEFAULT 'bidder',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `;
+      await pool.query(createTableQuery);
+
+      // Create indexes (ignore if they already exist)
+      try {
+        await pool.query(
+          "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)"
+        );
+      } catch (err) {
+        // Index might already exist, ignore
+      }
+
+      try {
+        await pool.query(
+          "CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)"
+        );
+      } catch (err) {
+        // Index might already exist, ignore
+      }
+
+      console.log("Users table ready");
+    } catch (error) {
+      // If error is "already exists", just log and continue
+      if (error.code === "23505" || error.code === "42P07") {
+        console.log("Users table already exists");
+        return;
+      }
+      console.error("Error creating users table:", error);
+      throw error;
+    }
+  }
+
+  //  Create new user
+  static async create({
+    username,
+    hashedPassword,
+    email,
+    phone,
+    fullName,
+    address,
+    birthdate,
+    role = "bidder",
+  }) {
+    const query = `
+      INSERT INTO users (username, hashed_password, email, phone, full_name, address, birthdate, role)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id, username, email, phone, full_name as "fullName", address, birthdate, role, 
+                created_at as "createdAt", updated_at as "updatedAt"
+    `;
+
+    const values = [
+      username.toLowerCase().trim(),
+      hashedPassword,
+      email.toLowerCase().trim(),
+      phone,
+      fullName.trim(),
+      address,
+      birthdate,
+      role,
+    ];
+
+    try {
+      const result = await pool.query(query, values);
+      return result.rows[0];
+    } catch (error) {
+      if (error.code === "23505") {
+        // Unique constraint violation
+        throw new Error("Username or email already exists");
+      }
+      throw error;
+    }
+  }
+
+  //  Find user by ID
+  static async findById(id) {
+    const query = `
+      SELECT id, username, email, phone, full_name as "fullName", address, birthdate, role,
+             created_at as "createdAt", updated_at as "updatedAt"
+      FROM users WHERE id = $1
+    `;
+    const result = await pool.query(query, [id]);
+    return result.rows[0] || null;
+  }
+
+  // Find user by username
+  static async findByUsername(username) {
+    const query = `
+      SELECT id, username, hashed_password as "hashedPassword", email, phone, 
+             full_name as "fullName", address, birthdate, role,
+             created_at as "createdAt", updated_at as "updatedAt"
+      FROM users WHERE username = $1
+    `;
+    const result = await pool.query(query, [username.toLowerCase()]);
+    return result.rows[0] || null;
+  }
+
+  // Find user by Email
+  static async findByEmail(email) {
+    const query = `
+      SELECT id, username, hashed_password as "hashedPassword", email, phone,
+             full_name as "fullName", address, birthdate, role,
+             created_at as "createdAt", updated_at as "updatedAt"
+      FROM users WHERE email = $1
+    `;
+    const result = await pool.query(query, [email.toLowerCase()]);
+    return result.rows[0] || null;
+  }
+}
+
+export default User;
