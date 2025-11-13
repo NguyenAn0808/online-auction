@@ -70,6 +70,13 @@ const options = {
             password: { type: "string", format: "password" },
           },
         },
+        SignOutRequest: {
+          type: "object",
+          properties: {
+            refreshToken: { type: "string" },
+          },
+          required: ["refreshToken"],
+        },
         SignInResponse: {
           type: "object",
           properties: {
@@ -125,52 +132,6 @@ const options = {
             role: {
               type: "string",
               enum: ["bidder", "seller", "admin"],
-            },
-          },
-        },
-        User: {
-          type: "object",
-          properties: {
-            id: {
-              type: "integer",
-              description: "User ID",
-            },
-            username: {
-              type: "string",
-              description: "Username",
-            },
-            email: {
-              type: "string",
-              format: "email",
-              description: "User email",
-            },
-            fullName: {
-              type: "string",
-              description: "Full name",
-            },
-            phone: {
-              type: "string",
-              description: "Phone number",
-            },
-            address: {
-              type: "string",
-              description: "Address",
-            },
-            birthdate: {
-              type: "string",
-              format: "date",
-            },
-            role: {
-              type: "string",
-              description: "User role",
-            },
-            createdAt: {
-              type: "string",
-              format: "date-time",
-            },
-            updatedAt: {
-              type: "string",
-              format: "date-time",
             },
           },
         },

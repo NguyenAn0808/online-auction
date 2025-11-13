@@ -131,7 +131,27 @@ export const signIn = async (req, res) => {
   }
 };
 
-// export const signOut = async (req, res) => {};
+export const signOut = async (req, res) => {
+  try {
+    // Get refresh token from cookies
+    const token = req.cookies?.refreshToken;
+
+    if (token) {
+      // Delete session from Session
+      await Session.deleteByRefreshToken(token);
+
+      res.clearCookie("refreshToken");
+    }
+
+    return res.sendStatus(204);
+  } catch (error) {
+    console.error("Error in signIn:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
 
 // export const changePassword = async (req, res) => {};
 

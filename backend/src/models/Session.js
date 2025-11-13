@@ -123,6 +123,16 @@ class Session {
     const result = await pool.query(query, [id]);
     return result.rows[0] || null;
   }
-}
 
+  // Delete session by refresh token
+  static async deleteByRefreshToken(refreshToken) {
+    const query = `
+      DELETE FROM sessions
+      WHERE refresh_token = $1
+      RETURNING id
+    `;
+    const result = await pool.query(query, [refreshToken]);
+    return result.rows[0] || null;
+  }
+}
 export default Session;

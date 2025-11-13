@@ -5,7 +5,7 @@ import {
   // refreshToken,
   // resetPassword,
   signIn,
-  // signOut,
+  signOut,
   signUp,
 } from "../controllers/authController.js";
 
@@ -75,7 +75,30 @@ router.post("/signup", signUp);
  */
 router.post("/signin", signIn);
 
-// router.post("/signout", signOut);
+/**
+ * @openapi
+ * /api/auth/signout:
+ *   post:
+ *     summary: Logout the current user
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/SignOutRequest'
+ *     responses:
+ *       204:
+ *         description: Logout successful (No content)
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
+router.post("/signout", signOut);
 
 // router.post("/changepassword", changePassword);
 
