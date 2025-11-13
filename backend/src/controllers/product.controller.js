@@ -1,18 +1,34 @@
-import CategoryService from "../services/category.service.js";
+import ProductService from "../services/product.service.js";
 
-class CategoryController {
-  // Get all categories
-  static async getAllCategories(req, res) {
+/**
+ * Product Controller - HTTP request handlers
+ */
+class ProductController {
+  /**
+   * GET /products
+   * Get all products with filters
+   */
+  static async getAllProducts(req, res) {
     try {
-      const result = await CategoryService.getAllCategories();
+      const { category_id, search, sort, new_only, page, limit } = req.query;
+
+      const filters = {
+        category_id,
+        search,
+        sort,
+        new_only: new_only === "true",
+        page: parseInt(page) || 1,
+        limit: parseInt(limit) || 10,
+      };
+
+      const result = await ProductService.getAllProducts(filters);
 
       return res.status(200).json({
         success: true,
-        data: result.data,
-        count: result.count,
+        ...result.data,
       });
     } catch (error) {
-      console.error("Error in getAllCategories:", error);
+      console.error("Error in getAllProducts:", error);
       return res.status(500).json({
         success: false,
         message: "Internal server error",
@@ -21,11 +37,14 @@ class CategoryController {
     }
   }
 
-  // Get category by ID
-  static async getCategoryById(req, res) {
+  /**
+   * GET /products/:id
+   * Get product by ID
+   */
+  static async getProductById(req, res) {
     try {
       const { id } = req.params;
-      const result = await CategoryService.getCategoryById(id);
+      const result = await ProductService.getProductById(id);
 
       if (!result.success) {
         return res.status(404).json({
@@ -39,7 +58,7 @@ class CategoryController {
         data: result.data,
       });
     } catch (error) {
-      console.error("Error in getCategoryById:", error);
+      console.error("Error in getProductById:", error);
       return res.status(500).json({
         success: false,
         message: "Internal server error",
@@ -48,11 +67,14 @@ class CategoryController {
     }
   }
 
-  // Create new category
-  static async createCategory(req, res) {
+  /**
+   * POST /products
+   * Create new product
+   */
+  static async createProduct(req, res) {
     try {
-      const categoryData = req.body;
-      const result = await CategoryService.createCategory(categoryData);
+      const productData = req.body;
+      const result = await ProductService.createProduct(productData);
 
       if (!result.success) {
         return res.status(400).json({
@@ -67,7 +89,7 @@ class CategoryController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error in createCategory:", error);
+      console.error("Error in createProduct:", error);
       return res.status(500).json({
         success: false,
         message: "Internal server error",
@@ -76,15 +98,18 @@ class CategoryController {
     }
   }
 
-  // Update category
-  static async updateCategory(req, res) {
+  /**
+   * PUT /products/:id
+   * Update product
+   */
+  static async updateProduct(req, res) {
     try {
       const { id } = req.params;
-      const categoryData = req.body;
-      const result = await CategoryService.updateCategory(id, categoryData);
+      const productData = req.body;
+      const result = await ProductService.updateProduct(id, productData);
 
       if (!result.success) {
-        const statusCode = result.message === "Category not found" ? 404 : 400;
+        const statusCode = result.message === "Product not found" ? 404 : 400;
         return res.status(statusCode).json({
           success: false,
           message: result.message,
@@ -97,7 +122,7 @@ class CategoryController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error in updateCategory:", error);
+      console.error("Error in updateProduct:", error);
       return res.status(500).json({
         success: false,
         message: "Internal server error",
@@ -106,11 +131,14 @@ class CategoryController {
     }
   }
 
-  // DELETE /categories/:id
-  static async deleteCategory(req, res) {
+  /**
+   * DELETE /products/:id
+   * Delete product
+   */
+  static async deleteProduct(req, res) {
     try {
       const { id } = req.params;
-      const result = await CategoryService.deleteCategory(id);
+      const result = await ProductService.deleteProduct(id);
 
       if (!result.success) {
         return res.status(404).json({
@@ -124,7 +152,7 @@ class CategoryController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error in deleteCategory:", error);
+      console.error("Error in deleteProduct:", error);
       return res.status(500).json({
         success: false,
         message: "Internal server error",
@@ -134,4 +162,4 @@ class CategoryController {
   }
 }
 
-export default CategoryController;
+export default ProductController;
