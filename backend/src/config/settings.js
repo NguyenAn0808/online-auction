@@ -6,6 +6,7 @@ export const config = {
   port: process.env.PORT || 8000,
   nodeEnv: process.env.NODE_ENV || "development",
   ACCESS_TOKEN_SECRET: process.env.ACCESS_TOKEN_SECRET,
+  CLIENT_URL: process.env.CLIENT_URL || "http://localhost:8000",
 
   // Database configuration
   database: {

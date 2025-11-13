@@ -1,6 +1,8 @@
 import express from "express";
+import cors from "cors";
 import swaggerUi from "swagger-ui-express";
 import config from "./config/settings.js";
+import cookieParser from "cookie-parser";
 import pool, { testConnection, closePool } from "./config/database.js";
 import swaggerSpec from "./config/swagger.js";
 import authRoute from "./routes/authRoute.js";
@@ -9,8 +11,24 @@ import Session from "./models/Session.js";
 
 const app = express();
 
+// CORS Middleware
+app.use(
+  cors({
+    origin: [config.CLIENT_URL].filter(Boolean),
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Session-ID",
+      "x-session-id",
+    ],
+  })
+);
+
 // Middleware
 app.use(express.json());
+app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint

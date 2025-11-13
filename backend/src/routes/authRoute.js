@@ -4,7 +4,7 @@ import {
   // forgotPassword,
   // refreshToken,
   // resetPassword,
-  // signIn,
+  signIn,
   // signOut,
   signUp,
 } from "../controllers/authController.js";
@@ -16,8 +16,7 @@ const router = express.Router();
  * /api/auth/signup:
  *   post:
  *     summary: Register a new user
- *     tags:
- *       - Authentication
+ *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
@@ -25,20 +24,16 @@ const router = express.Router();
  *           schema:
  *             $ref: '#/components/schemas/SignupRequest'
  *     responses:
- *       201:
- *         description: User registered successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/AuthResponse'
- *       400:
- *         description: Bad request
+ *       204:
+ *         description: Login successful (No content)
+ *       409:
+ *         description: Username or email already exists
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- *       409:
- *         description: Username or email already exists
+ *       500:
+ *         description: Internal server error
  *         content:
  *           application/json:
  *             schema:
@@ -46,7 +41,39 @@ const router = express.Router();
  */
 router.post("/signup", signUp);
 
-// router.post("/signin", signIn);
+/**
+ * @openapi
+ * /api/auth/signin:
+ *   post:
+ *     summary: Login with username and password
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/SignInRequest'
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SignInResponse'
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post("/signin", signIn);
 
 // router.post("/signout", signOut);
 
@@ -57,5 +84,9 @@ router.post("/signup", signUp);
 // router.post("/resetpassword", resetPassword);
 
 // router.post("/refresh", refreshToken);
+
+// router.post("/verifyOTP", verifyOTP);
+
+// router.post("resendOTP", resendOTP);
 
 export default router;

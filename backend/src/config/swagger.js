@@ -1,3 +1,4 @@
+import { Sign } from "crypto";
 import swaggerJsdoc from "swagger-jsdoc";
 
 const options = {
@@ -31,49 +32,57 @@ const options = {
         // Request schemas
         SignupRequest: {
           type: "object",
-          required: ["username", "password", "email", "fullName"],
+          required: ["username", "password", "email", "fullName", "address"],
           properties: {
             username: {
               type: "string",
               example: "john_doe",
-              description: "Unique username",
             },
             password: {
               type: "string",
               format: "password",
-              example: "password123",
               minLength: 6,
             },
             email: {
               type: "string",
               format: "email",
-              example: "john@example.com",
             },
             fullName: {
               type: "string",
-              example: "John Doe",
             },
             phone: {
               type: "string",
-              example: "+1234567890",
             },
             address: {
               type: "string",
-              example: "123 Main St New York",
             },
             birthdate: {
               type: "string",
               format: "date",
-              example: "1990-01-01",
             },
           },
+        },
+        SignInRequest: {
+          type: "object",
+          required: ["username", "password"],
+          properties: {
+            username: { type: "string" },
+            password: { type: "string", format: "password" },
+          },
+        },
+        SignInResponse: {
+          type: "object",
+          properties: {
+            userID: { type: "string" },
+            accessToken: { type: "string" },
+          },
+          required: ["userID", "accessToken"],
         },
         AuthResponse: {
           type: "object",
           properties: {
             success: {
               type: "boolean",
-              example: true,
             },
             message: {
               type: "string",
@@ -102,15 +111,12 @@ const options = {
           properties: {
             id: {
               type: "integer",
-              example: 1,
             },
             username: {
               type: "string",
-              example: "john_doe",
             },
             email: {
               type: "string",
-              example: "john@example.com",
             },
             fullName: {
               type: "string",
@@ -119,7 +125,6 @@ const options = {
             role: {
               type: "string",
               enum: ["bidder", "seller", "admin"],
-              example: "bidder",
             },
           },
         },
@@ -154,7 +159,6 @@ const options = {
             birthdate: {
               type: "string",
               format: "date",
-              description: "Birth date",
             },
             role: {
               type: "string",
@@ -175,11 +179,9 @@ const options = {
           properties: {
             success: {
               type: "boolean",
-              example: false,
             },
             message: {
               type: "string",
-              example: "Error message",
             },
           },
         },
@@ -188,11 +190,9 @@ const options = {
           properties: {
             success: {
               type: "boolean",
-              example: true,
             },
             message: {
               type: "string",
-              example: "Operation successful",
             },
             data: {
               type: "object",
