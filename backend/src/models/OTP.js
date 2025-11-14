@@ -77,6 +77,21 @@ class OTP {
     return result.rows[0] || null;
   }
 
+  // Find most recent OTP (active or expired) to check cooldown
+  static async findRecentOTP(email, purpose = "signup") {
+    const query = `
+      SELECT id, email, otp_code as "otpCode", purpose, attempts,
+             expires_at as "expiresAt", created_at as "createdAt", verified
+      FROM otps
+      WHERE email = $1 AND purpose = $2
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+
+    const result = await pool.query(query, [email.toLowerCase(), purpose]);
+    return result.rows[0] || null;
+  }
+
   // Increment OTP attempts
   static async incrementAttempts(id) {
     const query = `
@@ -111,6 +126,21 @@ class OTP {
     `;
 
     await pool.query(query, [email.toLowerCase(), purpose]);
+  }
+
+  // find recent OTP
+  static async findRecentOTP(email, purpose = "signup", interval = 0) {
+    const query = `
+      SELECT id, email, otp_code as "otpCode", purpose, attempts,
+             expires_at as "expiresAt", created_at as "createdAt", verified
+      FROM otps
+      WHERE email = $1 AND purpose = $2 AND created_at > NOW() - INTERVAL '${interval} milliseconds'
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+
+    const result = await pool.query(query, [email.toLowerCase(), purpose]);
+    return result.rows[0] || null;
   }
 }
 

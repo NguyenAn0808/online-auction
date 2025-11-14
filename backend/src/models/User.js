@@ -140,6 +140,17 @@ class User {
     const result = await pool.query(query, values);
     return result.rows[0];
   }
+
+  // Delete by id (fails when signup OTP verification is not completed)
+  static async deleteById(id) {
+    const query = `
+      DELETE FROM users
+      WHERE id = $1
+      RETURNING id
+    `;
+    const result = await pool.query(query, [id]);
+    return result.rows[0] || null;
+  }
 }
 
 export default User;

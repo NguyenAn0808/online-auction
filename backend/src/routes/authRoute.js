@@ -2,8 +2,8 @@ import express from "express";
 import {
   changePassword,
   forgotPassword,
-  refreshToken,
   resetPassword,
+  refreshToken,
   signIn,
   signOut,
   signUp,
@@ -39,34 +39,14 @@ const router = express.Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+ *       500:
+ *        description: Internal server error
+ *        content:
+ *          application/json:
+ *            schema:
+ *             $ref: '#/components/schemas/Error'
  */
 router.post("/signup", signUp);
-
-/**
- * @openapi
- * /api/auth/verify-otp:
- *   post:
- *     summary: Verify OTP and activate account
- *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/VerifyOTPRequest'
- *     responses:
- *       200:
- *         description: OTP verified successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/VertifyOTPResponse'
- *       400:
- *         description: Invalid or expired OTP
- *       429:
- *         description: Too many failed attempts
- */
-router.post("/verify-otp", verifyOTP);
 
 /**
  * @openapi
@@ -219,7 +199,73 @@ router.patch("/change-password", authenticate, changePassword);
  */
 router.post("/forgot-password", forgotPassword);
 
-router.post("/reset-password", resetPassword);
+/**
+ * @openapi
+ * /api/auth/verify-otp:
+ *   post:
+ *     summary: Verify OTP and activate account
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/VerifyOTPRequest'
+ *     responses:
+ *       200:
+ *         description: OTP verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/VertifyOTPResponse'
+ *       400:
+ *         description: Invalid or expired OTP
+ *       429:
+ *         description: Too many failed attempts
+ */
+router.post("/verify-otp", verifyOTP);
+
+/**
+ * @openapi
+ * /api/auth/resend-otp:
+ *   post:
+ *     summary: Resend OTP to user's email
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ResendOTPRequest'
+ *     responses:
+ *       200:
+ *         description: OTP verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ResendOTPResponse'
+ *       400:
+ *         description: Invalid or expired OTP
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: User with the provided email not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       429:
+ *         description: Too many failed attempts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *        description: Internal server error
+ */
+router.post("/resend-otp", resendOTP);
 
 /**
  * @openapi
@@ -257,8 +303,6 @@ router.post("/reset-password", resetPassword);
  */
 router.post("/refresh", refreshToken);
 
-// router.post("/verifyOTP", verifyOTP);
-
-router.post("resendOTP", resendOTP);
+router.post("/reset-password", resetPassword);
 
 export default router;

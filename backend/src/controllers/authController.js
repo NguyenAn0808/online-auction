@@ -11,6 +11,7 @@ const ACCESS_TOKEN_TTL = "15m";
 const REFRESH_TOKEN_TTL = 7 * 24 * 3600 * 1000; // 7 days
 const OTP_EXPIRY_MINUTES = 10;
 const MAX_OTP_ATTEMPTS = 5;
+const OTP_RESEND_INTERVAL = 60 * 1000; // 1 minute
 
 const generateOTP = () => {
   return crypto.randomInt(100000, 999999).toString();
@@ -194,7 +195,81 @@ export const verifyOTP = async (req, res) => {
   }
 };
 
-export const resendOTP = async (req, res) => {};
+export const resendOTP = async (req, res) => {
+  try {
+    const { email, purpose = "signup" } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    const user = await User.findByEmail(email);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "No account found with this email address",
+      });
+    }
+
+    // Prevent resending OTP too frequently (can resend only after interval)
+
+    const recentOTP = await OTP.findRecentOTP(
+      email,
+      purpose,
+      OTP_RESEND_INTERVAL
+    );
+    if (recentOTP) {
+      return res.status(429).json({
+        success: false,
+        message: "OTP was sent recently. Please wait before requesting again.",
+      });
+    }
+
+    // Generate new OTP
+    const otpCode = generateOTP();
+    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+
+    // Delete old OTP and create new one atomically
+    await OTP.deleteByEmail(email, purpose);
+    const newOTP = await OTP.create(email, otpCode, purpose, expiresAt);
+
+    // Send OTP email
+    try {
+      await sendOTPEmail(email, otpCode, user.fullName);
+
+      console.log(`✅ OTP resent successfully to ${email}`);
+
+      return res.status(200).json({
+        success: true,
+        message: "A new OTP has been sent to your email",
+        data: {
+          email: email,
+          expiresIn: `${OTP_EXPIRY_MINUTES} minutes`,
+          purpose: purpose,
+        },
+      });
+    } catch (emailError) {
+      // If email fails, delete the OTP we just created to allow retry
+      console.error("Error sending OTP email:", emailError);
+      await OTP.deleteByEmail(email, purpose);
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send OTP email. Please try again.",
+      });
+    }
+  } catch (error) {
+    console.error("Error in resendOTP:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
 
 export const signIn = async (req, res) => {
   try {

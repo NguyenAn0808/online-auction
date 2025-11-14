@@ -108,6 +108,14 @@ const options = {
             otp: { type: "string" },
           },
         },
+        ResendOTPRequest: {
+          type: "object",
+          required: ["email"],
+          properties: {
+            email: { type: "string", format: "email" },
+            purpose: { type: "string" },
+          },
+        },
         SignUpResponse: {
           type: "object",
           properties: {
@@ -149,6 +157,19 @@ const options = {
                 $ref: "#/components/schemas/UserResponse",
               },
             },
+          },
+        },
+        ResendOTPResponse: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            message: { type: "string" },
+          },
+          data: {
+            type: "object",
+            email: { type: "string", format: "email" },
+            expiresIn: { type: "string" },
+            purpose: { type: "string" },
           },
         },
         AuthResponse: {
