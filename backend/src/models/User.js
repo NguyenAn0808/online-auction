@@ -16,6 +16,7 @@ class User {
           address TEXT,
           birthdate DATE,
           role VARCHAR(50) DEFAULT 'bidder',
+          is_verified BOOLEAN DEFAULT FALSE,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -61,11 +62,12 @@ class User {
     address,
     birthdate,
     role = "bidder",
+    isVerified = false,
   }) {
     const query = `
-      INSERT INTO users (username, hashed_password, email, phone, full_name, address, birthdate, role)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id, username, email, phone, full_name as "fullName", address, birthdate, role, 
+      INSERT INTO users (username, hashed_password, email, phone, full_name, address, birthdate, role, is_verified)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING id, username, email, phone, full_name as "fullName", address, birthdate, role, is_verified as "isVerified",
                 created_at as "createdAt", updated_at as "updatedAt"
     `;
 
@@ -78,6 +80,7 @@ class User {
       address,
       birthdate,
       role,
+      isVerified,
     ];
 
     try {
@@ -95,7 +98,7 @@ class User {
   //  Find user by ID
   static async findById(id) {
     const query = `
-      SELECT id, username, email, phone, full_name as "fullName", address, birthdate, role,
+      SELECT id, username, email, phone, full_name as "fullName", address, birthdate, role, is_verified as "isVerified",
              created_at as "createdAt", updated_at as "updatedAt"
       FROM users WHERE id = $1
     `;
@@ -107,7 +110,7 @@ class User {
   static async findByUsername(username) {
     const query = `
       SELECT id, username, hashed_password as "hashedPassword", email, phone, 
-             full_name as "fullName", address, birthdate, role,
+             full_name as "fullName", address, birthdate, role, is_verified as "isVerified",
              created_at as "createdAt", updated_at as "updatedAt"
       FROM users WHERE username = $1
     `;
@@ -119,7 +122,7 @@ class User {
   static async findByEmail(email) {
     const query = `
       SELECT id, username, hashed_password as "hashedPassword", email, phone,
-             full_name as "fullName", address, birthdate, role,
+             full_name as "fullName", address, birthdate, role, is_verified as "isVerified",
              created_at as "createdAt", updated_at as "updatedAt"
       FROM users WHERE email = $1
     `;
@@ -133,7 +136,7 @@ class User {
       UPDATE users
       SET hashed_password = $1, updated_at = CURRENT_TIMESTAMP
       WHERE id = $2
-      RETURNING id, username, email, phone, full_name as "fullName", address, birthdate, role,
+      RETURNING id, username, email, phone, full_name as "fullName", address, birthdate, role, is_verified as "isVerified",
                 created_at as "createdAt", updated_at as "updatedAt"
     `;
     const values = [newHashedPassword, id];
@@ -149,6 +152,19 @@ class User {
       RETURNING id
     `;
     const result = await pool.query(query, [id]);
+    return result.rows[0] || null;
+  }
+
+  // Update verification status
+  static async updateVerificationStatus(id, isVerified = true) {
+    const query = `
+      UPDATE users
+      SET is_verified = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING id, username, email, phone, full_name as "fullName", address, birthdate, role, is_verified as "isVerified",
+                created_at as "createdAt", updated_at as "updatedAt"
+    `;
+    const result = await pool.query(query, [isVerified, id]);
     return result.rows[0] || null;
   }
 }

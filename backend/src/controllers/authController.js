@@ -68,7 +68,7 @@ export const signUp = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10); // salt = 10
 
-    // Create user
+    // Create user with is_verified = false
     const newUser = await User.create({
       username,
       hashedPassword,
@@ -78,6 +78,7 @@ export const signUp = async (req, res) => {
       address,
       birthdate,
       role: "bidder",
+      isVerified: false,
     });
 
     // Generate OTP
@@ -95,6 +96,8 @@ export const signUp = async (req, res) => {
       await sendOTPEmail(email, otpCode, fullName);
     } catch (emailError) {
       console.error("Error sending OTP email:", emailError);
+      // Delete the user since we couldn't send the verification email
+      await User.deleteById(newUser.id);
       return res.status(500).json({
         success: false,
         message: "Failed to send OTP email",
@@ -170,6 +173,9 @@ export const verifyOTP = async (req, res) => {
       });
     }
 
+    // Update user verification status
+    const verifiedUser = await User.updateVerificationStatus(user.id, true);
+
     // Clean up OTPs after successful verification
     await OTP.deleteByEmail(email, "signup");
 
@@ -178,11 +184,11 @@ export const verifyOTP = async (req, res) => {
       message: "Email verified successfully. Welcome to Online Auction!",
       data: {
         user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          fullName: user.fullName,
-          role: user.role,
+          id: verifiedUser.id,
+          username: verifiedUser.username,
+          email: verifiedUser.email,
+          fullName: verifiedUser.fullName,
+          role: verifiedUser.role,
         },
       },
     });
@@ -289,6 +295,15 @@ export const signIn = async (req, res) => {
       return res.status(401).json({
         success: false,
         message: "Invalid username or password",
+      });
+    }
+
+    // Check if user's email is verified
+    if (!user.isVerified) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Please verify your email before logging in. Check your inbox for the verification code.",
       });
     }
 
@@ -512,7 +527,72 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
-export const resetPassword = async (req, res) => {};
+export const resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Email, OTP and new password are required",
+      });
+    }
+
+    const user = await User.findByEmail(email);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User with this email does not exist",
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid email format",
+      });
+    }
+
+    // Validate password strength
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be at least 6 characters long",
+      });
+    }
+
+    // Generate OTP
+    const otpCode = generateOTP();
+    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000); // 10 minutes from now
+
+    // Delete any existing OTPs for this email
+    await OTP.deleteByEmail(email, "password-reset");
+
+    // Create new OTP
+    await OTP.create(email, otpCode, "password-reset", expiresAt);
+
+    // Send OTP email
+    try {
+      await sendOTPEmail(email, otpCode, user.fullName);
+    } catch (emailError) {
+      console.error("Error sending OTP email:", emailError);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send OTP email",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP has been sent to your email",
+      data: {
+        email,
+        expiresIn: `${OTP_EXPIRY_MINUTES} minutes`,
+      },
+    });
+  } catch (error) {}
+};
 
 export const refreshToken = async (req, res) => {
   try {

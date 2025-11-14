@@ -116,6 +116,7 @@ const options = {
             purpose: { type: "string" },
           },
         },
+        ResetPasswordRequest: {},
         SignUpResponse: {
           type: "object",
           properties: {
@@ -172,6 +173,7 @@ const options = {
             purpose: { type: "string" },
           },
         },
+        ResetPasswordResponse: {},
         AuthResponse: {
           type: "object",
           properties: {
