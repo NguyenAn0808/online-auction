@@ -1,4 +1,5 @@
 import { Sign } from "crypto";
+import { format } from "path";
 import swaggerJsdoc from "swagger-jsdoc";
 
 const options = {
@@ -85,12 +86,49 @@ const options = {
             newPassword: { type: "string", format: "password", minLength: 6 },
           },
         },
+        ForgotPasswordRequest: {
+          type: "object",
+          required: ["email"],
+          properties: {
+            email: { type: "string", format: "email" },
+          },
+        },
         RefreshRequest: {
           type: "object",
           properties: {
             refreshToken: { type: "string" },
           },
           required: ["refreshToken"],
+        },
+        VerifyOTPRequest: {
+          type: "object",
+          required: ["email", "otp"],
+          properties: {
+            email: { type: "string", format: "email" },
+            otp: { type: "string" },
+          },
+        },
+        SignUpResponse: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            message: { type: "string" },
+            data: {
+              type: "object",
+              properties: {
+                userId: {
+                  type: "string",
+                },
+                email: {
+                  type: "string",
+                  format: "email",
+                },
+                requiresOTP: {
+                  type: "boolean",
+                },
+              },
+            },
+          },
         },
         SignInResponse: {
           type: "object",
@@ -99,6 +137,19 @@ const options = {
             accessToken: { type: "string" },
           },
           required: ["userID", "accessToken"],
+        },
+        VertifyOTPResponse: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            message: { type: "string" },
+            data: {
+              type: "object",
+              user: {
+                $ref: "#/components/schemas/UserResponse",
+              },
+            },
+          },
         },
         AuthResponse: {
           type: "object",

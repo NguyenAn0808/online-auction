@@ -3,10 +3,18 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import User from "../models/User.js";
 import Session from "../models/Session.js";
+import OTP from "../models/OTP.js";
 import config from "../config/settings.js";
+import { sendOTPEmail } from "../services/emailService.js";
 
 const ACCESS_TOKEN_TTL = "15m";
 const REFRESH_TOKEN_TTL = 7 * 24 * 3600 * 1000; // 7 days
+const OTP_EXPIRY_MINUTES = 10;
+const MAX_OTP_ATTEMPTS = 5;
+
+const generateOTP = () => {
+  return crypto.randomInt(100000, 999999).toString();
+};
 
 export const signUp = async (req, res) => {
   try {
@@ -18,6 +26,23 @@ export const signUp = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Missing required fields",
+      });
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid email format",
+      });
+    }
+
+    // Password strength validation
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters long",
       });
     }
 
@@ -43,7 +68,7 @@ export const signUp = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10); // salt = 10
 
     // Create user
-    await User.create({
+    const newUser = await User.create({
       username,
       hashedPassword,
       email,
@@ -51,18 +76,125 @@ export const signUp = async (req, res) => {
       fullName,
       address,
       birthdate,
-      role: "bidder", // Default role for new users
+      role: "bidder",
     });
 
-    return res.sendStatus(204);
+    // Generate OTP
+    const otpCode = generateOTP();
+    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000); // 10 minutes from now
+
+    // Delete any existing OTPs for this email
+    await OTP.deleteByEmail(email, "signup");
+
+    // Create new OTP
+    await OTP.create(email, otpCode, "signup", expiresAt);
+
+    // Send OTP email
+    try {
+      await sendOTPEmail(email, otpCode, fullName);
+    } catch (emailError) {
+      console.error("Error sending OTP email:", emailError);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send OTP email",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP has been sent to your email",
+      data: {
+        email,
+        expiresIn: `${OTP_EXPIRY_MINUTES} minutes`,
+      },
+    });
   } catch (error) {
-    console.error("Error in signUp:", error);
+    console.error("Error in sendVerifyOTP:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
     });
   }
 };
+
+export const verifyOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing email or OTP",
+      });
+    }
+
+    // Find active OTP
+    const otpRecord = await OTP.findActiveOTP(email, "signup");
+
+    if (!otpRecord) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired OTP",
+      });
+    }
+
+    if (new Date() > new Date(otpRecord.expiresAt)) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP has expired",
+      });
+    }
+
+    if (otpRecord.attempts >= MAX_OTP_ATTEMPTS) {
+      await OTP.deleteByEmail(email, "signup");
+    }
+
+    if (otp !== otpRecord.otpCode) {
+      await OTP.incrementAttempts(otpRecord.id);
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+        attemptsRemanining: MAX_OTP_ATTEMPTS - (otpRecord.attempts + 1),
+      });
+    }
+
+    await OTP.markAsVerified(otpRecord.id);
+
+    const user = await User.findByEmail(email);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Clean up OTPs after successful verification
+    await OTP.deleteByEmail(email, "signup");
+
+    return res.status(200).json({
+      success: true,
+      message: "Email verified successfully. Welcome to Online Auction!",
+      data: {
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          fullName: user.fullName,
+          role: user.role,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error in signIn:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+export const resendOTP = async (req, res) => {};
 
 export const signIn = async (req, res) => {
   try {
@@ -245,9 +377,67 @@ export const changePassword = async (req, res) => {
   }
 };
 
-// export const forgotPassword = async (req, res) => {};
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
 
-// export const resetPassword = async (req, res) => {};
+    const user = await User.findByEmail(email);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User with this email does not exist",
+      });
+    }
+
+    // Generate OTP
+    const otpCode = generateOTP();
+    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000); // 10 minutes from now
+
+    // Delete any existing OTPs for this email
+    await OTP.deleteByEmail(email, "forgotPassword");
+
+    // Create new OTP
+    await OTP.create({
+      email,
+      otpCode,
+      purpose: "forgotPassword",
+      expiresAt,
+    });
+
+    // Send OTP email
+    try {
+      await sendOTPEmail(email, otpCode, user.fullName);
+    } catch (emailError) {
+      console.error("Error sending OTP email:", emailError);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send OTP email",
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      message: "OTP has been sent to your email",
+      data: {
+        email,
+        expiresIn: `${OTP_EXPIRY_MINUTES} minutes`,
+      },
+    });
+  } catch (error) {
+    console.error("Error in forgot password:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+export const resetPassword = async (req, res) => {};
 
 export const refreshToken = async (req, res) => {
   try {

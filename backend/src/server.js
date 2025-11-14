@@ -8,6 +8,7 @@ import swaggerSpec from "./config/swagger.js";
 import authRoute from "./routes/authRoute.js";
 import User from "./models/User.js";
 import Session from "./models/Session.js";
+import OTP from "./models/OTP.js";
 
 const app = express();
 
@@ -80,6 +81,7 @@ const startServer = async () => {
     // Initialize database tables (like Mongoose schema initialization)
     await User.createTable();
     await Session.createTable();
+    await OTP.createTable();
 
     console.log("Database tables initialized");
 

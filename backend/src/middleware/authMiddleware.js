@@ -28,7 +28,9 @@ export const authenticate = async (req, res, next) => {
       }
 
       // Find user in PostgreSQL
-      const user = await User.findById(decodedUser.id);
+      const user = await User.findById(decodedUser.id).select(
+        "-hashedPassword"
+      );
 
       if (!user) {
         return res.status(404).json({
@@ -38,14 +40,7 @@ export const authenticate = async (req, res, next) => {
       }
 
       // Attach user to request (without password)
-      req.user = {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        fullName: user.fullName,
-        role: user.role,
-      };
-
+      req.user = user;
       next();
     });
   } catch (error) {

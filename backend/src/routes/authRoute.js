@@ -1,12 +1,14 @@
 import express from "express";
 import {
   changePassword,
-  // forgotPassword,
+  forgotPassword,
   refreshToken,
-  // resetPassword,
+  resetPassword,
   signIn,
   signOut,
   signUp,
+  verifyOTP,
+  resendOTP,
 } from "../controllers/authController.js";
 import { authenticate } from "../middleware/authMiddleware.js";
 
@@ -18,8 +20,6 @@ const router = express.Router();
  *   post:
  *     summary: Register a new user
  *     tags: [Authentication]
- *     security:
- *       - SessionAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -27,22 +27,46 @@ const router = express.Router();
  *           schema:
  *             $ref: '#/components/schemas/SignupRequest'
  *     responses:
- *       204:
- *         description: Login successful (No content)
+ *       201:
+ *         description: User registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SignUpResponse'
  *       409:
  *         description: Username or email already exists
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- *       500:
- *         description: Internal server error
+ */
+router.post("/signup", signUp);
+
+/**
+ * @openapi
+ * /api/auth/verify-otp:
+ *   post:
+ *     summary: Verify OTP and activate account
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/VerifyOTPRequest'
+ *     responses:
+ *       200:
+ *         description: OTP verified successfully
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Error'
+ *               $ref: '#/components/schemas/VertifyOTPResponse'
+ *       400:
+ *         description: Invalid or expired OTP
+ *       429:
+ *         description: Too many failed attempts
  */
-router.post("/signup", signUp);
+router.post("/verify-otp", verifyOTP);
 
 /**
  * @openapi
@@ -157,6 +181,48 @@ router.patch("/change-password", authenticate, changePassword);
 
 /**
  * @openapi
+ * /api/auth/forgot-password:
+ *   post:
+ *     summary: forgot password and enter email after that send reset OTP
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ForgotPasswordRequest'
+ *     responses:
+ *       200:
+ *         description: OTP sent successfully to email
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ForgotPasswordResponse'
+ *       400:
+ *         description: Bad request (e.g., missing email)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: User with the provided email not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post("/forgot-password", forgotPassword);
+
+router.post("/reset-password", resetPassword);
+
+/**
+ * @openapi
  * /api/auth/refresh:
  *   post:
  *     summary: Create new access token using refresh token
@@ -190,12 +256,9 @@ router.patch("/change-password", authenticate, changePassword);
  *               $ref: '#/components/schemas/Error'
  */
 router.post("/refresh", refreshToken);
-// router.post("/forgotpassword", forgotPassword);
-
-// router.post("/resetpassword", resetPassword);
 
 // router.post("/verifyOTP", verifyOTP);
 
-// router.post("resendOTP", resendOTP);
+router.post("resendOTP", resendOTP);
 
 export default router;
