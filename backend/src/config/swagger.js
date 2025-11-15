@@ -104,19 +104,43 @@ const options = {
           type: "object",
           required: ["email", "otp"],
           properties: {
-            email: { type: "string", format: "email" },
-            otp: { type: "string" },
+            email: {
+              type: "string",
+              format: "email",
+            },
+            otp: {
+              type: "string",
+            },
           },
         },
         ResendOTPRequest: {
           type: "object",
           required: ["email"],
           properties: {
-            email: { type: "string", format: "email" },
-            purpose: { type: "string" },
+            email: {
+              type: "string",
+              format: "email",
+              example: "user@example.com",
+            },
+            purpose: {
+              type: "string",
+              enum: ["signup", "password-reset"],
+              default: "signup",
+              example: "signup",
+              description:
+                "Purpose of OTP (defaults to signup if not provided)",
+            },
           },
         },
-        ResetPasswordRequest: {},
+        ResetPasswordRequest: {
+          type: "object",
+          required: ["email", "otp", "newPassword"],
+          properties: {
+            email: { type: "string", format: "email" },
+            otp: { type: "string" },
+            newPassword: { type: "string", format: "password", minLength: 6 },
+          },
+        },
         SignUpResponse: {
           type: "object",
           properties: {
@@ -125,9 +149,6 @@ const options = {
             data: {
               type: "object",
               properties: {
-                userId: {
-                  type: "string",
-                },
                 email: {
                   type: "string",
                   format: "email",
@@ -150,12 +171,22 @@ const options = {
         VertifyOTPResponse: {
           type: "object",
           properties: {
-            success: { type: "boolean" },
-            message: { type: "string" },
+            success: {
+              type: "boolean",
+              example: true,
+            },
+            message: {
+              type: "string",
+              example:
+                "Email verified successfully. Welcome to Online Auction!",
+            },
             data: {
               type: "object",
-              user: {
-                $ref: "#/components/schemas/UserResponse",
+              properties: {
+                user: {
+                  $ref: "#/components/schemas/UserResponse",
+                  description: "User data (only for signup purpose)",
+                },
               },
             },
           },
@@ -173,7 +204,13 @@ const options = {
             purpose: { type: "string" },
           },
         },
-        ResetPasswordResponse: {},
+        ResetPasswordResponse: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            message: { type: "string" },
+          },
+        },
         AuthResponse: {
           type: "object",
           properties: {

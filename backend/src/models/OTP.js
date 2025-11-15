@@ -77,6 +77,21 @@ class OTP {
     return result.rows[0] || null;
   }
 
+  // Find verified OTP (for password reset flow)
+  static async findVerifiedOTP(email, purpose = "password-reset") {
+    const query = `
+      SELECT id, email, otp_code as "otpCode", purpose, attempts,
+             expires_at as "expiresAt", created_at as "createdAt", verified
+      FROM otps
+      WHERE email = $1 AND purpose = $2 AND expires_at > NOW() AND verified = TRUE
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+
+    const result = await pool.query(query, [email.toLowerCase(), purpose]);
+    return result.rows[0] || null;
+  }
+
   // Find most recent OTP (active or expired) to check cooldown
   static async findRecentOTP(email, purpose = "signup") {
     const query = `

@@ -93,7 +93,7 @@ export const signUp = async (req, res) => {
 
     // Send OTP email
     try {
-      await sendOTPEmail(email, otpCode, fullName);
+      await sendOTPEmail(email, otpCode, fullName, "signup");
     } catch (emailError) {
       console.error("Error sending OTP email:", emailError);
       // Delete the user since we couldn't send the verification email
@@ -193,7 +193,7 @@ export const verifyOTP = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error in signIn:", error);
+    console.error("Error in sign in:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -245,7 +245,7 @@ export const resendOTP = async (req, res) => {
 
     // Send OTP email
     try {
-      await sendOTPEmail(email, otpCode, user.fullName);
+      await sendOTPEmail(email, otpCode, user.fullName, purpose);
 
       console.log(`✅ OTP resent successfully to ${email}`);
 
@@ -269,7 +269,7 @@ export const resendOTP = async (req, res) => {
       });
     }
   } catch (error) {
-    console.error("Error in resendOTP:", error);
+    console.error("Error in resend OTP:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -490,15 +490,10 @@ export const forgotPassword = async (req, res) => {
     const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000); // 10 minutes from now
 
     // Delete any existing OTPs for this email
-    await OTP.deleteByEmail(email, "forgotPassword");
+    await OTP.deleteByEmail(email, "password-reset");
 
     // Create new OTP
-    await OTP.create({
-      email,
-      otpCode,
-      purpose: "forgotPassword",
-      expiresAt,
-    });
+    await OTP.create(email, otpCode, "password-reset", expiresAt);
 
     // Send OTP email
     try {
@@ -533,15 +528,7 @@ export const resetPassword = async (req, res) => {
     if (!email || !otp || !newPassword) {
       return res.status(400).json({
         success: false,
-        message: "Email, OTP and new password are required",
-      });
-    }
-
-    const user = await User.findByEmail(email);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User with this email does not exist",
+        message: "Email, OTP, and new password are required",
       });
     }
 
@@ -562,36 +549,88 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    // Generate OTP
-    const otpCode = generateOTP();
-    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000); // 10 minutes from now
+    // Find the active OTP
+    const otpRecord = await OTP.findActiveOTP(email, "password-reset");
 
-    // Delete any existing OTPs for this email
-    await OTP.deleteByEmail(email, "password-reset");
-
-    // Create new OTP
-    await OTP.create(email, otpCode, "password-reset", expiresAt);
-
-    // Send OTP email
-    try {
-      await sendOTPEmail(email, otpCode, user.fullName);
-    } catch (emailError) {
-      console.error("Error sending OTP email:", emailError);
-      return res.status(500).json({
+    if (!otpRecord) {
+      return res.status(400).json({
         success: false,
-        message: "Failed to send OTP email",
+        message: "Invalid or expired OTP. Please request a new one.",
       });
     }
 
+    // Check if OTP expired first
+    if (new Date() > new Date(otpRecord.expiresAt)) {
+      await OTP.deleteByEmail(email, "password-reset");
+      return res.status(400).json({
+        success: false,
+        message: "OTP has expired. Please request a new one.",
+      });
+    }
+
+    // Check max attempts before verifying
+    if (otpRecord.attempts >= MAX_OTP_ATTEMPTS) {
+      await OTP.deleteByEmail(email, "password-reset");
+      return res.status(429).json({
+        success: false,
+        message: "Too many failed attempts. Please request a new OTP.",
+      });
+    }
+
+    // Verify OTP code
+    if (otp.trim() !== otpRecord.otpCode) {
+      await OTP.incrementAttempts(otpRecord.id);
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP code. Please check and try again.",
+        attemptsRemaining: MAX_OTP_ATTEMPTS - (otpRecord.attempts + 1),
+      });
+    }
+
+    // Find user
+    const user = await User.findByEmail(email);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const isSamePassword = await bcrypt.compare(
+      newPassword,
+      user.hashedPassword
+    );
+
+    if (isSamePassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be different from the old password",
+      });
+    }
+
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    await User.updatePassword(user.id, hashedNewPassword);
+
+    // Delete the OTP after successful password reset
+    await OTP.deleteByEmail(email, "password-reset");
+
+    // Delete all user sessions for security (force re-login)
+    await Session.deleteAllByUserId(user.id);
+
     return res.status(200).json({
       success: true,
-      message: "OTP has been sent to your email",
-      data: {
-        email,
-        expiresIn: `${OTP_EXPIRY_MINUTES} minutes`,
-      },
+      message:
+        "Password reset successfully. Please login with your new password.",
     });
-  } catch (error) {}
+  } catch (error) {
+    console.error("Error in reset password:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
 };
 
 export const refreshToken = async (req, res) => {

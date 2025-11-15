@@ -201,9 +201,50 @@ router.post("/forgot-password", forgotPassword);
 
 /**
  * @openapi
+ * /api/auth/reset-password:
+ *   post:
+ *     summary: Reset password using OTP
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ResetPasswordRequest'
+ *     responses:
+ *       200:
+ *         description: OTP sent successfully to email
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ResetPasswordResponse'
+ *       400:
+ *         description: Bad request (e.g., missing email)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: User with the provided email not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post("/reset-password", resetPassword);
+
+/**
+ * @openapi
  * /api/auth/verify-otp:
  *   post:
- *     summary: Verify OTP and activate account
+ *     summary: Verify OTP for signup
+ *     description: Verify OTP code sent to user's email.
  *     tags: [Authentication]
  *     requestBody:
  *       required: true
@@ -220,8 +261,22 @@ router.post("/forgot-password", forgotPassword);
  *               $ref: '#/components/schemas/VertifyOTPResponse'
  *       400:
  *         description: Invalid or expired OTP
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: User not found (signup purpose only)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       429:
  *         description: Too many failed attempts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post("/verify-otp", verifyOTP);
 
@@ -302,7 +357,5 @@ router.post("/resend-otp", resendOTP);
  *               $ref: '#/components/schemas/Error'
  */
 router.post("/refresh", refreshToken);
-
-router.post("/reset-password", resetPassword);
 
 export default router;
