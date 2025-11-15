@@ -1,8 +1,5 @@
 import pool from "../config/database.js";
 
-/**
- * Initialize product_images table schema
- */
 export const initProductImagesTable = async () => {
   const createTableQuery = `
     CREATE TABLE IF NOT EXISTS product_images (
@@ -21,21 +18,15 @@ export const initProductImagesTable = async () => {
 
   try {
     await pool.query(createTableQuery);
-    console.log("✅ Product images table initialized");
+    console.log("Product images table initialized");
     return true;
   } catch (error) {
-    console.error("❌ Error initializing product images table:", error.message);
+    console.error("Error initializing product images table:", error.message);
     throw error;
   }
 };
 
-/**
- * ProductImage Model - Database operations
- */
 class ProductImageModel {
-  /**
-   * Get all images for a product
-   */
   static async findByProductId(product_id) {
     const query = `
       SELECT 
@@ -54,9 +45,6 @@ class ProductImageModel {
     return result.rows;
   }
 
-  /**
-   * Get image by ID
-   */
   static async findById(id) {
     const query = `
       SELECT 
@@ -74,9 +62,24 @@ class ProductImageModel {
     return result.rows[0];
   }
 
-  /**
-   * Create new product image
-   */
+  static async findThumbnail(product_id) {
+    const query = `
+      SELECT 
+        id,
+        product_id,
+        image_url,
+        is_thumbnail,
+        position,
+        created_at
+      FROM product_images
+      WHERE product_id = $1 AND is_thumbnail = true
+      LIMIT 1
+    `;
+
+    const result = await pool.query(query, [product_id]);
+    return result.rows[0];
+  }
+
   static async create({ product_id, image_url, is_thumbnail, position }) {
     const query = `
       INSERT INTO product_images (product_id, image_url, is_thumbnail, position)
@@ -88,15 +91,12 @@ class ProductImageModel {
       product_id,
       image_url,
       is_thumbnail || false,
-      position || 0,
+      position,
     ]);
 
     return result.rows[0];
   }
 
-  /**
-   * Update product image
-   */
   static async update(id, { image_url, is_thumbnail, position }) {
     const fields = [];
     const params = [];
@@ -138,18 +138,12 @@ class ProductImageModel {
     return result.rows[0];
   }
 
-  /**
-   * Delete product image
-   */
   static async delete(id) {
     const query = "DELETE FROM product_images WHERE id = $1 RETURNING id";
     const result = await pool.query(query, [id]);
     return result.rows[0];
   }
 
-  /**
-   * Check if product exists
-   */
   static async productExists(product_id) {
     const query = "SELECT id FROM products WHERE id = $1";
     const result = await pool.query(query, [product_id]);

@@ -87,7 +87,6 @@ class ProductModel {
 
         if (category.parent_id === null) {
           // Parent category: get products from this category and all its children
-          // Get all child category IDs first
           const childCategoriesQuery = `
             SELECT id FROM categories WHERE parent_id = $1
           `;

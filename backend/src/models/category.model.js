@@ -26,7 +26,6 @@ export const initCategoriesTable = async () => {
   }
 };
 
-// Category Model - Database operations
 class CategoryModel {
   // Get all categories
   static async findAll() {
