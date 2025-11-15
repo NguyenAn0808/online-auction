@@ -6,6 +6,7 @@ import Session from "../models/Session.js";
 import OTP from "../models/OTP.js";
 import config from "../config/settings.js";
 import { sendOTPEmail } from "../services/emailService.js";
+import { verifyRecaptcha } from "../utils/recaptcha.js";
 
 const ACCESS_TOKEN_TTL = "15m";
 const REFRESH_TOKEN_TTL = 7 * 24 * 3600 * 1000; // 7 days
@@ -19,8 +20,16 @@ const generateOTP = () => {
 
 export const signUp = async (req, res) => {
   try {
-    const { username, password, email, fullName, phone, address, birthdate } =
-      req.body;
+    const {
+      username,
+      password,
+      email,
+      fullName,
+      phone,
+      address,
+      birthdate,
+      recaptchaToken,
+    } = req.body;
 
     // Validation
     if (!username || !password || !email || !fullName) {
@@ -28,6 +37,22 @@ export const signUp = async (req, res) => {
         success: false,
         message: "Missing required fields",
       });
+    }
+
+    // Verify reCAPTCHA (optional in development)
+    if (config.RECAPTCHA_SECRET_KEY && recaptchaToken) {
+      const recaptchaResult = await verifyRecaptcha(recaptchaToken);
+
+      if (!recaptchaResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: recaptchaResult.error || "reCAPTCHA verification failed",
+        });
+      }
+
+      console.log(
+        `✅ reCAPTCHA verified - Score: ${recaptchaResult.score || "N/A"}`
+      );
     }
 
     // Email format validation

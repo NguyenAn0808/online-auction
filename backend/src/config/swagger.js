@@ -61,6 +61,11 @@ const options = {
               type: "string",
               format: "date",
             },
+            recaptchaToken: {
+              type: "string",
+              description: "reCAPTCHA token from frontend (required if reCAPTCHA is enabled)",
+              example: "03AGdBq24PBCd...",
+            },
           },
         },
         SignInRequest: {

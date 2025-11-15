@@ -10,6 +10,7 @@ export const config = {
   SMTP_USER: process.env.SMTP_USER,
   SMTP_PASS: process.env.SMTP_PASS,
   SENDER_EMAIL: process.env.SENDER_EMAIL,
+  RECAPTCHA_SECRET_KEY: process.env.RECAPTCHA_SECRET_KEY,
   // Database configuration
   database: {
     connectionString: process.env.SUPABASE_CONNECTION_STRING,
