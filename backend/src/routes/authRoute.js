@@ -1,4 +1,5 @@
 import express from "express";
+import passport from "passport";
 import {
   changePassword,
   forgotPassword,
@@ -9,6 +10,8 @@ import {
   signUp,
   verifyOTP,
   resendOTP,
+  googleOAuthCallback,
+  facebookOAuthCallback,
 } from "../controllers/authController.js";
 import { authenticate } from "../middleware/authMiddleware.js";
 
@@ -357,5 +360,149 @@ router.post("/resend-otp", resendOTP);
  *               $ref: '#/components/schemas/Error'
  */
 router.post("/refresh", refreshToken);
+
+/**
+ * @openapi
+ * /api/auth/google:
+ *   get:
+ *     summary: Initiate Google OAuth login
+ *     description: Redirects user to Google OAuth consent screen
+ *     tags: [Authentication]
+ *     responses:
+ *       302:
+ *         description: Redirect to Google OAuth
+ */
+router.get(
+  "/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+/**
+ * @openapi
+ * /api/auth/google/callback:
+ *   get:
+ *     summary: Google OAuth callback
+ *     description: Handles Google OAuth callback and creates/logs in user
+ *     tags: [Authentication]
+ *     parameters:
+ *       - in: query
+ *         name: code
+ *         schema:
+ *           type: string
+ *         description: Authorization code from Google
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SignInResponse'
+ *       401:
+ *         description: OAuth authentication failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get(
+  "/google/callback",
+  (req, res, next) => {
+    passport.authenticate("google", { session: false }, (err, user, info) => {
+      if (err) {
+        console.error("Passport authentication error:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Authentication failed",
+          error: err.message,
+        });
+      }
+
+      if (!user) {
+        console.error("No user returned from passport:", info);
+        return res.status(401).json({
+          success: false,
+          message: "Authentication failed",
+          info: info,
+        });
+      }
+
+      req.user = user;
+      next();
+    })(req, res, next);
+  },
+  googleOAuthCallback
+);
+
+/**
+ * @openapi
+ * /api/auth/facebook:
+ *   get:
+ *     summary: Initiate Facebook OAuth login
+ *     description: Redirects user to Facebook OAuth consent screen
+ *     tags: [Authentication]
+ *     responses:
+ *       302:
+ *         description: Redirect to Facebook OAuth
+ */
+router.get(
+  "/facebook",
+  passport.authenticate("facebook", { scope: ["email"] })
+);
+
+/**
+ * @openapi
+ * /api/auth/facebook/callback:
+ *   get:
+ *     summary: Facebook OAuth callback
+ *     description: Handles Facebook OAuth callback and creates/logs in user
+ *     tags: [Authentication]
+ *     parameters:
+ *       - in: query
+ *         name: code
+ *         schema:
+ *           type: string
+ *         description: Authorization code from Facebook
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SignInResponse'
+ *       401:
+ *         description: OAuth authentication failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.get(
+  "/facebook/callback",
+  (req, res, next) => {
+    passport.authenticate("facebook", { session: false }, (err, user, info) => {
+      if (err) {
+        console.error("Passport authentication error:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Authentication failed",
+          error: err.message,
+        });
+      }
+
+      if (!user) {
+        console.error("No user returned from passport:", info);
+        return res.status(401).json({
+          success: false,
+          message: "Authentication failed",
+          info: info,
+        });
+      }
+
+      req.user = user;
+      next();
+    })(req, res, next);
+  },
+  facebookOAuthCallback
+);
 
 export default router;

@@ -698,3 +698,118 @@ export const refreshToken = async (req, res) => {
     });
   }
 };
+
+// Google OAuth callback handler
+export const googleOAuthCallback = async (req, res) => {
+  try {
+    const user = req.user;
+
+    console.log("Google OAuth callback - user:", user); // Debug log
+
+    if (!user) {
+      console.error("Google OAuth - req.user is undefined");
+      return res.status(401).json({
+        success: false,
+        message: "OAuth authentication failed",
+      });
+    }
+
+    console.log("Creating session for user:", user.id); // Debug log
+
+    // Generate tokens
+    const accessToken = jwt.sign(
+      { userId: user.id, username: user.username, role: user.role },
+      config.ACCESS_TOKEN_SECRET,
+      { expiresIn: ACCESS_TOKEN_TTL }
+    );
+
+    const refreshToken = crypto.randomBytes(64).toString("hex");
+
+    // Create session
+    const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL);
+    await Session.create({ userId: user.id, refreshToken, expiresAt });
+
+    // Set refresh token in httpOnly cookie
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: config.nodeEnv === "production",
+      sameSite: "strict",
+      maxAge: REFRESH_TOKEN_TTL,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Google login successful",
+      accessToken,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+        isVerified: user.isVerified,
+      },
+    });
+  } catch (error) {
+    console.error("Error in Google OAuth callback:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+// Facebook OAuth callback handler
+export const facebookOAuthCallback = async (req, res) => {
+  try {
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "OAuth authentication failed",
+      });
+    }
+
+    // Generate tokens
+    const accessToken = jwt.sign(
+      { userId: user.id, username: user.username, role: user.role },
+      config.ACCESS_TOKEN_SECRET,
+      { expiresIn: ACCESS_TOKEN_TTL }
+    );
+
+    const refreshToken = crypto.randomBytes(64).toString("hex");
+
+    // Create session
+    const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL);
+    await Session.create({ userId: user.id, refreshToken, expiresAt });
+
+    // Set refresh token in httpOnly cookie
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: config.nodeEnv === "production",
+      sameSite: "strict",
+      maxAge: REFRESH_TOKEN_TTL,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Facebook login successful",
+      accessToken,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+        isVerified: user.isVerified,
+      },
+    });
+  } catch (error) {
+    console.error("Error in Facebook OAuth callback:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};

@@ -1,5 +1,7 @@
 import express from "express";
 import cors from "cors";
+import session from "express-session";
+import passport from "passport";
 import swaggerUi from "swagger-ui-express";
 import config from "./config/settings.js";
 import cookieParser from "cookie-parser";
@@ -9,6 +11,7 @@ import authRoute from "./routes/authRoute.js";
 import User from "./models/User.js";
 import Session from "./models/Session.js";
 import OTP from "./models/OTP.js";
+import "./config/passport.js"; // Initialize passport strategies
 
 const app = express();
 
@@ -31,6 +34,24 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
+
+// Session middleware (required for passport)
+app.use(
+  session({
+    secret: config.ACCESS_TOKEN_SECRET, // Use the same secret for simplicity
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: config.nodeEnv === "production",
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
+  })
+);
+
+// Initialize passport
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Health check endpoint
 app.get("/health", async (req, res) => {

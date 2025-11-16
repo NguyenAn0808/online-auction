@@ -11,6 +11,11 @@ export const config = {
   SMTP_PASS: process.env.SMTP_PASS,
   SENDER_EMAIL: process.env.SENDER_EMAIL,
   RECAPTCHA_SECRET_KEY: process.env.RECAPTCHA_SECRET_KEY,
+  // OAuth
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+  FACEBOOK_APP_ID: process.env.FACEBOOK_APP_ID,
+  FACEBOOK_APP_SECRET: process.env.FACEBOOK_APP_SECRET,
   // Database configuration
   database: {
     connectionString: process.env.SUPABASE_CONNECTION_STRING,
