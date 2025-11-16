@@ -40,20 +40,20 @@ export const signUp = async (req, res) => {
     }
 
     // Verify reCAPTCHA (optional in development)
-    if (config.RECAPTCHA_SECRET_KEY && recaptchaToken) {
-      const recaptchaResult = await verifyRecaptcha(recaptchaToken);
+    // if (config.RECAPTCHA_SECRET_KEY && recaptchaToken) {
+    //   const recaptchaResult = await verifyRecaptcha(recaptchaToken);
 
-      if (!recaptchaResult.success) {
-        return res.status(400).json({
-          success: false,
-          message: recaptchaResult.error || "reCAPTCHA verification failed",
-        });
-      }
+    //   if (!recaptchaResult.success) {
+    //     return res.status(400).json({
+    //       success: false,
+    //       message: recaptchaResult.error || "reCAPTCHA verification failed",
+    //     });
+    //   }
 
-      console.log(
-        `✅ reCAPTCHA verified - Score: ${recaptchaResult.score || "N/A"}`
-      );
-    }
+    //   console.log(
+    //     `✅ reCAPTCHA verified - Score: ${recaptchaResult.score || "N/A"}`
+    //   );
+    // }
 
     // Email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -394,13 +394,32 @@ export const signOut = async (req, res) => {
     // Get refresh token from cookies
     const token = req.cookies?.refreshToken;
 
-    if (token) {
-      // Delete session from Session
-      await Session.deleteByRefreshToken(token);
-
-      res.clearCookie("refreshToken");
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "No refresh token provided",
+      });
     }
 
+    // Verify the refresh token exists in database
+    const session = await Session.findByRefreshToken(token);
+
+    if (!session) {
+      // Clear the invalid cookie
+      res.clearCookie("refreshToken");
+      return res.status(401).json({
+        success: false,
+        message: "Invalid refresh token",
+      });
+    }
+
+    // Delete session from database
+    await Session.deleteByRefreshToken(token);
+
+    // Clear the cookie
+    res.clearCookie("refreshToken");
+
+    console.log(`✅ User logged out successfully`);
     return res.sendStatus(204);
   } catch (error) {
     console.error("Error in sign out:", error);
@@ -423,13 +442,34 @@ export const changePassword = async (req, res) => {
       });
     }
 
+    // Fetch user from DB
+    const user = await User.findByUsername(req.user.username);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Block OAuth users from changing password (check early)
+    const isOAuthUser = !user.hashedPassword || user.hashedPassword === "";
+
+    if (isOAuthUser) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "You signed up with Google/Facebook. Password changes are not available for social login accounts. Manage your password through your Google/Facebook account.",
+      });
+    }
+
     // Get current and new passwords from request body
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
       return res.status(400).json({
         success: false,
-        message: "Missing current or new password",
+        message: "Current password and new password are required",
       });
     }
 
@@ -444,16 +484,6 @@ export const changePassword = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "New password must be different from current password",
-      });
-    }
-
-    // Fetch user from DB
-    const user = await User.findByUsername(req.user.username);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
       });
     }
 
@@ -773,7 +803,7 @@ export const facebookOAuthCallback = async (req, res) => {
 
     // Generate tokens
     const accessToken = jwt.sign(
-      { userId: user.id, username: user.username, role: user.role },
+      { id: user.id, username: user.username, role: user.role },
       config.ACCESS_TOKEN_SECRET,
       { expiresIn: ACCESS_TOKEN_TTL }
     );
