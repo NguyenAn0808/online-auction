@@ -135,19 +135,6 @@ class Session {
     return result.rows[0] || null;
   }
 
-  // Find by refresh token
-  static async findByRefreshToken(refreshToken) {
-    const query = `
-      SELECT id, user_id as "userId", refresh_token as "refreshToken",
-             expires_at as "expiresAt", created_at as "createdAt", updated_at as "updatedAt"
-      FROM sessions
-      WHERE refresh_token = $1 AND expires_at > NOW()
-    `;
-
-    const result = await pool.query(query, [refreshToken]);
-    return result.rows[0] || null;
-  }
-
   // Delete all by userId
   static async deleteAllByUserId(userId) {
     const query = `

@@ -2,16 +2,21 @@ import express from "express";
 import cors from "cors";
 import session from "express-session";
 import passport from "passport";
-import swaggerUi from "swagger-ui-express";
 import config from "./config/settings.js";
 import cookieParser from "cookie-parser";
 import pool, { testConnection, closePool } from "./config/database.js";
-import swaggerSpec from "./config/swagger.js";
 import authRoute from "./routes/authRoute.js";
 import User from "./models/User.js";
 import Session from "./models/Session.js";
 import OTP from "./models/OTP.js";
 import "./config/passport.js"; // Initialize passport strategies
+import { initCategoriesTable } from "./models/category.model.js";
+import { initProductsTable } from "./models/product.model.js";
+import { initProductImagesTable } from "./models/product-image.model.js";
+import categoryRoutes from "./routes/category.routes.js";
+import productRoutes from "./routes/product.routes.js";
+import swaggerUi from "swagger-ui-express";
+import swaggerSpec from "./config/swagger.js";
 
 const app = express();
 
@@ -94,9 +99,17 @@ app.use(
 app.use("/api/auth", authRoute);
 
 // API Private Routes
+// API Routes
+app.use("/api/categories", categoryRoutes);
+app.use("/api/products", productRoutes);
+
+// Swagger UI and JSON
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get("/api-docs.json", (req, res) => res.json(swaggerSpec));
 
 const startServer = async () => {
   try {
+    // Test database connection
     await testConnection();
 
     // Initialize database tables (like Mongoose schema initialization)
@@ -105,6 +118,11 @@ const startServer = async () => {
     await OTP.createTable();
 
     console.log("Database tables initialized");
+    // Initialize database schema
+    console.log("Initializing database schema...");
+    await initCategoriesTable();
+    await initProductsTable();
+    await initProductImagesTable();
 
     // Start listening
     app.listen(config.port, () => {
