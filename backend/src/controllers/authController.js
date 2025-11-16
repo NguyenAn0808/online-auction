@@ -748,7 +748,7 @@ export const googleOAuthCallback = async (req, res) => {
 
     // Generate tokens
     const accessToken = jwt.sign(
-      { userId: user.id, username: user.username, role: user.role },
+      { id: user.id, username: user.username, role: user.role },
       config.ACCESS_TOKEN_SECRET,
       { expiresIn: ACCESS_TOKEN_TTL }
     );
