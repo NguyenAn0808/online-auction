@@ -1,0 +1,243 @@
+[
+  {
+    "id": "a1111111-1111-1111-1111-111111111111",
+    "seller_id": "s0001",
+    "category_id": "11111111-1111-1111-1111-111111111112",
+    "name": "iPhone 15 Pro Max Titanium 256GB Unlocked",
+    "description": "Flagship smartphone with A17 Pro chip, 256GB storage, and titanium frame. Includes original box and accessories.",
+    "start_price": 22000000,
+    "current_price": 23500000,
+    "step_price": 200000,
+    "buy_now_price": 26000000,
+    "start_time": "2025-11-21T08:00:00.000Z",
+    "end_time": "2025-11-28T08:00:00.000Z",
+    "status": "ACTIVE",
+    "allow_unrated_bidder": true,
+    "auto_extend": true,
+    "createdAt": "2025-11-20T12:00:00.000Z",
+    "updatedAt": "2025-11-21T09:00:00.000Z",
+    "images": [
+      {
+        "id": "img-a1-1",
+        "product_id": "a1111111-1111-1111-1111-111111111111",
+        "is_thumbnail": true,
+        "image_url": "/images/sample.jpg",
+        "position": 1,
+        "createdAt": "2025-11-20T12:00:00.000Z",
+        "updatedAt": "2025-11-20T12:00:00.000Z"
+      },
+      {
+        "id": "img-a1-2",
+        "product_id": "a1111111-1111-1111-1111-111111111111",
+        "is_thumbnail": false,
+        "image_url": "/images/sample.jpg",
+        "position": 2,
+        "createdAt": "2025-11-20T12:00:00.000Z",
+        "updatedAt": "2025-11-20T12:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "a2222222-2222-2222-2222-222222222222",
+    "seller_id": "s0002",
+    "category_id": "11111111-1111-1111-1111-111111111113",
+    "name": "Dell XPS 13 Plus OLED (2025) 32GB RAM",
+    "description": "Premium ultrabook with 13\" OLED display, Intel Core Ultra CPU, 32GB RAM, 1TB NVMe SSD.",
+    "start_price": 30000000,
+    "current_price": 32000000,
+    "step_price": 250000,
+    "buy_now_price": 36000000,
+    "start_time": "2025-11-20T10:00:00.000Z",
+    "end_time": "2025-11-27T10:00:00.000Z",
+    "status": "ACTIVE",
+    "allow_unrated_bidder": false,
+    "auto_extend": true,
+    "createdAt": "2025-11-19T15:00:00.000Z",
+    "updatedAt": "2025-11-21T09:30:00.000Z",
+    "images": [
+      {
+        "id": "img-a2-1",
+        "product_id": "a2222222-2222-2222-2222-222222222222",
+        "is_thumbnail": true,
+        "image_url": "/images/sample.jpg",
+        "position": 1,
+        "createdAt": "2025-11-19T15:00:00.000Z",
+        "updatedAt": "2025-11-19T15:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "a3333333-3333-3333-3333-333333333333",
+    "seller_id": "s0003",
+    "category_id": "22222222-2222-2222-2222-222222222222",
+    "name": "Men's Leather Jacket Classic Black XL",
+    "description": "Genuine cowhide leather jacket, size XL, barely used, premium zippers.",
+    "start_price": 2500000,
+    "current_price": 3000000,
+    "step_price": 100000,
+    "buy_now_price": 4000000,
+    "start_time": "2025-11-21T06:00:00.000Z",
+    "end_time": "2025-11-30T06:00:00.000Z",
+    "status": "ACTIVE",
+    "allow_unrated_bidder": true,
+    "auto_extend": false,
+    "createdAt": "2025-11-20T09:00:00.000Z",
+    "updatedAt": "2025-11-21T06:30:00.000Z",
+    "images": [
+      {
+        "id": "img-a3-1",
+        "product_id": "a3333333-3333-3333-3333-333333333333",
+        "is_thumbnail": true,
+        "image_url": "/images/sample.jpg",
+        "position": 1,
+        "createdAt": "2025-11-20T09:00:00.000Z",
+        "updatedAt": "2025-11-20T09:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "a4444444-4444-4444-4444-444444444444",
+    "seller_id": "s0004",
+    "category_id": "33333333-3333-3333-3333-333333333332",
+    "name": "Modern Wooden Dining Table (6 Seats)",
+    "description": "Solid oak dining table, minimal Scandinavian design, includes 6 fabric chairs.",
+    "start_price": 12000000,
+    "current_price": 14000000,
+    "step_price": 300000,
+    "buy_now_price": 18000000,
+    "start_time": "2025-11-19T04:00:00.000Z",
+    "end_time": "2025-11-26T04:00:00.000Z",
+    "status": "ACTIVE",
+    "allow_unrated_bidder": false,
+    "auto_extend": true,
+    "createdAt": "2025-11-18T14:00:00.000Z",
+    "updatedAt": "2025-11-21T07:00:00.000Z",
+    "images": [
+      {
+        "id": "img-a4-1",
+        "product_id": "a4444444-4444-4444-4444-444444444444",
+        "is_thumbnail": true,
+        "image_url": "/images/sample.jpg",
+        "position": 1,
+        "createdAt": "2025-11-18T14:00:00.000Z",
+        "updatedAt": "2025-11-18T14:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "a5555555-5555-5555-5555-555555555555",
+    "seller_id": "s0005",
+    "category_id": "44444444-4444-4444-4444-444444444442",
+    "name": "Harry Potter Complete Hardcover Collection",
+    "description": "All 7 hardcover books, UK edition, good condition with dust jackets.",
+    "start_price": 1500000,
+    "current_price": 1750000,
+    "step_price": 50000,
+    "buy_now_price": 2500000,
+    "start_time": "2025-11-21T01:00:00.000Z",
+    "end_time": "2025-11-25T01:00:00.000Z",
+    "status": "ACTIVE",
+    "allow_unrated_bidder": true,
+    "auto_extend": false,
+    "createdAt": "2025-11-20T22:00:00.000Z",
+    "updatedAt": "2025-11-21T01:30:00.000Z",
+    "images": [
+      {
+        "id": "img-a5-1",
+        "product_id": "a5555555-5555-5555-5555-555555555555",
+        "is_thumbnail": true,
+        "image_url": "/images/sample.jpg",
+        "position": 1,
+        "createdAt": "2025-11-20T22:00:00.000Z",
+        "updatedAt": "2025-11-20T22:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "a6666666-6666-6666-6666-666666666666",
+    "seller_id": "s0006",
+    "category_id": "55555555-5555-5555-5555-555555555552",
+    "name": "Premium Carbon Fiber Trekking Poles (Pair)",
+    "description": "Ultra-light carbon poles with cork grips, adjustable length 100-135cm.",
+    "start_price": 900000,
+    "current_price": 950000,
+    "step_price": 20000,
+    "buy_now_price": 1200000,
+    "start_time": "2025-11-18T12:00:00.000Z",
+    "end_time": "2025-11-24T12:00:00.000Z",
+    "status": "ACTIVE",
+    "allow_unrated_bidder": true,
+    "auto_extend": true,
+    "createdAt": "2025-11-17T17:00:00.000Z",
+    "updatedAt": "2025-11-21T05:00:00.000Z",
+    "images": [
+      {
+        "id": "img-a6-1",
+        "product_id": "a6666666-6666-6666-6666-666666666666",
+        "is_thumbnail": true,
+        "image_url": "/images/sample.jpg",
+        "position": 1,
+        "createdAt": "2025-11-17T17:00:00.000Z",
+        "updatedAt": "2025-11-17T17:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "a7777777-7777-7777-7777-777777777777",
+    "seller_id": "s0007",
+    "category_id": "11111111-1111-1111-1111-111111111114",
+    "name": "Wireless Noise-Cancelling Over-Ear Headphones",
+    "description": "Bluetooth 5.3, 40-hour battery, adaptive ANC, multipoint pairing.",
+    "start_price": 3500000,
+    "current_price": 4000000,
+    "step_price": 100000,
+    "buy_now_price": 5200000,
+    "start_time": "2025-11-20T02:00:00.000Z",
+    "end_time": "2025-11-29T02:00:00.000Z",
+    "status": "ACTIVE",
+    "allow_unrated_bidder": true,
+    "auto_extend": true,
+    "createdAt": "2025-11-19T11:00:00.000Z",
+    "updatedAt": "2025-11-21T02:30:00.000Z",
+    "images": [
+      {
+        "id": "img-a7-1",
+        "product_id": "a7777777-7777-7777-7777-777777777777",
+        "is_thumbnail": true,
+        "image_url": "/images/sample.jpg",
+        "position": 1,
+        "createdAt": "2025-11-19T11:00:00.000Z",
+        "updatedAt": "2025-11-19T11:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "a8888888-8888-8888-8888-888888888888",
+    "seller_id": "s0008",
+    "category_id": "33333333-3333-3333-3333-333333333334",
+    "name": "Handmade Ceramic Vase Minimalist White",
+    "description": "Hand-thrown ceramic vase, matte white glaze, height 28cm.",
+    "start_price": 800000,
+    "current_price": 900000,
+    "step_price": 20000,
+    "buy_now_price": 1200000,
+    "start_time": "2025-11-21T07:00:00.000Z",
+    "end_time": "2025-11-27T07:00:00.000Z",
+    "status": "ACTIVE",
+    "allow_unrated_bidder": true,
+    "auto_extend": false,
+    "createdAt": "2025-11-21T06:30:00.000Z",
+    "updatedAt": "2025-11-21T07:15:00.000Z",
+    "images": [
+      {
+        "id": "img-a8-1",
+        "product_id": "a8888888-8888-8888-8888-888888888888",
+        "is_thumbnail": true,
+        "image_url": "/images/sample.jpg",
+        "position": 1,
+        "createdAt": "2025-11-21T06:30:00.000Z",
+        "updatedAt": "2025-11-21T06:30:00.000Z"
+      }
+    ]
+  }
+]

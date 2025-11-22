@@ -1,7 +1,6 @@
 import api from "./api";
 
 export const productService = {
-  // Get top 5 products nearing end time
   getTopEndingProducts: async () => {
     try {
       const response = await api.get("/products/top-ending");
@@ -12,7 +11,6 @@ export const productService = {
     }
   },
 
-  // Get top 5 products with highest bids
   getTopBidProducts: async () => {
     try {
       const response = await api.get("/products/top-bid");
@@ -23,7 +21,6 @@ export const productService = {
     }
   },
 
-  // Get top 5 products with highest price
   getTopPriceProducts: async () => {
     try {
       const response = await api.get("/products/top-price");
@@ -34,7 +31,6 @@ export const productService = {
     }
   },
 
-  // Get all products with filters
   getProducts: async (params = {}) => {
     try {
       const response = await api.get("/products", { params });
