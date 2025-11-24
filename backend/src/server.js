@@ -13,10 +13,16 @@ import "./config/passport.js"; // Initialize passport strategies
 import { initCategoriesTable } from "./models/category.model.js";
 import { initProductsTable } from "./models/product.model.js";
 import { initProductImagesTable } from "./models/product-image.model.js";
+import { initWatchlistTable } from "./models/Watchlist.js";
+import { initRatingsTable } from "./models/Rating.js";
+import { initBidsTable } from "./models/Bid.js"
 import categoryRoutes from "./routes/category.routes.js";
 import productRoutes from "./routes/product.routes.js";
 import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./config/swagger.js";
+import watchlistRoutes from "./routes/watchlist.routes.js";
+import bidRoutes from "./routes/bid.routes.js";
+import ratingRoutes from "./routes/rating.routes.js";
 
 const app = express();
 
@@ -102,6 +108,9 @@ app.use("/api/auth", authRoute);
 // API Routes
 app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/watchlist", watchlistRoutes);
+app.use("/api/bids", bidRoutes);
+app.use("/api/ratings", ratingRoutes);
 
 // Swagger UI and JSON
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -123,6 +132,9 @@ const startServer = async () => {
     await initCategoriesTable();
     await initProductsTable();
     await initProductImagesTable();
+    await initWatchlistTable();
+    await initRatingsTable();
+    await initBidsTable();
 
     // Start listening
     app.listen(config.port, () => {
