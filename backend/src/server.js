@@ -15,7 +15,7 @@ import { initProductsTable } from "./models/product.model.js";
 import { initProductImagesTable } from "./models/product-image.model.js";
 import { initWatchlistTable } from "./models/Watchlist.js";
 import { initRatingsTable } from "./models/Rating.js";
-import { initBidsTable } from "./models/Bid.js"
+import { initBidsTable } from "./models/Bid.js";
 import categoryRoutes from "./routes/category.routes.js";
 import productRoutes from "./routes/product.routes.js";
 import swaggerUi from "swagger-ui-express";
@@ -23,6 +23,10 @@ import swaggerSpec from "./config/swagger.js";
 import watchlistRoutes from "./routes/watchlist.routes.js";
 import bidRoutes from "./routes/bid.routes.js";
 import ratingRoutes from "./routes/rating.routes.js";
+import Question from "./models/Question.js";
+import Answer from "./models/Answer.js";
+import questionRoute from "./routes/questionRoute.js";
+import answerRoute from "./routes/answerRoute.js";
 
 const app = express();
 
@@ -101,16 +105,16 @@ app.use(
   })
 );
 
-// API Public Routes
+// API Routes
 app.use("/api/auth", authRoute);
 
-// API Private Routes
-// API Routes
 app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/watchlist", watchlistRoutes);
 app.use("/api/bids", bidRoutes);
 app.use("/api/ratings", ratingRoutes);
+app.use("/api", questionRoute);
+app.use("/api", answerRoute);
 
 // Swagger UI and JSON
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -125,6 +129,8 @@ const startServer = async () => {
     await User.createTable();
     await Session.createTable();
     await OTP.createTable();
+    await Question.createTable();
+    await Answer.createTable();
 
     console.log("Database tables initialized");
     // Initialize database schema

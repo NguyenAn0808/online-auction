@@ -173,6 +173,29 @@ class ProductService {
       throw new Error(`Failed to delete product: ${error.message}`);
     }
   }
+  static async rejectBidder(productId, sellerId, bidderId) {
+    try {
+      const isOwner = await ProductModel.isProductOwner(productId, sellerId);
+      if (!isOwner) {
+        return { success: false, message: "Unauthorized action" };
+      }
+
+      // Ban the bidder from bidding on the product
+      await ProductModel.banBidder(productId, bidderId);
+
+      await ProductModel.invalidateBids(productId, bidderId);
+
+      const newWinnerBidder = await ProductModel.getHighestValidBid(productId);
+
+      return {
+        success: true,
+        message: "Bidder rejected successfully. Winner updated.",
+        newWinner: newWinnerBid ? newWinnerBid.bidder_id : null,
+      };
+    } catch (error) {
+      throw new Error(`Failed to reject bidder: ${error.message}`);
+    }
+  }
 }
 
 export default ProductService;
