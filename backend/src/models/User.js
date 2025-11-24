@@ -7,7 +7,7 @@ class User {
       // Create table
       const createTableQuery = `
         CREATE TABLE IF NOT EXISTS users (
-          id SERIAL PRIMARY KEY,
+          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
           username VARCHAR(255) NOT NULL UNIQUE,
           hashed_password VARCHAR(255) NOT NULL,
           email VARCHAR(255) NOT NULL UNIQUE,

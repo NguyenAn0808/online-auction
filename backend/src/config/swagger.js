@@ -2,6 +2,7 @@ import { Sign } from "crypto";
 import { format } from "path";
 import swaggerJsdoc from "swagger-jsdoc";
 import config from "./settings.js";
+import { type } from "os";
 
 const options = {
   definition: {
@@ -254,6 +255,54 @@ const options = {
             newPassword: { type: "string", format: "password", minLength: 6 },
           },
         },
+        AnswerRequest: {
+          type: "object",
+          required: ["answerText"],
+          properties: {
+            answerText: { type: "string" },
+          },
+        },
+        QuestionRequest: {
+          type: "object",
+          required: ["questionText"],
+          properties: {
+            questionText: { type: "string" },
+          },
+        },
+        AnswerResponse: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            question_id: { type: "string", format: "uuid" },
+            userId: {
+              type: "integer",
+              description: "The ID of the seller who answered",
+            },
+            answer_text: { type: "string" },
+            created_at: { type: "string", format: "date-time" },
+            updatedAt: {
+              type: "string",
+              format: "date-time",
+            },
+          },
+        },
+        QuestionResponse: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            product_id: { type: "string", format: "uuid" },
+            userId: {
+              type: "integer",
+              description: "The ID of the user who asked the question",
+            },
+            question_text: { type: "string" },
+            created_at: { type: "string", format: "date-time" },
+            updatedAt: {
+              type: "string",
+              format: "date-time",
+            },
+          },
+        },
         SignUpResponse: {
           type: "object",
           properties: {
@@ -358,7 +407,8 @@ const options = {
           type: "object",
           properties: {
             id: {
-              type: "integer",
+              type: "string",
+              format: "uuid",
             },
             username: {
               type: "string",
@@ -419,6 +469,10 @@ const options = {
       {
         name: "Product Images",
         description: "Operations related to product images",
+      },
+      {
+        name: "Q&A",
+        description: "Operations related to questions and answers",
       },
     ],
   },

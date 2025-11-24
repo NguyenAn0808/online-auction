@@ -710,10 +710,18 @@ export const refreshToken = async (req, res) => {
       return res.status(403).json({ message: "Refresh token has expired" });
     }
 
+    const user = await User.findById(session.userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
     // Create new access token
     const accessToken = jwt.sign(
       {
-        user_id: session.userId,
+        id: user.id,
+        username: user.username,
+        role: user.role,
       },
       config.ACCESS_TOKEN_SECRET,
       { expiresIn: ACCESS_TOKEN_TTL }
