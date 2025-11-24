@@ -160,6 +160,43 @@ class ProductController {
       });
     }
   }
+
+  static async rejectBidder(req, res) {
+    try {
+      const seller_id = req.user.id;
+      const { product_id } = req.params;
+      const { bidder_id } = req.body;
+
+      if (!bidder_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Bidder ID is required",
+        });
+      }
+
+      const result = await ProductService.rejectBidder(
+        product_id,
+        seller_id,
+        bidder_id
+      );
+
+      if (!result.success) {
+        return res.status(403).json({
+          success: false,
+          message: result.message,
+        });
+      }
+
+      return res.status(200).json(result);
+    } catch (error) {
+      console.error("Error in rejectBidder:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+        error: error.message,
+      });
+    }
+  }
 }
 
 export default ProductController;

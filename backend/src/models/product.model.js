@@ -306,6 +306,57 @@ class ProductModel {
     const result = await pool.query(query, [id]);
     return result.rows[0];
   }
+
+  // 1. Add a user to the banned list for a specific product
+  static async banBidder(productId, userId) {
+    const query = `
+      INSERT INTO product_banned_bidders (product_id, user_id)
+      VALUES ($1, $2)
+      ON CONFLICT (product_id, user_id) DO NOTHING
+    `;
+    await pool.query(query, [productId, userId]);
+  }
+
+  // // 2. Check if a user is banned (Useful for middleware/bidding logic)
+  static async isBanned(productId, userId) {
+    const query = `
+      SELECT 1 FROM product_banned_bidders
+      WHERE product_id = $1 AND user_id = $2
+    `;
+    const result = await pool.query(query, [productId, userId]);
+    return result.rows.length > 0;
+  }
+
+  // 3. Invalidate all previous bids from this user for this product
+  static async invalidateBids(productId, userId) {
+    const query = `
+      UPDATE bids
+      SET status = 'rejected'
+      WHERE product_id = $1 AND bidder_id = $2
+    `;
+    await pool.query(query, [productId, userId]);
+  }
+
+  static async getHighestValidBid(productId) {
+    const query = `
+    SELECT * FROM bids
+    WHERE product_id = $1 AND status = 'valid'
+    ORDER BY amount DESC
+    LIMIT 1`;
+
+    const result = await pool.query(query, [productId]);
+    return result.rows[0] || null;
+  }
+
+  // 5. Verify ownership (Security check)
+  static async isProductOwner(productId, userId) {
+    const query = `SELECT seller_id FROM products WHERE id = $1`;
+
+    const result = await pool.query(query, [productId]);
+    if (result.rows.length === 0) return false;
+
+    return result.rows[0].seller_id === userId;
+  }
 }
 
 export default ProductModel;
