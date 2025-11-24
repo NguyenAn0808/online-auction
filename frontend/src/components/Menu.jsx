@@ -13,20 +13,20 @@ const Menu = () => {
   // Only treat the Menu button itself as the protected area.
   const menuButtonRef = useRef(null);
   const navRef = useRef(null);
-  const useMock = false; // set true to force mock
+  const useMock = true; // toggle mock usage if needed
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         if (useMock) {
           setCategories(categoriesMock);
+          return;
+        }
+        const response = await categoryService.getCategories();
+        if (response && Array.isArray(response)) {
+          setCategories(response);
         } else {
-          const response = await categoryService.getCategories();
-          if (response && Array.isArray(response)) {
-            setCategories(response);
-          } else {
-            setCategories(categoriesMock);
-          }
+          setCategories(categoriesMock);
         }
       } catch (e) {
         setCategories(categoriesMock);
@@ -39,11 +39,18 @@ const Menu = () => {
   const getChildCategories = (pid) =>
     categories.filter((c) => c.parent_id === pid);
 
-  // Close when clicking anywhere outside the Menu button (more permissive)
+  const menuDropdownRef = useRef(null);
+
+  // Close when clicking anywhere outside the Menu button and dropdown
   useEffect(() => {
     if (!showMenu) return;
     const handleOutside = (e) => {
-      if (menuButtonRef.current && !menuButtonRef.current.contains(e.target)) {
+      if (
+        menuButtonRef.current &&
+        !menuButtonRef.current.contains(e.target) &&
+        menuDropdownRef.current &&
+        !menuDropdownRef.current.contains(e.target)
+      ) {
         setShowMenu(false);
         setHoverParentId(null);
       }
@@ -87,7 +94,8 @@ const Menu = () => {
         <li ref={menuButtonRef}>
           <button
             type="button"
-            onClick={() => setShowMenu((v) => !v)}
+            onMouseEnter={() => setShowMenu(true)}
+            onClick={() => navigate("/products")}
             className="hover:text-gray-700 font-medium"
           >
             Menu
@@ -96,14 +104,12 @@ const Menu = () => {
       </ul>
       {showMenu && parentCategories.length > 0 && (
         <div
+          ref={menuDropdownRef}
           className="absolute top-full mt-4 flex gap-6 z-50"
           style={{ left: dropdownLeft }}
         >
           {/* Parent table */}
-          <div 
-            className="w-64 bg-white rounded-2xl shadow-lg p-4 border border-gray-200"
-            onMouseLeave={() => setHoverParentId(null)}
-          >
+          <div className="w-64 bg-white rounded-2xl shadow-lg p-4 border border-gray-200">
             <h4 className="text-sm font-semibold mb-2 px-1">Categories</h4>
             <ul className="space-y-1">
               {parentCategories.map((parent) => (
@@ -114,6 +120,13 @@ const Menu = () => {
                       setHoverParentId(parent.id || parent._id)
                     }
                     onFocus={() => setHoverParentId(parent.id || parent._id)}
+                    onClick={() => {
+                      navigate(
+                        `/products?category_id=${parent.id || parent._id}`
+                      );
+                      setShowMenu(false);
+                      setHoverParentId(null);
+                    }}
                     className={`w-full text-left px-3 py-2 rounded-md transition hover:bg-gray-100 ${
                       hoverParentId === (parent.id || parent._id)
                         ? "bg-gray-100"
@@ -137,11 +150,13 @@ const Menu = () => {
                   <li key={child.id || child._id}>
                     <button
                       type="button"
-                      onClick={() =>
+                      onClick={() => {
                         navigate(
                           `/products?category_id=${child.id || child._id}`
-                        )
-                      }
+                        );
+                        setShowMenu(false);
+                        setHoverParentId(null);
+                      }}
                       className="w-full text-left px-3 py-2 rounded-md transition hover:bg-blue-50"
                     >
                       <span className="text-sm text-gray-700">
