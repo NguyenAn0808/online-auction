@@ -1,5 +1,6 @@
 import ProductModel from "../models/product.model.js";
 import CategoryModel from "../models/category.model.js";
+import BlockedBidderModel from "../models/blocked-bidder.model.js";
 
 class ProductService {
   static async getAllProducts(filters) {
@@ -173,26 +174,47 @@ class ProductService {
       throw new Error(`Failed to delete product: ${error.message}`);
     }
   }
-  static async rejectBidder(productId, sellerId, bidderId) {
+
+  static async rejectBidder(product_id, seller_id, bidder_id) {
     try {
-      const isOwner = await ProductModel.isProductOwner(productId, sellerId);
-      if (!isOwner) {
-        return { success: false, message: "Unauthorized action" };
+      const product = await ProductModel.findById(product_id);
+
+      if (!product) {
+        return {
+          success: false,
+          message: "Product not found",
+        };
       }
 
-      // Ban the bidder from bidding on the product
-      await ProductModel.banBidder(productId, bidderId);
+      if (product.seller_id !== seller_id) {
+        return {
+          success: false,
+          message: "Unauthorized: Only the seller can reject bidders",
+        };
+      }
 
-      await ProductModel.invalidateBids(productId, bidderId);
+      // Block the bidder for this product
+      await BlockedBidderModel.create(product_id, bidder_id);
 
-      const newWinnerBidder = await ProductModel.getHighestValidBid(productId);
+      // Reject their bids for this product
+      await Bid.rejectBidderForProduct(product_id, bidder_id);
+
+      // Find the highest bid
+      const newHighestBids = await Bid.getHighest(product_id);
+
+      // Change to the second if block the top bidder
+      const newCurrentPrice = newHighestBids
+        ? newHighestBids.amount
+        : product.start_price;
 
       return {
         success: true,
-        message: "Bidder rejected successfully. Winner updated.",
-        newWinner: newWinnerBid ? newWinnerBid.bidder_id : null,
+        message: "Bidder blocked. Price updated to next highest bid.",
+        new_current_price: newCurrentPrice,
+        new_highest_bids: newHighestBids,
       };
     } catch (error) {
+      console.error("Error in rejectBidder service:", error);
       throw new Error(`Failed to reject bidder: ${error.message}`);
     }
   }

@@ -66,6 +66,26 @@ class Bid {
     const result = await pool.query(query, [bidder_id]);
     return result.rows;
   }
+
+  static async rejectBidderForProduct(product_id, bidder_id) {
+    const query = `
+    UPDATE bids 
+    SET status = 'rejected'
+    WHERE product_id = $1 AND bidder_id = $2 AND status != 'rejected'`;
+
+    await pool.query(query, [product_id, bidder_id]);
+  }
+
+  static async getHighest(product_id) {
+    const query = `
+      SELECT * FROM bids 
+      WHERE product_id = $1 AND status != 'rejected'
+      ORDER BY amount DESC 
+      LIMIT 1
+    `;
+    const result = await pool.query(query, [product_id]);
+    return result.rows[0]; // Returns undefined if no bids exist
+  }
 }
 
 export default Bid;

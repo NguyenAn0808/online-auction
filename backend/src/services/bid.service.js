@@ -1,7 +1,17 @@
 import Bid from "../models/Bid.js";
+import BlockedBidderModel from "../models/blocked-bidder.model.js";
 
 class BidService {
   static async addBid(data) {
+    const { product_id, bidder_id, amount } = data;
+
+    // 1. CHECK IF BLOCKED
+    const isBlocked = await BlockedBidderModel.isBlocked(product_id, bidder_id);
+    if (isBlocked) {
+      throw new Error(
+        "You have been denied by the seller from bidding on this product."
+      );
+    }
     return Bid.add(data);
   }
 

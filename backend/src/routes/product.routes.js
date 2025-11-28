@@ -6,6 +6,7 @@ import {
   uploadMultiple,
   handleMulterError,
 } from "../middleware/upload.middleware.js";
+import { authenticate, authorize } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -34,5 +35,12 @@ router.post(
 );
 
 router.delete("/images/:image_id", ProductImageController.deleteProductImage);
+
+router.post(
+  "/:product_id/deny-bidder",
+  authenticate,
+  authorize("seller"),
+  ProductController.rejectBidder
+);
 
 export default router;

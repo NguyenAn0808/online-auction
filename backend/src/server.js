@@ -27,6 +27,7 @@ import Question from "./models/Question.js";
 import Answer from "./models/Answer.js";
 import questionRoute from "./routes/questionRoute.js";
 import answerRoute from "./routes/answerRoute.js";
+import { initBlockedBiddersTable } from "./models/blocked-bidder.model.js";
 
 const app = express();
 
@@ -141,6 +142,7 @@ const startServer = async () => {
     await initWatchlistTable();
     await initRatingsTable();
     await initBidsTable();
+    await initBlockedBiddersTable();
 
     // Start listening
     app.listen(config.port, () => {
