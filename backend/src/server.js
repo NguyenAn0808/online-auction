@@ -28,6 +28,7 @@ import Answer from "./models/Answer.js";
 import questionRoute from "./routes/questionRoute.js";
 import answerRoute from "./routes/answerRoute.js";
 import { initBlockedBiddersTable } from "./models/blocked-bidder.model.js";
+import CronService from "./services/cron.service.js";
 
 const app = express();
 
@@ -144,6 +145,8 @@ const startServer = async () => {
     await initBidsTable();
     await initBlockedBiddersTable();
 
+    CronService.start();
+    console.log("✅ Auction Cron Service started");
     // Start listening
     app.listen(config.port, () => {
       console.log(`Server is running on port ${config.port}`);

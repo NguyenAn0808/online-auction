@@ -1,4 +1,7 @@
+import ProductModel from "../models/product.model.js";
 import Question from "../models/Question.js";
+import User from "../models/User.js";
+import * as EmailService from "./emailService.js";
 
 export const createQuestion = async (req, res) => {
   try {
@@ -11,6 +14,28 @@ export const createQuestion = async (req, res) => {
         .json({ success: false, message: "Missing productId or questionText" });
     }
     const question = await Question.create({ productId, userId, questionText });
+
+    // Send email to seller about new question
+    (async () => {
+      try {
+        const product = await ProductModel.findById(productId);
+
+        if (product) {
+          const seller = await User.findById(product.seller_id);
+
+          if (seller?.email) {
+            await EmailService.sendQuestionNotification(
+              seller.email,
+              product.name,
+              questionText
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Failed to send Question email:", error);
+      }
+    })();
+
     return res.status(201).json({ success: true, data: question });
   } catch (error) {
     console.error("Error in create question:", error);

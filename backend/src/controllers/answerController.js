@@ -1,5 +1,7 @@
 import Answer from "../models/Answer.js";
+import ProductModel from "../models/product.model.js";
 import Question from "../models/Question.js";
+import * as EmailService from "./emailService.js";
 
 export const createAnswer = async (req, res) => {
   try {
@@ -34,6 +36,38 @@ export const createAnswer = async (req, res) => {
       answerText,
       questionId,
     });
+
+    // Send email to question asker about the answer
+    (async () => {
+      try {
+        const product = await ProductModel.findById(question.productId);
+
+        // Get all questions on this product
+        const allQuestionsOnProduct = await Question.findAllByProduct(
+          question.productId
+        );
+
+        const allAsker = new Set(allQuestionsOnProduct.map((q) => q.userId));
+
+        for (const askerId of allAsker) {
+          if (askerId !== userId) {
+            // Avoid sending email to self
+            const asker = await User.findById(askerId);
+
+            if (asker?.email) {
+              await EmailService.sendAnswerNotification(
+                asker.email,
+                product.name,
+                answerText
+              );
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Failed to send Answer emails:", error);
+      }
+    })();
+
     return res.status(201).json({ success: true, data: answer });
   } catch (error) {
     console.error("Error in create answer:", error);

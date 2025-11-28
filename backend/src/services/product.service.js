@@ -1,7 +1,9 @@
 import ProductModel from "../models/product.model.js";
 import CategoryModel from "../models/category.model.js";
 import BlockedBidderModel from "../models/blocked-bidder.model.js";
-
+import * as EmailService from "./emailService.js";
+import User from "../models/User.js";
+import Bid from "../models/Bid.js";
 class ProductService {
   static async getAllProducts(filters) {
     try {
@@ -206,6 +208,22 @@ class ProductService {
       const newCurrentPrice = newHighestBids
         ? newHighestBids.amount
         : product.start_price;
+
+      // Send email notification to the blocked bidder
+      (async () => {
+        try {
+          const blockedUser = await User.findById(bidder_id);
+          if (blockedUser?.email) {
+            await EmailService.sendBidRejectNotification(
+              blockedUser.email,
+              blockedUser.fullname,
+              product.name
+            );
+          }
+        } catch (err) {
+          console.error("Failed to send rejection email:", err);
+        }
+      })();
 
       return {
         success: true,
