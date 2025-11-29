@@ -4,6 +4,7 @@ import Pagination from "../components/Pagination";
 import SearchBar from "../components/SearchBar";
 import FilterDropdown from "../components/FilterDropdown";
 import Modal from "../components/Modal";
+import EditProductModal from "../components/EditProductModal";
 import { formatCurrency, formatTimeLeft } from "../utils/formatters";
 import { productService } from "../services/productService";
 import { categoryService } from "../services/categoryService";
@@ -27,6 +28,7 @@ const ProductManagementPage = () => {
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [editingProduct, setEditingProduct] = useState(null);
   const navigate = useNavigate();
 
   // Sync state to URL query params
@@ -148,6 +150,67 @@ const ProductManagementPage = () => {
       setAppliedSearch(localSearch);
       setCurrentPage(1);
       updateUrl({ search: localSearch, page: 1 });
+    }
+  };
+
+  // Handle Edit Product
+  const handleEditProduct = (product) => {
+    setEditingProduct(product);
+  };
+
+  // Handle Update Product
+  const handleUpdateProduct = async (productId, data) => {
+    try {
+      await productService.updateProduct(productId, data);
+
+      // Refresh products list
+      const params = {
+        page: currentPage,
+        limit: productsPerPage,
+      };
+      if (categoryId) params.category_id = categoryId;
+      if (appliedSearch) params.search = appliedSearch;
+
+      const response = await productService.getProducts(params);
+      const items = response.data || response.items || response;
+      setProducts(Array.isArray(items) ? items : []);
+
+      alert("Product updated successfully!");
+    } catch (error) {
+      console.error("Failed to update product:", error);
+      throw error; // Let modal handle the error
+    }
+  };
+
+  // Handle Delete Product
+  const handleDeleteProduct = async (productId) => {
+    if (!window.confirm("Are you sure you want to delete this product?")) {
+      return;
+    }
+
+    try {
+      await productService.deleteProduct(productId);
+
+      // Refresh products list
+      const params = {
+        page: currentPage,
+        limit: productsPerPage,
+      };
+      if (categoryId) params.category_id = categoryId;
+      if (appliedSearch) params.search = appliedSearch;
+
+      const response = await productService.getProducts(params);
+      const items = response.data || response.items || response;
+      setProducts(Array.isArray(items) ? items : []);
+
+      alert("Product deleted successfully!");
+    } catch (error) {
+      console.error("Failed to delete product:", error);
+      alert(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to delete product"
+      );
     }
   };
 
@@ -322,7 +385,16 @@ const ProductManagementPage = () => {
                   >
                     Details
                   </button>
-                  <button className="w-full px-4 py-2 bg-red-50 border-2 border-red-200 text-red-600 rounded-lg text-sm font-semibold hover:bg-red-100 hover:border-red-300 transition-all">
+                  <button
+                    onClick={() => handleEditProduct(product)}
+                    className="w-full px-4 py-2 bg-blue-50 border-2 border-blue-200 text-blue-600 rounded-lg text-sm font-semibold hover:bg-blue-100 hover:border-blue-300 transition-all"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteProduct(product.id)}
+                    className="w-full px-4 py-2 bg-red-50 border-2 border-red-200 text-red-600 rounded-lg text-sm font-semibold hover:bg-red-100 hover:border-red-300 transition-all"
+                  >
                     Remove
                   </button>
                 </div>
@@ -625,6 +697,14 @@ const ProductManagementPage = () => {
           </div>
         )}
       </Modal>
+
+      {/* Edit Product Modal */}
+      <EditProductModal
+        isOpen={!!editingProduct}
+        onClose={() => setEditingProduct(null)}
+        product={editingProduct}
+        onUpdate={handleUpdateProduct}
+      />
     </div>
   );
 };

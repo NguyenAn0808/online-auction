@@ -51,4 +51,26 @@ export const productService = {
       throw error;
     }
   },
+
+  // Update product
+  updateProduct: async (productId, data) => {
+    try {
+      const response = await api.put(`/products/${productId}`, data);
+      return response.data;
+    } catch (error) {
+      console.error("Error updating product:", error);
+      throw error;
+    }
+  },
+
+  // Delete product
+  deleteProduct: async (productId) => {
+    try {
+      const response = await api.delete(`/products/${productId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      throw error;
+    }
+  },
 };
