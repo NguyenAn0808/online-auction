@@ -5,6 +5,7 @@ import categoriesMock from "../data/categories.json";
 
 // Menu dropdown with parent & child category tables
 const Menu = () => {
+  // temp change to force commit
   const [showMenu, setShowMenu] = useState(false);
   const [categories, setCategories] = useState([]);
   const [hoverParentId, setHoverParentId] = useState(null);
