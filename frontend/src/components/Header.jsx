@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import Menu from "./Menu";
 
 const Header = () => {
+  // temp change to force commit
+
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
 
