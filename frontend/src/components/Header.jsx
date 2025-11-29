@@ -13,17 +13,16 @@ const Header = () => {
 
   return (
     <header className="text-black p-4 w-full border-b border-black-300">
-      <div className="container max-w-7xl mx-auto grid grid-cols-3 items-center">
+      <div className="container max-w-7xl mx-auto grid grid-cols-2 items-center">
         {/* Logo */}
         <div className="flex justify-start">
-          <Link to="/" className="text-2xl font-bold">
+          <Link to="/" className="text-2xl font-bold px-4">
             eBid
           </Link>
+
+          {/* Menu Component */}
+          <Menu />
         </div>
-
-        {/* Menu Component */}
-        <Menu />
-
         {/* Search Bar, Cart, Profile */}
         <div className="flex justify-end items-center gap-4">
           <form onSubmit={handleSearch} className="flex items-center gap-2">

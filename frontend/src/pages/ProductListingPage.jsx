@@ -54,7 +54,7 @@ const ProductListingPage = () => {
       }
     };
     fetchCategories();
-  }, []);
+  }, [useMock]);
 
   // Fetch products (API or mock with local filtering/sorting)
   useEffect(() => {
@@ -179,8 +179,10 @@ const ProductListingPage = () => {
   // Paginate products
   const productsPerPage = 5;
   const startIndex = (currentPage - 1) * productsPerPage;
-  const endIndex = startIndex + productsPerPage;
-  const currentProducts = products.slice(startIndex, endIndex);
+  const currentProducts = products.slice(
+    startIndex,
+    startIndex + productsPerPage
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">

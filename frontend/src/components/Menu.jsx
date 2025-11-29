@@ -90,7 +90,7 @@ const Menu = () => {
 
   return (
     <nav ref={navRef} className="flex justify-center relative">
-      <ul className="flex gap-6">
+      <ul className="flex pl-4 mt-1 gap-6">
         <li ref={menuButtonRef}>
           <button
             type="button"
