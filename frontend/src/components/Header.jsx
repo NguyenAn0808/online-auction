@@ -1,9 +1,35 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
+import ShoppingCart from "./ShoppingCart";
+import FlyoutMenu from "./FlyoutMenu";
 
 const Header = () => {
+  const [showCart, setShowCart] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const profileRef = useRef(null);
+
+  useEffect(() => {
+    if (!showProfile) return;
+
+    function handleOutside(e) {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setShowProfile(false);
+      }
+    }
+
+    function handleKey(e) {
+      if (e.key === "Escape") setShowProfile(false);
+    }
+
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [showProfile]);
   return (
-    <header className="text-black p-4 w-full border-b border-black-300">
-      <div className="container max-w-7xl mx-auto grid grid-cols-3 items-center">
+    <header className="text-black p-4 w-full border-b border-gray-300">
+      <div className="container max-w-7xl mx-auto grid grid-cols-3 items-center relative">
         {/* Logo */}
         <div className="text-2xl font-bold">eBid</div>
 
@@ -30,7 +56,10 @@ const Header = () => {
             placeholder="Search..."
             className="border px-4 p-2 w-60 rounded-full"
           />
-          <button className="p-2 rounded-full border border-gray-400">
+          <button
+            className="p-2 rounded-full border border-gray-400"
+            onClick={() => setShowCart((s) => !s)}
+          >
             <svg
               width="24"
               height="24"
@@ -39,8 +68,8 @@ const Header = () => {
               xmlns="http://www.w3.org/2000/svg"
             >
               <path
-                fill-rule="evenodd"
-                clip-rule="evenodd"
+                fillRule="evenodd"
+                clipRule="evenodd"
                 d="M1 2C0.447715 2 0 2.44772 0 3C0 3.55228 0.447715 4 1 4H3.20441L5.66783 14.6748C5.98195 16.036 7.19404 17.0002 8.591 17.0002H17.3956C18.8017 17.0002 20.0192 16.0236 20.3242 14.651L21.9762 7.21715C22.1128 6.60238 21.6297 6.00022 21 6.00022H5.71857L4.97955 2.79783C4.88542 2.33934 4.48145 2 4 2H1ZM7.61661 14.2251L6.18011 8.00022H19.7534L18.3718 14.2172C18.2701 14.6747 17.8643 15.0002 17.3956 15.0002H8.591C8.12535 15.0002 7.72132 14.6788 7.61661 14.2251Z"
                 fill="#191919"
               />
@@ -54,28 +83,49 @@ const Header = () => {
               />
             </svg>
           </button>
-          <button className="p-2 rounded-full border border-gray-400">
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
+          <div ref={profileRef} className="relative">
+            <button
+              className="p-2 rounded-full border border-gray-400"
+              onClick={() => setShowProfile((s) => !s)}
+              aria-expanded={showProfile}
+              aria-controls="profile-panel"
             >
-              <path
-                fill-rule="evenodd"
-                clip-rule="evenodd"
-                d="M15.9999 10.0007C15.9999 12.2099 14.209 14.0007 11.9999 14.0007C9.79077 14.0007 7.99991 12.2099 7.99991 10.0007C7.99991 7.79159 9.79077 6.00073 11.9999 6.00073C14.209 6.00073 15.9999 7.79159 15.9999 10.0007ZM13.9999 10.0007C13.9999 11.1053 13.1045 12.0007 11.9999 12.0007C10.8953 12.0007 9.99991 11.1053 9.99991 10.0007C9.99991 8.89616 10.8953 8.00073 11.9999 8.00073C13.1045 8.00073 13.9999 8.89616 13.9999 10.0007Z"
-                fill="#191919"
-              />
-              <path
-                fill-rule="evenodd"
-                clip-rule="evenodd"
-                d="M23 12.0007C23 18.0759 18.0751 23.0007 12 23.0007C5.92487 23.0007 1 18.0759 1 12.0007C1 5.9256 5.92487 1.00073 12 1.00073C18.0751 1.00073 23 5.9256 23 12.0007ZM16.596 19.7404C15.2508 20.5409 13.6791 21.0007 12 21.0007C10.3209 21.0007 8.74912 20.5409 7.40384 19.7403C8.14682 18.1775 9.85264 17.0007 11.9999 17.0007C14.1472 17.0007 15.8531 18.1775 16.596 19.7404ZM18.2161 18.5092C17.0503 16.4247 14.7042 15.0007 11.9999 15.0007C9.29567 15.0007 6.94959 16.4247 5.78377 18.5091C4.06849 16.8703 3 14.5603 3 12.0007C3 7.03017 7.02944 3.00073 12 3.00073C16.9706 3.00073 21 7.03017 21 12.0007C21 14.5604 19.9315 16.8704 18.2161 18.5092Z"
-                fill="#191919"
-              />
-            </svg>
-          </button>
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  fillRule="evenodd"
+                  clipRule="evenodd"
+                  d="M15.9999 10.0007C15.9999 12.2099 14.209 14.0007 11.9999 14.0007C9.79077 14.0007 7.99991 12.2099 7.99991 10.0007C7.99991 7.79159 9.79077 6.00073 11.9999 6.00073C14.209 6.00073 15.9999 7.79159 15.9999 10.0007ZM13.9999 10.0007C13.9999 11.1053 13.1045 12.0007 11.9999 12.0007C10.8953 12.0007 9.99991 11.1053 9.99991 10.0007C9.99991 8.89616 10.8953 8.00073 11.9999 8.00073C13.1045 8.00073 13.9999 8.89616 13.9999 10.0007Z"
+                  fill="#191919"
+                />
+                <path
+                  fillRule="evenodd"
+                  clipRule="evenodd"
+                  d="M23 12.0007C23 18.0759 18.0751 23.0007 12 23.0007C5.92487 23.0007 1 18.0759 1 12.0007C1 5.9256 5.92487 1.00073 12 1.00073C18.0751 1.00073 23 5.9256 23 12.0007ZM16.596 19.7404C15.2508 20.5409 13.6791 21.0007 12 21.0007C10.3209 21.0007 8.74912 20.5409 7.40384 19.7403C8.14682 18.1775 9.85264 17.0007 11.9999 17.0007C14.1472 17.0007 15.8531 18.1775 16.596 19.7404ZM18.2161 18.5092C17.0503 16.4247 14.7042 15.0007 11.9999 15.0007C9.29567 15.0007 6.94959 16.4247 5.78377 18.5091C4.06849 16.8703 3 14.5603 3 12.0007C3 7.03017 7.02944 3.00073 12 3.00073C16.9706 3.00073 21 7.03017 21 12.0007C21 14.5604 19.9315 16.8704 18.2161 18.5092Z"
+                  fill="#191919"
+                />
+              </svg>
+            </button>
+
+            {/* Render the shopping cart panel when toggled */}
+            {showCart && (
+              <div className="absolute right-4 top-full mt-2 z-40">
+                <ShoppingCart />
+              </div>
+            )}
+
+            {/* Render the profile panel when toggled */}
+            {showProfile && (
+              <div id="profile-panel" role="dialog" aria-modal="false">
+                <FlyoutMenu alignRight />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>
