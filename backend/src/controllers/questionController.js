@@ -1,7 +1,7 @@
 import ProductModel from "../models/product.model.js";
 import Question from "../models/Question.js";
 import User from "../models/User.js";
-import * as EmailService from "./emailService.js";
+import * as EmailService from "../services/emailService.js";
 
 export const createQuestion = async (req, res) => {
   try {

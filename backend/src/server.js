@@ -23,12 +23,14 @@ import swaggerSpec from "./config/swagger.js";
 import watchlistRoutes from "./routes/watchlist.routes.js";
 import bidRoutes from "./routes/bid.routes.js";
 import ratingRoutes from "./routes/rating.routes.js";
+import orderRoute from "./routes/orderRoute.js";
 import Question from "./models/Question.js";
 import Answer from "./models/Answer.js";
 import questionRoute from "./routes/questionRoute.js";
 import answerRoute from "./routes/answerRoute.js";
 import { initBlockedBiddersTable } from "./models/blocked-bidder.model.js";
-import CronService from "./services/cron.service.js";
+import CronService from "./services/cronService.js";
+import Order from "./models/Order.js";
 
 const app = express();
 
@@ -115,6 +117,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/watchlist", watchlistRoutes);
 app.use("/api/bids", bidRoutes);
 app.use("/api/ratings", ratingRoutes);
+app.use("/api/orders", orderRoute);
 app.use("/api", questionRoute);
 app.use("/api", answerRoute);
 
@@ -133,6 +136,7 @@ const startServer = async () => {
     await OTP.createTable();
     await Question.createTable();
     await Answer.createTable();
+    await Order.createTable();
 
     console.log("Database tables initialized");
     // Initialize database schema

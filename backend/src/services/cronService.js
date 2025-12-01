@@ -66,8 +66,8 @@ class CronService {
         await EmailService.sendAuctionEndedNotificationToSeller(
           seller.email,
           product.name,
-          winner.username,
-          winnerBidder.amount
+          winnerBidder.amount,
+          winnerBidder.full_name
         );
       }
       // Send email to winner
@@ -75,7 +75,8 @@ class CronService {
         await EmailService.sendAuctionWinNotification(
           winner.email,
           product.name,
-          winnerBidder.amount
+          winnerBidder.amount,
+          winnerBidder.full_name
         );
       }
     } catch (error) {
@@ -83,3 +84,5 @@ class CronService {
     }
   }
 }
+
+export default CronService;

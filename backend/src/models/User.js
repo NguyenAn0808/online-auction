@@ -15,6 +15,7 @@ class User {
           full_name VARCHAR(255) NOT NULL,
           address TEXT,
           birthdate DATE,
+          rating_points INTEGER DEFAULT 0,
           role VARCHAR(50) DEFAULT 'bidder',
           is_verified BOOLEAN DEFAULT FALSE,
           google_id VARCHAR(255) UNIQUE,

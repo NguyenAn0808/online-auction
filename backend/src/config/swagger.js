@@ -3,6 +3,7 @@ import { format } from "path";
 import swaggerJsdoc from "swagger-jsdoc";
 import config from "./settings.js";
 import { type } from "os";
+import { confirmReceipt } from "../controllers/orderController.js";
 
 const options = {
   definition: {
@@ -198,6 +199,70 @@ const options = {
           properties: {
             currentPassword: { type: "string", format: "password" },
             newPassword: { type: "string", format: "password", minLength: 6 },
+          },
+        },
+        CreateOrderRequest: {
+          type: "object",
+          required: ["productId", "shippingAddress", "image"],
+          properties: {
+            productId: {
+              type: "string",
+              format: "uuid",
+              description: "ID of the product to create order for",
+            },
+            shippingAddress: {
+              type: "string",
+              description: "Shipping address for the order",
+            },
+            image: {
+              type: "string",
+              format: "binary",
+              description: "Payment proof image (PNG, JPG, JPEG, WebP)",
+            },
+          },
+        },
+        ConfirmShippingRequest: {
+          type: "object",
+          required: ["shippingCode", "image"],
+          properties: {
+            shippingCode: {
+              type: "string",
+              description: "Shipping tracking code",
+            },
+            image: {
+              type: "string",
+              format: "binary",
+              description: "Shipping proof image (PNG, JPG, JPEG, WebP)",
+            },
+          },
+        },
+        confirmReceiptRequest: {
+          type: "object",
+          required: [],
+          properties: {},
+        },
+        ConfirmRatingRequest: {
+          type: "object",
+          required: ["score", "comment"],
+          properties: {
+            score: {
+              type: "integer",
+              enum: [1, -1],
+              description: "1 for Like (positive), -1 for Dislike (negative)",
+              example: 1
+            },
+            comment: { 
+              type: "string",
+              description: "Optional comment about the transaction",
+              example: "Great seller, fast shipping!"
+            },
+          },
+        },
+        ConfirmCancelRequest: {
+          type: "object",
+          required: ["reason"],
+          properties: {
+            reason: { type: "string" },
           },
         },
         ForgotPasswordRequest: {
@@ -426,6 +491,23 @@ const options = {
             },
           },
         },
+        OrderResponse: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            productId: { type: "string", format: "uuid" },
+            buyerId: { type: "string", format: "uuid" },
+            sellerId: { type: "string", format: "uuid" },
+            finalPrice: { type: "number" },
+            proofImage: { type: "string" },
+            address: { type: "string" },
+            status: { type: "string" },
+            shippingCode: { type: "string", nullable: true },
+            shippingImage: { type: "string", nullable: true },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+          },
+        },
         Error: {
           type: "object",
           properties: {
@@ -473,6 +555,10 @@ const options = {
       {
         name: "Q&A",
         description: "Operations related to questions and answers",
+      },
+      {
+        name: "Orders",
+        description: "Operations related to orders",
       },
     ],
   },

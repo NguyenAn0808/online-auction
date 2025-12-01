@@ -5,8 +5,8 @@ export const initRatingsTable = async () => {
     CREATE TABLE IF NOT EXISTS ratings (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       product_id UUID NOT NULL,
-      reviewer_id INTEGER NOT NULL,
-      target_user_id INTEGER NOT NULL,
+      reviewer_id UUID NOT NULL,
+      target_user_id UUID NOT NULL,
       score SMALLINT NOT NULL CHECK (score IN (1, -1)),
       comment TEXT DEFAULT '',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -22,15 +22,50 @@ export const initRatingsTable = async () => {
 };
 
 class Rating {
-  static async add({ product_id, reviewer_id, target_user_id, score, comment }) {
-    const query = `
-      INSERT INTO ratings (product_id, reviewer_id, target_user_id, score, comment)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING *
-    `;
-    const values = [product_id, reviewer_id, target_user_id, score, comment || ""];
-    const result = await pool.query(query, values);
-    return result.rows[0];
+  static async add({
+    product_id,
+    reviewer_id,
+    target_user_id,
+    score,
+    comment,
+  }) {
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      // Insert rating
+      const insertQuery = `
+        INSERT INTO ratings (product_id, reviewer_id, target_user_id, score, comment)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *
+      `;
+      const insertValues = [
+        product_id,
+        reviewer_id,
+        target_user_id,
+        score,
+        comment || "",
+      ];
+      const result = await client.query(insertQuery, insertValues);
+
+      // Update target user's rating_points
+      const updateUserQuery = `
+        UPDATE users 
+        SET rating_points = rating_points + $1,
+            updated_at = NOW()
+        WHERE id = $2
+      `;
+      await client.query(updateUserQuery, [score, target_user_id]);
+
+      await client.query("COMMIT");
+      return result.rows[0];
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   static async getUserRatings(target_user_id) {
@@ -51,11 +86,19 @@ class Rating {
     return result.rows[0];
   }
 
-  static async getUserRatingByReviewerAndProduct(target_user_id, reviewer_id, product_id) {
+  static async getUserRatingByReviewerAndProduct(
+    target_user_id,
+    reviewer_id,
+    product_id
+  ) {
     const query = `
       SELECT * FROM ratings WHERE target_user_id = $1 AND reviewer_id = $2 AND product_id = $3
     `;
-    const result = await pool.query(query, [target_user_id, reviewer_id, product_id]);
+    const result = await pool.query(query, [
+      target_user_id,
+      reviewer_id,
+      product_id,
+    ]);
     return result.rows[0];
   }
 }

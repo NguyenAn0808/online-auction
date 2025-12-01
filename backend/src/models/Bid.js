@@ -6,7 +6,7 @@ export const initBidsTable = async () => {
     CREATE TABLE IF NOT EXISTS bids (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       product_id UUID NOT NULL,
-      bidder_id INTEGER NOT NULL,
+      bidder_id UUID NOT NULL,
       amount DECIMAL(12, 2) NOT NULL,
       timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'rejected', 'accepted')),
