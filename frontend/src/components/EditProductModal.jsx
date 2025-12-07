@@ -3,35 +3,38 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Modal from "./Modal";
+import { categoryService } from "../services/categoryService";
+import { productService } from "../services/productService";
+import categoriesMock from "../data/categories.json";
 
-// Edit form schema
+// Edit form schema - only allow editing photos and description
 const schema = z.object({
-  name: z.string().min(1, { message: "Product name is required" }),
-  start_price: z
-    .number({ invalid_type_error: "Start price must be a number" })
-    .min(0, { message: "Start price must be at least 0" }),
-  buy_now_price: z
-    .number({ invalid_type_error: "Buy now price must be a number" })
-    .min(0, { message: "Buy now price must be at least 0" })
-    .optional()
-    .nullable(),
-  step_price: z
-    .number({ invalid_type_error: "Step price must be a number" })
-    .min(0, { message: "Step price must be at least 0" }),
-  description: z.string().min(1, { message: "Description is required" }),
-  allow_unrated_bidder: z.boolean().optional(),
-  auto_extend: z.boolean().optional(),
+  description: z
+    .string()
+    .min(10, { message: "Description must be at least 10 characters" }),
+  newImages: z
+    .array(z.instanceof(File))
+    .max(24, { message: "Maximum 24 photos allowed" })
+    .optional(),
 });
 
 const EditProductModal = ({ isOpen, onClose, product, onUpdate }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
 
+  // Image states
+  const [existingImages, setExistingImages] = useState([]);
+  const [newImageFiles, setNewImageFiles] = useState([]);
+  const [newImagePreviews, setNewImagePreviews] = useState([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState(null);
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
+    trigger,
   } = useForm({
     resolver: zodResolver(schema),
   });
@@ -39,17 +42,106 @@ const EditProductModal = ({ isOpen, onClose, product, onUpdate }) => {
   // Reset form when product changes
   useEffect(() => {
     if (product) {
+      // Set existing images
+      setExistingImages(product.images || []);
+      setNewImageFiles([]);
+      setNewImagePreviews([]);
+
       reset({
-        name: product.name || "",
-        start_price: product.start_price || 0,
-        buy_now_price: product.buy_now_price || null,
-        step_price: product.step_price || 0,
         description: product.description || "",
-        allow_unrated_bidder: product.allow_unrated_bidder || false,
-        auto_extend: product.auto_extend || false,
+        newImages: [],
       });
     }
   }, [product, reset]);
+
+  // Handle image file selection
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    addImages(files);
+  };
+
+  const addImages = (files) => {
+    const validFiles = files.filter((file) => file.type.startsWith("image/"));
+    const totalImages =
+      existingImages.length + newImageFiles.length + validFiles.length;
+
+    if (totalImages > 24) {
+      alert(
+        `Maximum 24 photos allowed. You can add ${
+          24 - existingImages.length - newImageFiles.length
+        } more.`
+      );
+      return;
+    }
+
+    const newFiles = [...newImageFiles, ...validFiles];
+    setNewImageFiles(newFiles);
+    setValue("newImages", newFiles);
+    trigger("newImages");
+
+    // Create previews
+    const previews = newFiles.map((file) => URL.createObjectURL(file));
+    setNewImagePreviews(previews);
+  };
+
+  const removeNewImage = (index) => {
+    const newFiles = newImageFiles.filter((_, i) => i !== index);
+    const newPreviews = newImagePreviews.filter((_, i) => i !== index);
+    setNewImageFiles(newFiles);
+    setNewImagePreviews(newPreviews);
+    setValue("newImages", newFiles);
+    trigger("newImages");
+  };
+
+  const removeExistingImage = async (imageId) => {
+    // Prevent deletion - only allow adding and reordering
+    alert(
+      "Images cannot be deleted. You can only add new images or reorder existing ones."
+    );
+    return;
+  };
+
+  // Image reordering handlers
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOverImage = (e, index) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    const newImages = [...existingImages];
+    const draggedItem = newImages[draggedIndex];
+    newImages.splice(draggedIndex, 1);
+    newImages.splice(index, 0, draggedItem);
+
+    setExistingImages(newImages);
+    setDraggedIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
+  // Drag and drop handlers for file upload
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    addImages(files);
+  };
 
   // Form submit handler
   const onSubmit = async (data) => {
@@ -57,8 +149,20 @@ const EditProductModal = ({ isOpen, onClose, product, onUpdate }) => {
       setIsSubmitting(true);
       setSubmitError(null);
 
+      // Prepare payload with reordered images
+      const payload = {
+        description: data.description,
+        // Send image order (array of image IDs in new order)
+        image_order: existingImages.map((img) => img.id || img._id),
+      };
+
       // Call parent's update handler
-      await onUpdate(product.id, data);
+      await onUpdate(product.id, payload);
+
+      // Upload new images if any
+      if (newImageFiles.length > 0) {
+        await productService.uploadProductImages(product.id, newImageFiles);
+      }
 
       // Close modal on success
       onClose();
@@ -78,192 +182,229 @@ const EditProductModal = ({ isOpen, onClose, product, onUpdate }) => {
   const handleClose = () => {
     if (!isSubmitting) {
       setSubmitError(null);
+      setNewImageFiles([]);
+      setNewImagePreviews([]);
       reset();
       onClose();
     }
   };
 
+  const totalImages = existingImages.length + newImageFiles.length;
+
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Edit Product" size="xl">
       {submitError && (
-        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+        <div className="mb-4 p-4 !bg-red-100 border !border-red-400 !text-red-700 !rounded">
           {submitError}
         </div>
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        {/* Product Name */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 items-start gap-3">
-          <label
-            htmlFor="name"
-            className="text-gray-700 font-semibold text-left pt-2"
-          >
-            Product Name
-          </label>
-          <div className="sm:col-span-2">
-            <input
-              id="name"
-              className="w-full border border-gray-300 rounded px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              {...register("name")}
-            />
-            {errors.name && (
-              <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
-            )}
-          </div>
-        </div>
+        {/* PHOTOS */}
+        <section className="border-b pb-5">
+          <h3 className="text-lg font-bold mb-3">PHOTOS ({totalImages}/24)</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Drag and drop to reorder images. You can only add new images.
+          </p>
 
-        {/* Start Price */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 items-start gap-3">
-          <label
-            htmlFor="start_price"
-            className="text-gray-700 font-semibold text-left pt-2"
-          >
-            Start Price
-          </label>
-          <div className="sm:col-span-2">
-            <input
-              id="start_price"
-              type="number"
-              step="1"
-              className="w-full border border-gray-300 rounded px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              {...register("start_price", { valueAsNumber: true })}
-            />
-            {errors.start_price && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.start_price.message}
+          {/* Existing Images - Draggable for reordering */}
+          {existingImages.length > 0 && (
+            <div className="mb-4">
+              <p className="text-sm font-medium text-gray-700 mb-2">
+                Current Images (Drag to reorder)
               </p>
-            )}
-          </div>
-        </div>
+              <div className="grid grid-cols-6 gap-3">
+                {existingImages.map((image, index) => (
+                  <div
+                    key={image.id || index}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragOver={(e) => handleDragOverImage(e, index)}
+                    onDragEnd={handleDragEnd}
+                    className={`relative group aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 cursor-move transition-all ${
+                      draggedIndex === index
+                        ? "border-blue-500 opacity-50 scale-105"
+                        : "border-gray-200 hover:border-gray-400"
+                    }`}
+                  >
+                    <img
+                      src={image.url || image.image_url}
+                      alt={`Image ${index + 1}`}
+                      className="w-full h-full object-cover pointer-events-none"
+                    />
+                    {index === 0 && (
+                      <div className="absolute bottom-1 left-1 bg-gray-700 text-white text-xs px-2 py-0.5 rounded font-medium">
+                        Main
+                      </div>
+                    )}
+                    {/* Drag handle icon */}
+                    <div className="absolute top-1 right-1 bg-white/90 rounded p-1 opacity-0 group-hover:opacity-100 transition">
+                      <svg
+                        className="w-4 h-4 text-gray-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 8h16M4 16h16"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-        {/* Buy Now Price */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 items-start gap-3">
-          <label
-            htmlFor="buy_now_price"
-            className="text-gray-700 font-semibold text-left pt-2"
-          >
-            Buy Now Price
-          </label>
-          <div className="sm:col-span-2">
-            <input
-              id="buy_now_price"
-              type="number"
-              step="1"
-              className="w-full border border-gray-300 rounded px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              {...register("buy_now_price", {
-                valueAsNumber: true,
-                setValueAs: (v) => (v === "" || v === null ? null : Number(v)),
-              })}
-            />
-            {errors.buy_now_price && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.buy_now_price.message}
+          {/* New Images Preview */}
+          {newImagePreviews.length > 0 && (
+            <div className="mb-4">
+              <p className="text-sm font-medium text-gray-700 mb-2">
+                New Images (will be added after existing)
               </p>
-            )}
-            <p className="text-gray-500 text-xs mt-1">
-              Leave empty if not applicable
-            </p>
-          </div>
-        </div>
+              <div className="grid grid-cols-6 gap-3">
+                {newImagePreviews.map((preview, index) => (
+                  <div
+                    key={index}
+                    className="relative group aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 border-blue-300"
+                  >
+                    <img
+                      src={preview}
+                      alt={`New ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeNewImage(index)}
+                      className="absolute top-1 right-1 !bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
+                    >
+                      <svg
+                        className="w-3 h-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-        {/* Step Price */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 items-start gap-3">
-          <label
-            htmlFor="step_price"
-            className="text-gray-700 font-semibold text-left pt-2"
-          >
-            Step Price
-          </label>
-          <div className="sm:col-span-2">
-            <input
-              id="step_price"
-              type="number"
-              step="1"
-              className="w-full border border-gray-300 rounded px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              {...register("step_price", { valueAsNumber: true })}
-            />
-            {errors.step_price && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.step_price.message}
-              </p>
-            )}
-          </div>
-        </div>
+          {/* Upload Area */}
+          {totalImages < 24 && (
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition ${
+                isDragging
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-gray-300 bg-gray-50"
+              }`}
+            >
+              <div className="flex flex-col items-center justify-center gap-3">
+                <svg
+                  className="w-10 h-10 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+                <p className="text-sm font-medium text-gray-700">
+                  Drag and drop or{" "}
+                  <label
+                    htmlFor="image-upload"
+                    className="text-blue-600 hover:text-blue-700 cursor-pointer underline"
+                  >
+                    browse
+                  </label>
+                </p>
+                <input
+                  id="image-upload"
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageChange}
+                />
+              </div>
+            </div>
+          )}
+        </section>
 
         {/* Description */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 items-start gap-3">
+        <div className="space-y-2">
+          <h3 className="text-lg font-bold mb-3">DESCRIPTION</h3>
           <label
             htmlFor="description"
-            className="text-gray-700 font-semibold text-left pt-2"
-          >
-            Description
-          </label>
-          <div className="sm:col-span-2">
-            <textarea
-              id="description"
-              rows="5"
-              className="w-full border border-gray-300 rounded px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              {...register("description")}
-            />
-            {errors.description && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.description.message}
-              </p>
+            className="block text-gray-700 font-semibold"
+          ></label>
+          <p className="text-sm text-gray-500">
+            Add more details about your product. This will append to the
+            existing description.
+          </p>
+          <textarea
+            id="description"
+            rows="8"
+            className="w-full border border-gray-300 rounded px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            {...register("description")}
+          />
+          {errors.description && (
+            <p className="text-red-500 text-sm mt-1">
+              {errors.description.message}
+            </p>
+          )}
+        </div>
+
+        {/* Read-only Product Info */}
+        <section className="border-t pt-5">
+          <h3 className="text-sm font-bold text-gray-500 mb-3">
+            PRODUCT INFO (UNEDITABLE)
+          </h3>
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between text-gray-600">
+              <span>Product Name:</span>
+              <span className="font-medium">{product?.name}</span>
+            </div>
+            <div className="flex justify-between text-gray-600">
+              <span>Start Price:</span>
+              <span className="font-medium">
+                {product?.start_price?.toLocaleString("vi-VN")} VND
+              </span>
+            </div>
+            {product?.buy_now_price && (
+              <div className="flex justify-between text-gray-600">
+                <span>Buy Now Price:</span>
+                <span className="font-medium">
+                  {product?.buy_now_price?.toLocaleString("vi-VN")} VND
+                </span>
+              </div>
             )}
-          </div>
-        </div>
-
-        {/* Allow Unrated Bidder */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 items-start gap-3">
-          <label
-            htmlFor="allow_unrated_bidder"
-            className="text-gray-700 font-semibold text-left pt-2"
-          >
-            Allow Unrated Bidder
-          </label>
-          <div className="sm:col-span-2">
-            <div className="flex items-center pt-2">
-              <input
-                id="allow_unrated_bidder"
-                type="checkbox"
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                {...register("allow_unrated_bidder")}
-              />
-              <label
-                htmlFor="allow_unrated_bidder"
-                className="ml-2 text-sm text-gray-600"
-              >
-                Allow bidders without rating to participate
-              </label>
+            <div className="flex justify-between text-gray-600">
+              <span>Step Price:</span>
+              <span className="font-medium">
+                {product?.step_price?.toLocaleString("vi-VN")} VND
+              </span>
             </div>
           </div>
-        </div>
-
-        {/* Auto Extend */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 items-start gap-3">
-          <label
-            htmlFor="auto_extend"
-            className="text-gray-700 font-semibold text-left pt-2"
-          >
-            Auto Extend
-          </label>
-          <div className="sm:col-span-2">
-            <div className="flex items-center pt-2">
-              <input
-                id="auto_extend"
-                type="checkbox"
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                {...register("auto_extend")}
-              />
-              <label
-                htmlFor="auto_extend"
-                className="ml-2 text-sm text-gray-600"
-              >
-                Automatically extend auction time when bid in last minutes
-              </label>
-            </div>
-          </div>
-        </div>
+        </section>
 
         {/* Buttons */}
         <div className="flex gap-3 justify-end pt-6 border-t">
@@ -271,14 +412,14 @@ const EditProductModal = ({ isOpen, onClose, product, onUpdate }) => {
             type="button"
             onClick={handleClose}
             disabled={isSubmitting}
-            className="px-6 py-2 bg-gray-500 text-white rounded-lg font-medium hover:bg-gray-600 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="px-6 py-2 !bg-gray-500 text-white rounded-lg font-medium hover:!bg-gray-600 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="px-6 py-2 !bg-blue-600 text-white rounded-lg font-medium hover:!bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             {isSubmitting ? "Updating..." : "Update Product"}
           </button>
