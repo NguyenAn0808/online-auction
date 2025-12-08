@@ -1,5 +1,12 @@
+import React from "react";
 import { PhotoIcon, UserCircleIcon } from "@heroicons/react/24/solid";
 import { ChevronDownIcon } from "@heroicons/react/16/solid";
+import {
+  COLORS,
+  TYPOGRAPHY,
+  SPACING,
+  BORDER_RADIUS,
+} from "../constants/designSystem";
 
 export default function BidderProfile() {
   return (
@@ -74,7 +81,18 @@ export default function BidderProfile() {
                   />
                   <button
                     type="button"
-                    className="rounded-md bg-white px-2.5 py-1.5 text-sm font-semibold text-gray-900 ring-1 shadow-xs ring-gray-300 ring-inset hover:bg-gray-50"
+                    style={{
+                      borderRadius: BORDER_RADIUS.FULL,
+                      backgroundColor: COLORS.WHITE,
+                      padding: `${SPACING.S} ${SPACING.L}`,
+                      fontSize: TYPOGRAPHY.SIZE_LABEL_LARGE,
+                      fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                      color: COLORS.MIDNIGHT_ASH,
+                      border: `1.5px solid ${COLORS.MORNING_MIST}`,
+                      cursor: "pointer",
+                      transition: "background-color 0.2s ease",
+                    }}
+                    className="hover:opacity-90"
                   >
                     Change
                   </button>
@@ -120,13 +138,35 @@ export default function BidderProfile() {
           <div className="flex items-center justify-end gap-x-6 border-t border-gray-900/10 px-4 py-4 sm:px-8">
             <button
               type="button"
-              className="text-sm/6 font-semibold text-gray-900"
+              style={{
+                fontSize: TYPOGRAPHY.SIZE_BODY,
+                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                color: COLORS.MIDNIGHT_ASH,
+                backgroundColor: "transparent",
+                border: "none",
+                cursor: "pointer",
+                borderRadius: BORDER_RADIUS.FULL,
+                padding: `${SPACING.S} ${SPACING.L}`,
+                transition: "opacity 0.2s ease",
+              }}
+              className="hover:opacity-70"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+              style={{
+                borderRadius: BORDER_RADIUS.FULL,
+                backgroundColor: COLORS.MIDNIGHT_ASH,
+                padding: `${SPACING.S} ${SPACING.L}`,
+                fontSize: TYPOGRAPHY.SIZE_BODY,
+                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                color: COLORS.WHITE,
+                border: "none",
+                cursor: "pointer",
+                transition: "opacity 0.2s ease",
+              }}
+              className="hover:opacity-90"
             >
               Save
             </button>
@@ -302,15 +342,155 @@ export default function BidderProfile() {
           <div className="flex items-center justify-end gap-x-6 border-t border-gray-900/10 px-4 py-4 sm:px-8">
             <button
               type="button"
-              className="text-sm/6 font-semibold text-gray-900"
+              style={{
+                fontSize: TYPOGRAPHY.SIZE_BODY,
+                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                color: COLORS.MIDNIGHT_ASH,
+                backgroundColor: "transparent",
+                border: "none",
+                cursor: "pointer",
+                borderRadius: BORDER_RADIUS.FULL,
+                padding: `${SPACING.S} ${SPACING.L}`,
+                transition: "opacity 0.2s ease",
+              }}
+              className="hover:opacity-70"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+              style={{
+                borderRadius: BORDER_RADIUS.FULL,
+                backgroundColor: COLORS.MIDNIGHT_ASH,
+                padding: `${SPACING.S} ${SPACING.L}`,
+                fontSize: TYPOGRAPHY.SIZE_BODY,
+                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                color: COLORS.WHITE,
+                border: "none",
+                cursor: "pointer",
+                transition: "opacity 0.2s ease",
+              }}
+              className="hover:opacity-90"
             >
               Save
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div className="grid grid-cols-1 gap-x-8 gap-y-8 py-10 md:grid-cols-3">
+        <div className="px-4 sm:px-0">
+          <h2 className="text-base/7 font-semibold text-gray-900">Security</h2>
+          <p className="mt-1 text-sm/6 text-gray-600">
+            Change your password to secure your account.
+          </p>
+        </div>
+
+        <form
+          className="bg-white ring-1 shadow-xs ring-gray-900/5 sm:rounded-xl md:col-span-2"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const userId = localStorage.getItem("userId") || "buyer-1";
+            const form = e.target;
+            const oldPassword = form["old-password"].value.trim();
+            const newPassword = form["new-password"].value.trim();
+            const confirm = form["confirm-password"].value.trim();
+
+            if (!oldPassword) return alert("Current password is required");
+            if (newPassword.length < 8)
+              return alert("New password must be at least 8 characters");
+            if (newPassword !== confirm)
+              return alert("New passwords do not match");
+            if (!/[0-9]/.test(newPassword) || !/[A-Z]/.test(newPassword))
+              return alert(
+                "Password should contain a number and an uppercase letter"
+              );
+
+            try {
+              const res = await fetch(`/api/users/${userId}/change-password`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ oldPassword, newPassword }),
+              });
+              if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body.message || "Failed to change password");
+              }
+              alert("Password changed successfully");
+              form.reset();
+            } catch (err) {
+              alert("Error: " + err.message);
+            }
+          }}
+        >
+          <div className="px-4 py-6 sm:p-8">
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm/6 font-medium text-gray-900">
+                  Current password
+                </label>
+                <input
+                  name="old-password"
+                  type="password"
+                  className="mt-2 block w-full rounded-md bg-white px-3 py-2 text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
+                />
+              </div>
+              <div>
+                <label className="block text-sm/6 font-medium text-gray-900">
+                  New password
+                </label>
+                <input
+                  name="new-password"
+                  type="password"
+                  className="mt-2 block w-full rounded-md bg-white px-3 py-2 text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
+                />
+              </div>
+              <div>
+                <label className="block text-sm/6 font-medium text-gray-900">
+                  Confirm new password
+                </label>
+                <input
+                  name="confirm-password"
+                  type="password"
+                  className="mt-2 block w-full rounded-md bg-white px-3 py-2 text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-x-6 border-t border-gray-900/10 px-4 py-4 sm:px-8">
+            <button
+              type="button"
+              style={{
+                fontSize: TYPOGRAPHY.SIZE_BODY,
+                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                color: COLORS.MIDNIGHT_ASH,
+                backgroundColor: "transparent",
+                border: "none",
+                cursor: "pointer",
+                borderRadius: BORDER_RADIUS.FULL,
+                padding: `${SPACING.S} ${SPACING.L}`,
+                transition: "opacity 0.2s ease",
+              }}
+              className="hover:opacity-70"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              style={{
+                borderRadius: BORDER_RADIUS.FULL,
+                backgroundColor: COLORS.MIDNIGHT_ASH,
+                padding: `${SPACING.S} ${SPACING.L}`,
+                fontSize: TYPOGRAPHY.SIZE_BODY,
+                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                color: COLORS.WHITE,
+                border: "none",
+                cursor: "pointer",
+                transition: "opacity 0.2s ease",
+              }}
+              className="hover:opacity-90"
+            >
+              Update password
             </button>
           </div>
         </form>
@@ -530,13 +710,35 @@ export default function BidderProfile() {
           <div className="flex items-center justify-end gap-x-6 border-t border-gray-900/10 px-4 py-4 sm:px-8">
             <button
               type="button"
-              className="text-sm/6 font-semibold text-gray-900"
+              style={{
+                fontSize: TYPOGRAPHY.SIZE_BODY,
+                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                color: COLORS.MIDNIGHT_ASH,
+                backgroundColor: "transparent",
+                border: "none",
+                cursor: "pointer",
+                borderRadius: BORDER_RADIUS.FULL,
+                padding: `${SPACING.S} ${SPACING.L}`,
+                transition: "opacity 0.2s ease",
+              }}
+              className="hover:opacity-70"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+              style={{
+                borderRadius: BORDER_RADIUS.FULL,
+                backgroundColor: COLORS.MIDNIGHT_ASH,
+                padding: `${SPACING.S} ${SPACING.L}`,
+                fontSize: TYPOGRAPHY.SIZE_BODY,
+                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                color: COLORS.WHITE,
+                border: "none",
+                cursor: "pointer",
+                transition: "opacity 0.2s ease",
+              }}
+              className="hover:opacity-90"
             >
               Save
             </button>

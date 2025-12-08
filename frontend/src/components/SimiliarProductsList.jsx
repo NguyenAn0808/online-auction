@@ -1,65 +1,169 @@
-const products = [
-  {
-    id: 1,
-    name: "Zip Tote Basket",
-    color: "White and black",
-    href: "#",
-    imageSrc:
-      "https://tailwindui.com/plus-assets/img/ecommerce-images/product-page-03-related-product-01.jpg",
-    imageAlt:
-      "Front of zip tote bag with white canvas, black canvas straps and handle, and black zipper pulls.",
-    price: "$140",
-  },
-  // More products...
-];
+import { useEffect, useState } from "react";
+import productService from "../services/productService";
+import {
+  COLORS,
+  TYPOGRAPHY,
+  SPACING,
+  BORDER_RADIUS,
+  SHADOWS,
+} from "../constants/designSystem";
 
 export default function SimiliarProductsList() {
-  return (
-    <div className="bg-white">
-      <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-24 lg:max-w-7xl lg:px-8">
-        <h2 className="text-xl font-bold text-gray-900">
-          Customers also bought
-        </h2>
+  const [products, setProducts] = useState([]);
 
-        <div className="mt-8 grid grid-cols-1 gap-y-12 sm:grid-cols-2 sm:gap-x-6 lg:grid-cols-4 xl:gap-x-8">
-          {products.map((product) => (
-            <div key={product.id}>
-              <div className="relative">
-                <div className="relative h-72 w-full overflow-hidden rounded-lg">
-                  <img
-                    alt={product.imageAlt}
-                    src={product.imageSrc}
-                    className="size-full object-cover"
-                  />
-                </div>
-                <div className="relative mt-4">
-                  <h3 className="text-sm font-medium text-gray-900">
-                    {product.name}
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-500">{product.color}</p>
-                </div>
-                <div className="absolute inset-x-0 top-0 flex h-72 items-end justify-end overflow-hidden rounded-lg p-4">
-                  <div
-                    aria-hidden="true"
-                    className="absolute inset-x-0 bottom-0 h-36 bg-linear-to-t from-black opacity-50"
-                  />
-                  <p className="relative text-lg font-semibold text-white">
-                    {product.price}
-                  </p>
-                </div>
+  useEffect(() => {
+    setProducts(productService.getSimilarProducts());
+  }, []);
+
+  return (
+    <>
+      <h2
+        style={{
+          fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
+          fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+          color: COLORS.MIDNIGHT_ASH,
+        }}
+      >
+        Customers also bought
+      </h2>
+
+      <div
+        style={{
+          marginTop: SPACING.L,
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
+          gap: SPACING.L,
+        }}
+      >
+        {products.map((product) => (
+          <div
+            key={product.id}
+            style={{
+              backgroundColor: COLORS.WHITE,
+              border: `1px solid ${COLORS.MORNING_MIST}33`,
+              borderRadius: BORDER_RADIUS.MEDIUM,
+              boxShadow: SHADOWS.SUBTLE,
+              overflow: "hidden",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "scale(1.01)";
+              e.currentTarget.style.boxShadow = `0 4px 6px rgba(0,0,0,0.1)`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "scale(1)";
+              e.currentTarget.style.boxShadow = SHADOWS.SUBTLE;
+            }}
+          >
+            <div style={{ position: "relative" }}>
+              <div
+                style={{
+                  position: "relative",
+                  height: "280px",
+                  width: "100%",
+                  overflow: "hidden",
+                }}
+              >
+                <img
+                  alt={product.imageAlt}
+                  src={product.imageSrc}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
+                />
               </div>
-              <div className="mt-6">
-                <a
-                  href={product.href}
-                  className="relative flex items-center justify-center rounded-md border border-transparent bg-gray-100 px-8 py-2 text-sm font-medium text-gray-900 hover:bg-gray-200"
+              <div
+                style={{
+                  position: "absolute",
+                  insetX: 0,
+                  top: 0,
+                  display: "flex",
+                  height: "280px",
+                  alignItems: "flex-end",
+                  justifyContent: "flex-end",
+                  overflow: "hidden",
+                  padding: SPACING.M,
+                }}
+              >
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    insetX: 0,
+                    bottom: 0,
+                    height: "120px",
+                    background: "linear-gradient(to top, black, transparent)",
+                    opacity: 0.5,
+                  }}
+                />
+                <p
+                  style={{
+                    position: "relative",
+                    fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
+                    fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                    color: COLORS.WHITE,
+                  }}
                 >
-                  Add to bag<span className="sr-only">, {product.name}</span>
-                </a>
+                  ${product.price}
+                </p>
               </div>
             </div>
-          ))}
-        </div>
+
+            <div style={{ padding: SPACING.M }}>
+              <h3
+                style={{
+                  fontSize: TYPOGRAPHY.SIZE_BODY,
+                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                  color: COLORS.MIDNIGHT_ASH,
+                  margin: 0,
+                }}
+              >
+                {product.name}
+              </h3>
+              <p
+                style={{
+                  marginTop: SPACING.S,
+                  fontSize: TYPOGRAPHY.SIZE_LABEL,
+                  color: COLORS.PEBBLE,
+                  margin: 0,
+                }}
+              >
+                {product.color}
+              </p>
+
+              <a
+                href={product.href}
+                style={{
+                  display: "inline-flex",
+                  width: "100%",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: BORDER_RADIUS.FULL,
+                  border: "none",
+                  backgroundColor: COLORS.MIDNIGHT_ASH,
+                  paddingLeft: SPACING.M,
+                  paddingRight: SPACING.M,
+                  paddingTop: "4px",
+                  paddingBottom: "4px",
+                  fontSize: TYPOGRAPHY.SIZE_LABEL,
+                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                  color: COLORS.WHITE,
+                  textDecoration: "none",
+                  cursor: "pointer",
+                  transition: "opacity 0.2s ease",
+                  marginTop: SPACING.M,
+                }}
+                onMouseEnter={(e) => (e.target.style.opacity = "0.9")}
+                onMouseLeave={(e) => (e.target.style.opacity = "1")}
+              >
+                Add to bag
+              </a>
+            </div>
+          </div>
+        ))}
       </div>
-    </div>
+    </>
   );
 }

@@ -4,6 +4,13 @@ import {
   CalendarDaysIcon,
   LifebuoyIcon,
 } from "@heroicons/react/24/outline";
+import {
+  COLORS,
+  TYPOGRAPHY,
+  SPACING,
+  BORDER_RADIUS,
+  SHADOWS,
+} from "../constants/designSystem";
 
 const resources = [
   {
@@ -58,60 +65,201 @@ const recentMessages = [
 
 export default function FlyoutMenu({ alignRight = false }) {
   // alignRight: when true, position the panel to the right of its container (for profile button)
-  const containerClass = alignRight
-    ? "absolute right-0 z-10 mt-2 w-80 px-2"
-    : "absolute left-1/2 z-10 mt-5 flex w-screen max-w-max -translate-x-1/2 px-4";
+  const containerStyle = alignRight
+    ? {
+        position: "absolute",
+        right: 0,
+        zIndex: 10,
+        marginTop: SPACING.S,
+        paddingLeft: SPACING.S,
+        paddingRight: SPACING.S,
+      }
+    : {
+        position: "absolute",
+        left: "50%",
+        zIndex: 10,
+        marginTop: SPACING.L,
+        display: "flex",
+        width: "100vw",
+        maxWidth: "100%",
+        transform: "translateX(-50%)",
+        paddingLeft: SPACING.M,
+        paddingRight: SPACING.M,
+      };
 
   return (
     // Panel only. The header will control when this is rendered.
-    <div className={containerClass}>
-      <div className="w-full max-w-md flex-auto overflow-hidden rounded-3xl bg-white text-sm/6 ring-1 shadow-lg ring-gray-900/5">
-        <div className="p-4">
+    <div style={containerStyle}>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "448px",
+          overflow: "hidden",
+          borderRadius: "24px",
+          backgroundColor: COLORS.WHITE,
+          fontSize: TYPOGRAPHY.SIZE_BODY,
+          lineHeight: TYPOGRAPHY.LINE_HEIGHT_NORMAL,
+          boxShadow: SHADOWS.SUBTLE,
+          border: `1px solid ${COLORS.MORNING_MIST}20`,
+        }}
+      >
+        <div style={{ padding: SPACING.M }}>
           {resources.map((item) => (
             <div
               key={item.name}
-              className="group relative flex gap-x-6 rounded-lg p-4 hover:bg-gray-50"
+              style={{
+                display: "flex",
+                gap: SPACING.L,
+                borderRadius: BORDER_RADIUS.MEDIUM,
+                padding: SPACING.M,
+                transition: "background-color 0.2s ease",
+                backgroundColor: COLORS.WHITE,
+              }}
+              className="group hover:bg-soft-cloud"
             >
-              <div className="mt-1 flex size-11 flex-none items-center justify-center rounded-lg bg-gray-50 group-hover:bg-white">
+              <div
+                style={{
+                  marginTop: "4px",
+                  display: "flex",
+                  width: "44px",
+                  height: "44px",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: BORDER_RADIUS.MEDIUM,
+                  backgroundColor: COLORS.SOFT_CLOUD,
+                  transition: "background-color 0.2s ease",
+                }}
+                className="group-hover:bg-white"
+              >
                 <item.icon
                   aria-hidden="true"
-                  className="size-6 text-gray-600 group-hover:text-indigo-600"
+                  style={{
+                    width: "24px",
+                    height: "24px",
+                    color: COLORS.PEBBLE,
+                    transition: "color 0.2s ease",
+                  }}
+                  className="group-hover:text-midnight-ash"
                 />
               </div>
               <div>
-                <a href={item.href} className="font-semibold text-gray-900">
+                <a
+                  href={item.href}
+                  style={{
+                    fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                    color: COLORS.MIDNIGHT_ASH,
+                    position: "relative",
+                    textDecoration: "none",
+                    display: "block",
+                  }}
+                >
                   {item.name}
-                  <span className="absolute inset-0" />
+                  <span
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                    }}
+                  />
                 </a>
-                <p className="mt-1 text-gray-600">{item.description}</p>
+                <p
+                  style={{
+                    marginTop: SPACING.S,
+                    color: COLORS.PEBBLE,
+                    margin: 0,
+                  }}
+                >
+                  {item.description}
+                </p>
               </div>
             </div>
           ))}
         </div>
-        <div className="bg-gray-50 p-8">
-          <div className="flex justify-between">
-            <h3 className="text-sm/6 font-semibold text-gray-500">
+        <div
+          style={{
+            backgroundColor: COLORS.SOFT_CLOUD,
+            paddingLeft: SPACING.XL,
+            paddingRight: SPACING.XL,
+            paddingTop: SPACING.XL,
+            paddingBottom: SPACING.XL,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+            }}
+          >
+            <h3
+              style={{
+                fontSize: TYPOGRAPHY.SIZE_LABEL_LARGE,
+                lineHeight: TYPOGRAPHY.LINE_HEIGHT_NORMAL,
+                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                color: COLORS.PEBBLE,
+              }}
+            >
               Recent posts
             </h3>
-            <a href="#" className="text-sm/6 font-semibold text-indigo-600">
+            <a
+              href="#"
+              style={{
+                fontSize: TYPOGRAPHY.SIZE_LABEL_LARGE,
+                lineHeight: TYPOGRAPHY.LINE_HEIGHT_NORMAL,
+                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                color: COLORS.MIDNIGHT_ASH,
+                textDecoration: "none",
+              }}
+            >
               See all <span aria-hidden="true">&rarr;</span>
             </a>
           </div>
-          <ul role="list" className="mt-6 space-y-6">
+          <ul
+            role="list"
+            style={{
+              marginTop: SPACING.L,
+              display: "flex",
+              flexDirection: "column",
+              gap: SPACING.L,
+              margin: 0,
+              padding: 0,
+              listStyle: "none",
+            }}
+          >
             {recentMessages.map((message) => (
-              <li key={message.id} className="relative">
+              <li key={message.id} style={{ position: "relative" }}>
                 <time
                   dateTime={message.datetime}
-                  className="block text-xs/6 text-gray-600"
+                  style={{
+                    display: "block",
+                    fontSize: TYPOGRAPHY.SIZE_LABEL,
+                    lineHeight: TYPOGRAPHY.LINE_HEIGHT_NORMAL,
+                    color: COLORS.PEBBLE,
+                  }}
                 >
                   {message.date}
                 </time>
                 <a
                   href={message.href}
-                  className="block truncate text-sm/6 font-semibold text-gray-900"
+                  style={{
+                    display: "block",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    fontSize: TYPOGRAPHY.SIZE_BODY,
+                    lineHeight: TYPOGRAPHY.LINE_HEIGHT_NORMAL,
+                    fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                    color: COLORS.MIDNIGHT_ASH,
+                    textDecoration: "none",
+                    transition: "opacity 0.2s ease",
+                  }}
+                  className="hover:opacity-75"
                 >
                   {message.title}
-                  <span className="absolute inset-0" />
+                  <span
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                    }}
+                  />
                 </a>
               </li>
             ))}

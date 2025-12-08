@@ -4,7 +4,14 @@ import {
   StarIcon,
   HeartIcon,
   ShoppingBagIcon,
+  CurrencyDollarIcon,
 } from "@heroicons/react/24/outline";
+import {
+  COLORS,
+  TYPOGRAPHY,
+  SPACING,
+  BORDER_RADIUS,
+} from "../constants/designSystem";
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -21,11 +28,24 @@ export default function Sidebar() {
       to: `/products/${userId}/bidding`,
       icon: ShoppingBagIcon,
     },
+    {
+      name: "Selling Request",
+      to: `/selling-request`,
+      icon: CurrencyDollarIcon,
+    },
   ];
 
   return (
-    <nav aria-label="Sidebar" className="flex flex-1 flex-col">
-      <ul role="list" className="-mx-2 space-y-1">
+    <nav
+      aria-label="Sidebar"
+      className="flex flex-1 flex-col"
+      style={{
+        backgroundColor: COLORS.SOFT_CLOUD,
+        borderRadius: BORDER_RADIUS.MEDIUM,
+        padding: SPACING.M,
+      }}
+    >
+      <ul role="list" className="space-y-1">
         {items.map((item) => (
           <li key={item.name}>
             <NavLink
@@ -33,20 +53,25 @@ export default function Sidebar() {
               className={({ isActive }) =>
                 classNames(
                   isActive
-                    ? "bg-gray-50 text-indigo-600"
-                    : "text-gray-700 hover:bg-gray-50 hover:text-indigo-600",
-                  "group flex gap-x-3 rounded-md p-2 text-sm/6 font-semibold"
+                    ? "text-midnight-ash font-bold"
+                    : "text-pebble hover:text-midnight-ash hover:bg-whisper",
+                  "group flex gap-x-3 rounded-md p-2 text-sm font-semibold transition-all duration-200 pl-4"
                 )
               }
+              style={({ isActive }) => ({
+                backgroundColor: isActive ? COLORS.WHISPER : "transparent",
+              })}
             >
               <item.icon
                 aria-hidden="true"
-                className={classNames(
-                  "size-6 shrink-0",
-                  "text-gray-400 group-hover:text-indigo-600"
-                )}
+                className="h-6 w-6 shrink-0"
+                style={{
+                  color: "currentColor",
+                }}
               />
-              {item.name}
+              <span style={{ fontSize: TYPOGRAPHY.SIZE_BODY }}>
+                {item.name}
+              </span>
             </NavLink>
           </li>
         ))}

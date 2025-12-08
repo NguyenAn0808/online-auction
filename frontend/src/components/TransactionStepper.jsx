@@ -1,4 +1,10 @@
 import React from "react";
+import {
+  COLORS,
+  TYPOGRAPHY,
+  SPACING,
+  BORDER_RADIUS,
+} from "../constants/designSystem";
 
 const steps = [
   { id: 1, title: "Payment & Delivery" },
@@ -10,32 +16,96 @@ const steps = [
 export default function TransactionStepper({ current = 1 }) {
   return (
     <nav aria-label="Progress">
-      <ol className="flex items-center space-x-4">
-        {steps.map((s) => {
+      <ol
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: SPACING.L,
+          listStyle: "none",
+          margin: 0,
+          padding: 0,
+        }}
+      >
+        {steps.map((s, index) => {
           const completed = s.id < current;
           const active = s.id === current;
           return (
-            <li key={s.id} className="flex items-center">
+            <li
+              key={s.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                flex: 1,
+              }}
+            >
               <div
-                className={`h-8 w-8 flex items-center justify-center rounded-full border ${
-                  completed
-                    ? "bg-indigo-600 text-white border-indigo-600"
-                    : active
-                    ? "bg-white text-indigo-600 border-indigo-600"
-                    : "bg-white text-gray-500 border-gray-200"
-                }`}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: SPACING.M,
+                }}
               >
-                {s.id}
-              </div>
-              <div className="ml-3 text-sm">
-                <p
-                  className={`font-medium ${
-                    active ? "text-gray-900" : "text-gray-500"
-                  }`}
+                <div
+                  style={{
+                    height: "32px",
+                    width: "32px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: BORDER_RADIUS.FULL,
+                    border: `2px solid ${
+                      completed || active
+                        ? COLORS.MIDNIGHT_ASH
+                        : COLORS.MORNING_MIST
+                    }`,
+                    backgroundColor: completed
+                      ? COLORS.MIDNIGHT_ASH
+                      : COLORS.WHITE,
+                    color: completed
+                      ? COLORS.WHITE
+                      : active
+                      ? COLORS.MIDNIGHT_ASH
+                      : COLORS.PEBBLE,
+                    fontSize: TYPOGRAPHY.SIZE_LABEL,
+                    fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                    transition: "all 0.3s ease",
+                  }}
                 >
-                  {s.title}
-                </p>
+                  {completed ? "✓" : s.id}
+                </div>
+                <div>
+                  <p
+                    style={{
+                      fontSize: TYPOGRAPHY.SIZE_LABEL,
+                      fontWeight:
+                        active || completed
+                          ? TYPOGRAPHY.WEIGHT_SEMIBOLD
+                          : TYPOGRAPHY.WEIGHT_MEDIUM,
+                      color:
+                        active || completed
+                          ? COLORS.MIDNIGHT_ASH
+                          : COLORS.PEBBLE,
+                      margin: 0,
+                    }}
+                  >
+                    {s.title}
+                  </p>
+                </div>
               </div>
+              {/* Connector line */}
+              {index < steps.length - 1 && (
+                <div
+                  style={{
+                    flex: 1,
+                    height: "2px",
+                    backgroundColor: completed
+                      ? COLORS.MIDNIGHT_ASH
+                      : COLORS.MORNING_MIST,
+                    marginLeft: SPACING.M,
+                    transition: "background-color 0.3s ease",
+                  }}
+                />
+              )}
             </li>
           );
         })}

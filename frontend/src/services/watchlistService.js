@@ -1,39 +1,61 @@
-import api from "./api";
+const KEY = "ea_watchlist_v1";
 
-export const watchlistService = {
-  // Get the current user's watchlist
-  getWatchlist: async (userId) => {
-    try {
-      const res = await api.get(`/watchlist`, { params: { user_id: userId } });
-      return res.data;
-    } catch (error) {
-      console.error("Error fetching watchlist:", error);
-      throw error;
-    }
-  },
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch (e) {
+    console.warn("watchlist: failed to parse", e);
+    return [];
+  }
+}
 
-  // Add a product to watchlist
-  addToWatchlist: async (userId, productId) => {
-    try {
-      const res = await api.post(`/watchlist`, {
-        user_id: userId,
-        product_id: productId,
-      });
-      return res.data;
-    } catch (error) {
-      console.error("Error adding to watchlist:", error);
-      throw error;
-    }
-  },
+function save(list) {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(list));
+  } catch (e) {
+    console.warn("watchlist: failed to save", e);
+  }
+}
 
-  // Remove a product from watchlist
-  removeFromWatchlist: async (userId, productId) => {
-    try {
-      const res = await api.delete(`/watchlist/${userId}/${productId}`);
-      return res.data;
-    } catch (error) {
-      console.error("Error removing from watchlist:", error);
-      throw error;
-    }
-  },
+export function getWatchlist() {
+  return load();
+}
+
+export function isInWatchlist(productId) {
+  if (!productId) return false;
+  return load().some((p) => p.id === productId);
+}
+
+export function addToWatchlist(item) {
+  if (!item || !item.id) return;
+  const list = load();
+  if (list.some((p) => p.id === item.id)) return;
+  const toStore = {
+    id: item.id,
+    name: item.name,
+    imageSrc: item.images?.[0]?.src || item.imageSrc || "",
+    price: typeof item.price === "number" ? item.price : item.price || null,
+  };
+  list.unshift(toStore);
+  save(list);
+}
+
+export function removeFromWatchlist(productId) {
+  if (!productId) return;
+  const list = load().filter((p) => p.id !== productId);
+  save(list);
+}
+
+export function clearWatchlist() {
+  save([]);
+}
+
+export default {
+  getWatchlist,
+  isInWatchlist,
+  addToWatchlist,
+  removeFromWatchlist,
+  clearWatchlist,
 };

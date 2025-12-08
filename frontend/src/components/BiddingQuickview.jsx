@@ -12,31 +12,13 @@ import {
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { StarIcon } from "@heroicons/react/20/solid";
 
-const product = {
-  name: "Zip Tote Basket",
-  price: "$220",
-  rating: 3.9,
-  href: "#",
-  description:
-    "The Zip Tote Basket is the perfect midpoint between shopping tote and comfy backpack. With convertible straps, you can hand carry, should sling, or backpack this convenient and spacious bag. The zip top and durable canvas construction keeps your goods protected for all-day use.",
-  imageSrc:
-    "https://tailwindui.com/plus-assets/img/ecommerce-images/product-page-03-product-04.jpg",
-  imageAlt: "Back angled view with bag open and handles to the side.",
-  colors: [
-    {
-      name: "Washed Black",
-      bgColor: "bg-gray-700",
-      selectedColor: "ring-gray-700",
-    },
-    { name: "White", bgColor: "bg-white", selectedColor: "ring-gray-400" },
-    {
-      name: "Washed Gray",
-      bgColor: "bg-gray-500",
-      selectedColor: "ring-gray-500",
-    },
-  ],
-  dueTime: "2024-12-31T23:59:59Z",
-};
+import productService from "../services/productService";
+import {
+  COLORS,
+  TYPOGRAPHY,
+  SPACING,
+  BORDER_RADIUS,
+} from "../constants/designSystem";
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -44,12 +26,14 @@ function classNames(...classes) {
 
 export default function BiddingQuickView({ open = false, onClose = () => {} }) {
   const navigate = useNavigate();
-  const [selectedColor, setSelectedColor] = useState(product.colors[0]);
+  const [product, setProduct] = useState(null);
+  const [selectedColor, setSelectedColor] = useState(null);
   const [autoOption, setAutoOption] = useState(null); // 'plus5' | 'plus10' | 'max'
   const [manualBid, setManualBid] = useState("");
   const [parsedBid, setParsedBid] = useState(0);
   const [error, setError] = useState("");
   const [isValid, setIsValid] = useState(false);
+  const [eligibility, setEligibility] = useState({ allowed: true, score: 1 });
 
   const currency = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -57,7 +41,9 @@ export default function BiddingQuickView({ open = false, onClose = () => {} }) {
     maximumFractionDigits: 2,
   });
 
-  const currentPrice = parseFloat(product.price.replace(/[^0-9.]/g, "")) || 0;
+  const currentPrice = product
+    ? parseFloat(String(product.price).replace(/[^0-9.]/g, "")) || 0
+    : 0;
   const minBid = Math.max(1, Math.round((currentPrice + 1) * 100) / 100);
   const maxBid = Math.max(minBid, Math.round(currentPrice * 10 * 100) / 100);
   const step = 1;
@@ -105,22 +91,54 @@ export default function BiddingQuickView({ open = false, onClose = () => {} }) {
     setError("");
   }, [manualBid, minBid, maxBid]);
 
+  useEffect(() => {
+    const p = productService.getProduct();
+    setProduct(p);
+    setSelectedColor(p?.colors?.[0] || null);
+  }, []);
+
+  useEffect(() => {
+    const name = localStorage.getItem("userName") || "You";
+    const e = productService.getBidEligibility(name === "You" ? null : name);
+    setEligibility(e);
+  }, [product]);
+
   const handleManualChange = (e) => {
     setAutoOption(null);
     setManualBid(e.target.value);
   };
 
-  const handlePlaceBid = (e) => {
-    e.preventDefault();
+  const getBidEligibility = (name) => {
+    return productService.getBidEligibility(name);
+  };
+
+  const handlePlaceBid = (event) => {
+    event.preventDefault();
     if (!isValid) return;
+    const name = localStorage.getItem("userName") || "You";
+    const eli = getBidEligibility(name === "You" ? null : name);
+    if (!eli.allowed) {
+      alert(
+        "Your rating does not meet the seller's requirement to place a bid."
+      );
+      return;
+    }
+
     // Client-side only: show console log and close modal
     console.log("Placing bid:", parsedBid);
+    // persist bid locally using current user name
+    productService.placeBid({
+      name: name === "You" ? "You" : name,
+      amount: parsedBid,
+    });
     // In a real app, call API here and handle response
     onClose(false);
     // navigate to bidding page (create a temporary bidId using timestamp)
     const bidId = Date.now();
     navigate(`/bids/${bidId}`);
   };
+
+  if (!product) return null;
 
   return (
     <Dialog open={open} onClose={onClose} className="relative z-10">
@@ -204,42 +222,41 @@ export default function BiddingQuickView({ open = false, onClose = () => {} }) {
                     <h3 className="text-sm font-medium text-gray-900">
                       Quick bid
                     </h3>
-                    <div className="mt-3 flex items-center justify-center gap-3">
+                  </div>
+
+                  {/* Suggested next bid */}
+                  <div className="mt-4 text-sm text-gray-600 flex items-center justify-between">
+                    <div>
+                      Suggested next bid:{" "}
+                      <span className="font-medium text-gray-900">
+                        {currency.format(productService.suggestNextBid())}
+                      </span>
+                    </div>
+                    <div>
                       <button
                         type="button"
-                        onClick={() => setAutoOption("plus5")}
-                        className={classNames(
-                          autoOption === "plus5"
-                            ? "bg-indigo-600 text-white"
-                            : "bg-white text-gray-700",
-                          "w-24 rounded-md border px-3 py-2 shadow-sm hover:scale-105 transition-transform"
-                        )}
+                        onClick={() =>
+                          setManualBid(String(productService.suggestNextBid()))
+                        }
+                        style={{
+                          padding: `4px ${SPACING.M}`,
+                          borderRadius: BORDER_RADIUS.FULL,
+                          backgroundColor: COLORS.WHITE,
+                          color: COLORS.MIDNIGHT_ASH,
+                          border: `1.5px solid ${COLORS.MORNING_MIST}`,
+                          cursor: "pointer",
+                          fontSize: TYPOGRAPHY.SIZE_LABEL_LARGE,
+                          fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
+                          transition: "all 0.2s ease",
+                          marginLeft: SPACING.M,
+                          minHeight: "36px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                        className="hover:opacity-90"
                       >
-                        +5%
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAutoOption("plus10")}
-                        className={classNames(
-                          autoOption === "plus10"
-                            ? "bg-indigo-600 text-white"
-                            : "bg-white text-gray-700",
-                          "w-24 rounded-md border px-3 py-2 shadow-sm hover:scale-105 transition-transform"
-                        )}
-                      >
-                        +10%
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAutoOption("max")}
-                        className={classNames(
-                          autoOption === "max"
-                            ? "bg-indigo-600 text-white"
-                            : "bg-white text-gray-700",
-                          "w-24 rounded-md border px-3 py-2 shadow-sm hover:scale-105 transition-transform"
-                        )}
-                      >
-                        Max
+                        Use suggestion
                       </button>
                     </div>
                   </div>
@@ -256,7 +273,13 @@ export default function BiddingQuickView({ open = false, onClose = () => {} }) {
                         value={manualBid}
                         onChange={handleManualChange}
                         placeholder={currency.format(minBid)}
-                        className="w-full rounded-md border px-3 py-2 text-lg focus:ring-2 focus:ring-indigo-500"
+                        disabled={!eligibility.allowed}
+                        className={classNames(
+                          !eligibility.allowed
+                            ? "opacity-50 cursor-not-allowed"
+                            : "",
+                          "w-full rounded-md border px-3 py-2 text-lg focus:ring-2 focus:ring-indigo-500"
+                        )}
                       />
                       <div className="text-right text-sm text-gray-500 min-w-28">
                         {isValid ? (
@@ -272,18 +295,67 @@ export default function BiddingQuickView({ open = false, onClose = () => {} }) {
                     <div className="mt-6">
                       <button
                         type="submit"
-                        disabled={!isValid}
-                        className={classNames(
-                          isValid
-                            ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                            : "bg-gray-200 text-gray-400 cursor-not-allowed",
-                          "w-full rounded-md px-4 py-3 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        )}
+                        disabled={!isValid || !eligibility.allowed}
+                        style={{
+                          padding: `4px ${SPACING.L}`,
+                          borderRadius: BORDER_RADIUS.FULL,
+                          backgroundColor:
+                            isValid && eligibility.allowed
+                              ? COLORS.MIDNIGHT_ASH
+                              : "#d1d5db",
+                          color:
+                            isValid && eligibility.allowed
+                              ? COLORS.WHITE
+                              : "#6b7280",
+                          border: "none",
+                          cursor:
+                            isValid && eligibility.allowed
+                              ? "pointer"
+                              : "not-allowed",
+                          fontSize: TYPOGRAPHY.SIZE_BODY,
+                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                          transition: "opacity 0.2s ease",
+                          width: "100%",
+                          minHeight: "40px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                        className={
+                          isValid && eligibility.allowed
+                            ? "hover:opacity-90"
+                            : ""
+                        }
                       >
                         Place bid
                       </button>
                     </div>
                   </form>
+
+                  {/* Eligibility status */}
+                  <div className="mt-4">
+                    {eligibility.allowed ? (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
+                        ✓ Your ratings score:{" "}
+                        <strong>
+                          {Math.round((eligibility.score || 0) * 100)}%
+                        </strong>{" "}
+                        - You are allowed to participate in the auction
+                      </div>
+                    ) : (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
+                        ✗ Your ratings score:{" "}
+                        <strong>
+                          {Math.round((eligibility.score || 0) * 100)}%
+                        </strong>{" "}
+                        - Minimum required <strong>80%</strong>
+                        <p className="mt-2">
+                          Please improve your ratings score by completing
+                          successful transactions.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
