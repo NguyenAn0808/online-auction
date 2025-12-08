@@ -11,8 +11,27 @@ import {
   SHADOWS,
 } from "../constants/designSystem";
 
-// Replace this with real auth in your app
-const CURRENT_USER_NAME = "Alex Smith";
+// Helper to get user name from ID
+function getUserName(userId) {
+  const user = usersData.find((u) => u.id === userId);
+  return user?.fullname || "Unknown";
+}
+
+// Helper to format time ago
+function formatTimeAgo(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 60)
+    return `${diffMins} minute${diffMins !== 1 ? "s" : ""} ago`;
+  if (diffHours < 24)
+    return `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`;
+  return `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
+}
 
 // demo ratings for bidders (would come from user service)
 const bidderRatings = {
@@ -30,7 +49,7 @@ function useBids() {
   return bids;
 }
 
-function maskName(fullName) {
+function maskName(fullName, userId) {
   if (!fullName) return "-";
   if (fullName === CURRENT_USER_NAME) return "You";
   const parts = fullName.trim().split(" ");
@@ -50,7 +69,91 @@ export default function BidHistory() {
     [bids]
   );
   const highest = sorted[0];
-  const isCurrentUserHighest = highest && highest.name === CURRENT_USER_NAME;
+  const isCurrentUserHighest = highest && highest.bidder_id === CURRENT_USER_ID;
+
+  const handleAcceptBid = async (bidId) => {
+    try {
+      setIsProcessing((prev) => ({ ...prev, [bidId]: true }));
+      // TODO: Uncomment when backend is ready
+      // await bidService.acceptBid(bidId);
+
+      // Mock: Update locally for now
+      setLocalBids((prev) =>
+        prev.map((b) => (b.id === bidId ? { ...b, status: "accepted" } : b))
+      );
+      alert("Bid accepted successfully!");
+    } catch (error) {
+      console.error("Failed to accept bid:", error);
+      alert(error.response?.data?.message || "Failed to accept bid");
+    } finally {
+      setIsProcessing((prev) => ({ ...prev, [bidId]: false }));
+    }
+  };
+
+  const handleRejectBid = async (bidId) => {
+    if (!confirm("Reject this bid and block the bidder from this product?")) {
+      return;
+    }
+    try {
+      setIsProcessing((prev) => ({ ...prev, [bidId]: true }));
+      // await bidService.rejectBid(bidId);
+
+      // Mock: Update locally for now
+      setLocalBids((prev) =>
+        prev.map((b) => (b.id === bidId ? { ...b, status: "rejected" } : b))
+      );
+
+      // Fetch updated blocklist to filter out blocked bidders
+      if (productId) {
+        try {
+          // TODO: Uncomment when backend is ready
+          // const updatedBlocklist = await bidService.getProductBlocklist(productId);
+          // setBlocklist(updatedBlocklist || []);
+
+          // Mock: Add to blocklist locally
+          const rejectedBid = localBids.find((b) => b.id === bidId);
+          if (rejectedBid) {
+            setBlocklist((prev) => [
+              ...prev,
+              {
+                bidder_id: rejectedBid.bidder_id || rejectedBid.name, // Use name as fallback for mock
+                blocked_at: new Date().toISOString(),
+              },
+            ]);
+          }
+        } catch (error) {
+          console.error("Failed to fetch blocklist:", error);
+        }
+      }
+
+      alert("Bid rejected and bidder blocked from this product.");
+    } catch (error) {
+      console.error("Failed to reject bid:", error);
+      alert(error.response?.data?.message || "Failed to reject bid");
+    } finally {
+      setIsProcessing((prev) => ({ ...prev, [bidId]: false }));
+    }
+  };
+
+  const handleUnblockBidder = async (bidderId) => {
+    if (!confirm("Unblock this bidder for this product?")) {
+      return;
+    }
+    try {
+      setIsProcessing((prev) => ({ ...prev, [bidderId]: true }));
+      // TODO: Uncomment when backend is ready
+      // await bidService.unblockBidder(productId, bidderId);
+
+      // Mock: Remove from blocklist locally
+      setBlocklist((prev) => prev.filter((b) => b.bidder_id !== bidderId));
+      alert("Bidder unblocked successfully!");
+    } catch (error) {
+      console.error("Failed to unblock bidder:", error);
+      alert(error.response?.data?.message || "Failed to unblock bidder");
+    } finally {
+      setIsProcessing((prev) => ({ ...prev, [bidderId]: false }));
+    }
+  };
 
   function renderRating(rating) {
     return (

@@ -16,6 +16,54 @@ import {
 import { StarIcon } from "@heroicons/react/20/solid";
 import { HeartIcon, MinusIcon, PlusIcon } from "@heroicons/react/24/outline";
 import BiddingQuickView from "./BiddingQuickView";
+import EditProductModal from "./EditProductModal";
+import { productService } from "../services/productService";
+const product = {
+  name: "Zip Tote Basket",
+  price: "$140",
+  rating: 4,
+  images: [
+    {
+      id: 1,
+      name: "Angled view",
+      src: "https://tailwindui.com/plus-assets/img/ecommerce-images/product-page-03-product-01.jpg",
+      alt: "Angled front view with bag zipped and handles upright.",
+    },
+    // More images...
+  ],
+  colors: [
+    {
+      name: "Washed Black",
+      bgColor: "bg-gray-700",
+      selectedColor: "ring-gray-700",
+    },
+    { name: "White", bgColor: "bg-white", selectedColor: "ring-gray-400" },
+    {
+      name: "Washed Gray",
+      bgColor: "bg-gray-500",
+      selectedColor: "ring-gray-500",
+    },
+  ],
+  description: `
+    <p>The Zip Tote Basket is the perfect midpoint between shopping tote and comfy backpack. With convertible straps, you can hand carry, should sling, or backpack this convenient and spacious bag. The zip top and durable canvas construction keeps your goods protected for all-day use.</p>
+  `,
+  details: [
+    {
+      name: "Features",
+      items: [
+        "Multiple strap configurations",
+        "Spacious interior with top zip",
+        "Leather handle and tabs",
+        "Interior dividers",
+        "Stainless strap loops",
+        "Double stitched construction",
+        "Water-resistant",
+      ],
+    },
+    // More sections...
+  ],
+  dueTime: "2025-12-31T23:59:59Z",
+};
 import productService from "../services/productService";
 import watchlistService from "../services/watchlistService";
 import {
@@ -45,6 +93,22 @@ export default function ProductOverview() {
     setShowBidQuickView(true);
   };
   const closeBidQuickView = () => setShowBidQuickView(false);
+  const openEdit = () => setIsEditOpen(true);
+  const closeEdit = () => setIsEditOpen(false);
+
+  const handleUpdateProduct = async (productId, data) => {
+    const payload = {
+      name: data.name,
+      description: data.description,
+      start_price: data.start_price,
+      step_price: data.step_price,
+      buy_now_price: data.buy_now_price ?? null,
+      allow_unrated_bidder: !!data.allow_unrated_bidder,
+      auto_extend: !!data.auto_extend,
+    };
+    await productService.updateProduct(productId, payload);
+    alert("Product updated successfully!");
+  };
 
   useEffect(() => {
     const p = productService.getProduct();
@@ -112,9 +176,33 @@ export default function ProductOverview() {
 
           {/* Product info */}
           <div className="mt-10 px-4 sm:mt-16 sm:px-0 lg:mt-0">
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-              {product.name}
-            </h1>
+            <div className="flex items-center gap-5">
+              <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+                {product.name}
+              </h1>
+
+              <button
+                type="button"
+                onClick={openEdit}
+                className="rounded-full border !border-gray-300 !bg-white p-2 text-sm !text-gray-700 hover:!bg-gray-50"
+                aria-label="Edit product"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth="1.5"
+                  stroke="currentColor"
+                  className="size-4"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"
+                  />
+                </svg>
+              </button>
+            </div>
 
             <div className="mt-3">
               <h2 className="sr-only">Product information</h2>
@@ -442,6 +530,40 @@ export default function ProductOverview() {
       </div>
       {/* Quick view modal (controlled) */}
       <BiddingQuickView open={showBidQuickView} onClose={closeBidQuickView} />
+      {/* Edit product modal (controlled) */}
+      <EditProductModal
+        isOpen={isEditOpen}
+        onClose={closeEdit}
+        product={{
+          id: "550e8400-e29b-41d4-a716-446655440000",
+          name: product.name,
+          start_price: 100000,
+          buy_now_price: null,
+          step_price: 10000,
+          description: "A beautiful vintage watch from the 1960s",
+          allow_unrated_bidder: true,
+          auto_extend: false,
+          images: [
+            {
+              id: 1,
+              url: "https://tailwindui.com/plus-assets/img/ecommerce-images/product-page-03-product-01.jpg",
+            },
+            {
+              id: 2,
+              url: "https://tailwindui.com/plus-assets/img/ecommerce-images/product-page-03-product-02.jpg",
+            },
+            {
+              id: 3,
+              url: "https://tailwindui.com/plus-assets/img/ecommerce-images/product-page-03-product-03.jpg",
+            },
+            {
+              id: 4,
+              url: "https://tailwindui.com/plus-assets/img/ecommerce-images/product-page-03-product-04.jpg",
+            },
+          ],
+        }}
+        onUpdate={handleUpdateProduct}
+      />
     </div>
   );
 }

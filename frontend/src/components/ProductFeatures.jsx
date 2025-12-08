@@ -10,6 +10,7 @@ import {
 
 const tabs = [
   {
+    id: 1,
     name: "Design",
     features: [
       {
