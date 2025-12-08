@@ -1,21 +1,33 @@
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
+import api from "../services/api";
 
 function ForgotPassword() {
-  const [value, setValue] = useState("");
-  const [toastVisible, setToastVisible] = useState(false);
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    let t;
-    if (toastVisible) t = setTimeout(() => setToastVisible(false), 3000);
-    return () => clearTimeout(t);
-  }, [toastVisible]);
-
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
-    // No API call by request — show toast only
-    setToastVisible(true);
+    setError("");
+    setLoading(true);
+
+    try {
+      const response = await api.post("/auth/forgot-password", { email });
+      
+      if (response.data.success) {
+        // Navigate to verify OTP page with email in state
+        navigate("/auth/verify-reset-otp", { 
+          state: { email, expiresIn: response.data.data.expiresIn } 
+        });
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to send reset code");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -35,18 +47,24 @@ function ForgotPassword() {
           we'll send you instructions to reset your password.
         </p>
 
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={onSubmit} className="w-full space-y-6">
           <div>
-            <label htmlFor="identifier" className="sr-only">
-              Email or username
+            <label htmlFor="email" className="sr-only">
+              Email address
             </label>
             <input
-              id="identifier"
-              type="text"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="block w-full h-12 px-4 text-sm border border-gray-200 rounded-full bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0064d2]"
-              placeholder="Email or username"
+              placeholder="Email address"
               required
             />
           </div>
@@ -54,13 +72,13 @@ function ForgotPassword() {
           <button
             type="submit"
             className={`w-full h-12 rounded-full font-semibold text-white ${
-              !value
+              !email || loading
                 ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                 : "bg-[#0064d2] hover:bg-[#0057b8]"
             }`}
-            disabled={!value}
+            disabled={!email || loading}
           >
-            Continue
+            {loading ? "Sending..." : "Continue"}
           </button>
         </form>
 
@@ -78,17 +96,6 @@ function ForgotPassword() {
             Sign in
           </Link>
         </div>
-
-        {/* Toast */}
-        {toastVisible && (
-          <div className="fixed right-6 top-6 z-50">
-            <div className="bg-white px-4 py-2 rounded shadow">
-              <span className="text-sm text-gray-800">
-                Password reset instructions sent
-              </span>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

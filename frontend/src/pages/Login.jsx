@@ -1,11 +1,12 @@
 import { useState } from "react";
 import logo from "../assets/logo.png";
-import api, { saveAccessToken, setAuthHeader } from "../services/api";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const { signin } = useAuth();
+  const [login, setLogin] = useState(""); // Username, email
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -13,9 +14,7 @@ function Login() {
   const [error, setError] = useState("");
 
   const validate = () => {
-    if (!email) return "Email is required";
-    const re = /^\S+@\S+\.\S+$/;
-    if (!re.test(email)) return "Enter a valid email";
+    if (!login) return "Email or username is required";
     if (!password) return "Password is required";
     if (password.length < 6) return "Password must be at least 6 characters";
     return null;
@@ -32,15 +31,13 @@ function Login() {
 
     setLoading(true);
     try {
-      // Use central `api` instance so the refresh interceptor and baseURL are used
-      const res = await api.post(`/auth/signin`, { email, password });
-      const token = res?.data?.token ?? res?.data?.accessToken ?? null;
-      if (token) {
-        // Save access token in storage (local or session) and set default header
-        saveAccessToken(token, remember);
-        setAuthHeader(token);
+      const result = await signin(login, password);
+
+      if (result.success) {
+        navigate("/dashboard", { replace: true });
+      } else {
+        setError(result.message);
       }
-      navigate("/dashboard", { replace: true });
     } catch (err) {
       const msg = err?.response?.data?.message || err.message || "Login failed";
       setError(msg);
@@ -50,7 +47,7 @@ function Login() {
   };
 
   const oauth = (provider) => {
-    const base = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+    const base = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
     window.location.href = `${base}/auth/${provider}`;
   };
 
@@ -67,12 +64,12 @@ function Login() {
         {/* Create account bar inside form area */}
         <div className="bg-[#f5f6f7] rounded-md px-4 py-2 mb-4 flex items-center justify-between">
           <span className="text-sm text-gray-700">New to eBid?</span>
-          <a
-            href="#"
+          <Link
+            to="/auth/signup"
             className="text-sm text-gray-900 border border-gray-300 px-3 py-1 rounded-full bg-white"
           >
             Create account
-          </a>
+          </Link>
         </div>
         <div className="h-4" />
         <form onSubmit={onSubmit} className="w-full space-y-6">
@@ -84,10 +81,11 @@ function Login() {
               Email or username
             </label>
             <input
-              id="email"
+              id="login"
               type="text"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              placehoder="Email or username"
+              value={login}
+              onChange={(e) => setLogin(e.target.value)}
               className="block w-full h-12 px-4 text-sm border border-gray-200 rounded-full bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0064d2]"
             />
           </div>
@@ -121,12 +119,12 @@ function Login() {
 
           {error && <div className="text-red-600 text-sm">{error}</div>}
           <div className="flex justify-end mt-2">
-            <a
-              href="/auth/forgot-password"
+            <Link
+              to="/auth/forgot-password"
               className="text-sm text-blue-600 hover:underline"
             >
               Forgot password?
-            </a>
+            </Link>
           </div>
           <div className="h-4" />
           <button

@@ -37,7 +37,7 @@ const app = express();
 // CORS Middleware
 app.use(
   cors({
-    origin: [config.CLIENT_URL].filter(Boolean),
+    origin: [config.CLIENT_URL, "http://localhost:5173"].filter(Boolean),
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: [

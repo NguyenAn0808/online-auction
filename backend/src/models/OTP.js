@@ -10,7 +10,7 @@ class OTP {
       const createTableQuery = `
         CREATE TABLE IF NOT EXISTS otps (
           id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, 
           email VARCHAR(255) NOT NULL,
           otp_code VARCHAR(6) NOT NULL,
           purpose VARCHAR(50) NOT NULL default 'signup',
@@ -48,7 +48,7 @@ class OTP {
   // Create new OTP
   static async create(userId, email, otpCode, purpose = "signup", expiresAt) {
     const query = `
-    INSERT INTO otps (userId, email, otp_code, purpose, expires_at) 
+    INSERT INTO otps (user_id, email, otp_code, purpose, expires_at) 
     VALUES ($1, $2, $3, $4, $5) 
     RETURNING id, user_id as "userId", email, otp_code as "otpCode", purpose, attempts, 
     expires_at as "expiresAt", created_at as "createdAt", verified`;

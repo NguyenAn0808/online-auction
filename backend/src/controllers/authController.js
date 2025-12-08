@@ -93,50 +93,60 @@ export const signUp = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10); // salt = 10
 
-    // Create user with is_verified = false
-    const newUser = await User.create({
-      username,
-      hashedPassword,
-      email,
-      phone,
-      fullName,
-      address,
-      birthdate,
-      role: "bidder",
-      isVerified: false,
-    });
-
-    // Generate OTP
-    const otpCode = generateOTP();
-    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000); // 10 minutes from now
-
-    // Delete any existing OTPs for this email
-    await OTP.deleteByEmail(email, "signup");
-
-    // Create new OTP
-    await OTP.create(email, otpCode, "signup", expiresAt);
-
-    // Send OTP email
+    let newUser;
     try {
+      // Create user with is_verified = false
+      newUser = await User.create({
+        username,
+        hashedPassword,
+        email,
+        phone,
+        fullName,
+        address,
+        birthdate,
+        role: "bidder",
+        isVerified: false,
+      });
+
+      // Generate OTP
+      const otpCode = generateOTP();
+      const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000); // 10 minutes from now
+
+      // Delete any existing OTPs for this email
+      await OTP.deleteByEmail(email, "signup");
+
+      // Create new OTP
+      await OTP.create(newUser.id, email, otpCode, "signup", expiresAt);
+
+      // Send OTP email
       await sendOTPEmail(email, otpCode, fullName, "signup");
-    } catch (emailError) {
-      console.error("Error sending OTP email:", emailError);
-      // Delete the user since we couldn't send the verification email
-      await User.deleteById(newUser.id);
+
+      return res.status(200).json({
+        success: true,
+        message: "OTP has been sent to your email",
+        data: {
+          email,
+          expiresIn: `${OTP_EXPIRY_MINUTES} minutes`,
+        },
+      });
+    } catch (signupError) {
+      console.error("Error during signup process:", signupError);
+
+      // Rollback: Delete the user if it was created
+      if (newUser && newUser.id) {
+        try {
+          await User.deleteById(newUser.id);
+          console.log(`Rolled back user creation for ${email}`);
+        } catch (deleteError) {
+          console.error("Error rolling back user creation:", deleteError);
+        }
+      }
+
       return res.status(500).json({
         success: false,
-        message: "Failed to send OTP email",
+        message: "Failed to complete signup process. Please try again.",
       });
     }
-
-    return res.status(200).json({
-      success: true,
-      message: "OTP has been sent to your email",
-      data: {
-        email,
-        expiresIn: `${OTP_EXPIRY_MINUTES} minutes`,
-      },
-    });
   } catch (error) {
     console.error("Error in sendVerifyOTP:", error);
     return res.status(500).json({
@@ -266,7 +276,7 @@ export const resendOTP = async (req, res) => {
 
     // Delete old OTP and create new one atomically
     await OTP.deleteByEmail(email, purpose);
-    const newOTP = await OTP.create(email, otpCode, purpose, expiresAt);
+    const newOTP = await OTP.create(user.id, email, otpCode, purpose, expiresAt);
 
     // Send OTP email
     try {
@@ -305,16 +315,23 @@ export const resendOTP = async (req, res) => {
 export const signIn = async (req, res) => {
   try {
     // Get input
-    const { username, password } = req.body;
+    const { login, password } = req.body; // Login can be username or email
 
-    if (!username || !password) {
+    if (!login || !password) {
       return res.status(400).json({
         success: false,
-        message: "Missing username or password",
+        message: "Missing username, email or password",
       });
     }
 
-    const user = await User.findByUsername(username);
+    const isEmail = login.includes("@");
+
+    let user;
+    if (isEmail) {
+      user = await User.findByEmail(login);
+    } else {
+      user = await User.findByUsername(login);
+    }
 
     if (!user) {
       return res.status(401).json({
@@ -548,11 +565,11 @@ export const forgotPassword = async (req, res) => {
     await OTP.deleteByEmail(email, "password-reset");
 
     // Create new OTP
-    await OTP.create(email, otpCode, "password-reset", expiresAt);
+    await OTP.create(user.id, email, otpCode, "password-reset", expiresAt);
 
     // Send OTP email
     try {
-      await sendOTPEmail(email, otpCode, user.fullName);
+      await sendOTPEmail(email, otpCode, user.fullName, "password-reset");
     } catch (emailError) {
       console.error("Error sending OTP email:", emailError);
       return res.status(500).json({
@@ -775,19 +792,20 @@ export const googleOAuthCallback = async (req, res) => {
       maxAge: REFRESH_TOKEN_TTL,
     });
 
-    return res.status(200).json({
-      success: true,
-      message: "Google login successful",
-      accessToken,
-      user: {
+    // Redirect to frontend with tokens in URL (will be removed after storing)
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const redirectUrl = `${frontendUrl}/auth/callback?accessToken=${accessToken}&user=${encodeURIComponent(
+      JSON.stringify({
         id: user.id,
         username: user.username,
         email: user.email,
         fullName: user.fullName,
         role: user.role,
         isVerified: user.isVerified,
-      },
-    });
+      })
+    )}`;
+
+    return res.redirect(redirectUrl);
   } catch (error) {
     console.error("Error in Google OAuth callback:", error);
     return res.status(500).json({
@@ -830,19 +848,20 @@ export const facebookOAuthCallback = async (req, res) => {
       maxAge: REFRESH_TOKEN_TTL,
     });
 
-    return res.status(200).json({
-      success: true,
-      message: "Facebook login successful",
-      accessToken,
-      user: {
+    // Redirect to frontend with tokens in URL (will be removed after storing)
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const redirectUrl = `${frontendUrl}/auth/callback?accessToken=${accessToken}&user=${encodeURIComponent(
+      JSON.stringify({
         id: user.id,
         username: user.username,
         email: user.email,
         fullName: user.fullName,
         role: user.role,
         isVerified: user.isVerified,
-      },
-    });
+      })
+    )}`;
+
+    return res.redirect(redirectUrl);
   } catch (error) {
     console.error("Error in Facebook OAuth callback:", error);
     return res.status(500).json({

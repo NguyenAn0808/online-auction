@@ -1,3 +1,5 @@
+import { setDefaultResultOrder } from "dns";
+setDefaultResultOrder("ipv4first");
 import pkg from "pg";
 import config from "./settings.js";
 
@@ -8,6 +10,11 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false,
   },
+  // Force IPv4 to avoid IPv6 timeout issues
+  host: undefined, // Let connection string handle host
+  connectionTimeoutMillis: 10000, // 10 seconds timeout
+  idleTimeoutMillis: 30000,
+  max: 20, // Maximum pool size
 });
 
 export const testConnection = async () => {
