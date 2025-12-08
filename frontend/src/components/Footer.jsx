@@ -2,9 +2,18 @@ import React from "react";
 
 const Footer = () => {
   return (
-    <footer className="bg-gray-200 text-black p-4 mt-8 w-full">
-      <div className="container mx-auto text-center">
-        <p>&copy; 2025 Online Auction. All rights reserved.</p>
+    <footer
+      className="bg-soft-cloud text-midnight"
+      style={{
+        padding: "var(--space-md)",
+        marginTop: "var(--space-lg)",
+        width: "100%",
+      }}
+    >
+      <div className="container-max text-center">
+        <p className="text-footnote">
+          &copy; 2025 Online Auction. All rights reserved.
+        </p>
       </div>
     </footer>
   );

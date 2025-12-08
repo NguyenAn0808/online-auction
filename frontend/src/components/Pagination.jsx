@@ -58,16 +58,16 @@ const Pagination = ({ currentPage = 1, totalPages = 10, onPageChange }) => {
   }
 
   return (
-    <div className="flex items-center justify-center gap-2 mt-8 mb-4">
+    <div className="pagination">
       {/* Previous Button */}
       <button
         onClick={handlePrevious}
         disabled={currentPage === 1}
-        className={`px-3 py-2 rounded-lg border transition-colors ${
-          currentPage === 1
-            ? "border-gray-200 text-gray-400 cursor-not-allowed"
-            : "border-gray-300 text-gray-700 hover:bg-gray-50"
-        }`}
+        className="pagination-btn"
+        style={{
+          opacity: currentPage === 1 ? 0.5 : 1,
+          cursor: currentPage === 1 ? "not-allowed" : "pointer",
+        }}
       >
         &lt;
       </button>
@@ -76,7 +76,11 @@ const Pagination = ({ currentPage = 1, totalPages = 10, onPageChange }) => {
       {renderPageNumbers().map((page, index) => {
         if (page === "...") {
           return (
-            <span key={`ellipsis-${index}`} className="px-3 py-2 text-gray-500">
+            <span
+              key={`ellipsis-${index}`}
+              className="text-pebble"
+              style={{ padding: "var(--space-sm) var(--space-md)" }}
+            >
               ...
             </span>
           );
@@ -86,11 +90,11 @@ const Pagination = ({ currentPage = 1, totalPages = 10, onPageChange }) => {
           <button
             key={page}
             onClick={() => handlePageClick(page)}
-            className={`px-4 py-2 rounded-lg border transition-colors ${
+            className={
               currentPage === page
-                ? "bg-gray-200 text-gray-900 border-gray-300 !font-bold"
-                : "border-gray-300 text-gray-700 hover:bg-gray-50"
-            }`}
+                ? "pagination-btn pagination-btn-active"
+                : "pagination-btn"
+            }
           >
             {page}
           </button>
@@ -101,11 +105,11 @@ const Pagination = ({ currentPage = 1, totalPages = 10, onPageChange }) => {
       <button
         onClick={handleNext}
         disabled={currentPage === totalPages}
-        className={`px-3 py-2 rounded-lg border transition-colors ${
-          currentPage === totalPages
-            ? "border-gray-200 text-gray-400 cursor-not-allowed"
-            : "border-gray-300 text-gray-700 hover:bg-gray-50"
-        }`}
+        className="pagination-btn"
+        style={{
+          opacity: currentPage === totalPages ? 0.5 : 1,
+          cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+        }}
       >
         &gt;
       </button>

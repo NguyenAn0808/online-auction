@@ -1,8 +1,8 @@
 const EmptyState = ({ title, message, icon }) => (
-  <div className="flex flex-col justify-center items-center py-16">
+  <div className="empty-state">
     {icon || (
       <svg
-        className="w-16 h-16 text-gray-300 mb-4"
+        className="empty-state-icon"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -15,8 +15,8 @@ const EmptyState = ({ title, message, icon }) => (
         />
       </svg>
     )}
-    <p className="text-gray-500 text-base font-medium mb-1">{title}</p>
-    <p className="text-gray-400 text-sm">{message}</p>
+    <p className="empty-state-title">{title}</p>
+    <p className="empty-state-text">{message}</p>
   </div>
 );
 

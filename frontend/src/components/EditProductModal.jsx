@@ -6,6 +6,7 @@ import Modal from "./Modal";
 import { categoryService } from "../services/categoryService";
 import { productService } from "../services/productService";
 import categoriesMock from "../data/categories.json";
+import { Link } from "react-router-dom";
 
 // Edit form schema - only allow editing photos and description
 const schema = z.object({
@@ -192,26 +193,51 @@ const EditProductModal = ({ isOpen, onClose, product, onUpdate }) => {
   const totalImages = existingImages.length + newImageFiles.length;
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Edit Product" size="xl">
-      {submitError && (
-        <div className="mb-4 p-4 !bg-red-100 border !border-red-400 !text-red-700 !rounded">
-          {submitError}
-        </div>
-      )}
+    <Modal isOpen={isOpen} title="Edit Product" size="xl">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 p-6">
+        {/* Read-only Product Info */}
+        <section className="border-b pb-5">
+          <h3 className="text-sm font-bold text-gray-500 mb-3">
+            PRODUCT INFO (UNEDITABLE)
+          </h3>
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between text-gray-600">
+              <span>Product Name:</span>
+              <span className="font-medium">{product?.name}</span>
+            </div>
+            <div className="flex justify-between text-gray-600">
+              <span>Start Price:</span>
+              <span className="font-medium">
+                {product?.start_price?.toLocaleString("vi-VN")} VND
+              </span>
+            </div>
+            {product?.buy_now_price && (
+              <div className="flex justify-between text-gray-600">
+                <span>Buy Now Price:</span>
+                <span className="font-medium">
+                  {product?.buy_now_price?.toLocaleString("vi-VN")} VND
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between text-gray-600">
+              <span>Step Price:</span>
+              <span className="font-medium">
+                {product?.step_price?.toLocaleString("vi-VN")} VND
+              </span>
+            </div>
+          </div>
+        </section>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         {/* PHOTOS */}
         <section className="border-b pb-5">
-          <h3 className="text-lg font-bold mb-3">PHOTOS ({totalImages}/24)</h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Drag and drop to reorder images. You can only add new images.
-          </p>
+          <h3 className="text-lg font-bold mb-1">PHOTOS ({totalImages}/24)</h3>
 
           {/* Existing Images - Draggable for reordering */}
+
           {existingImages.length > 0 && (
             <div className="mb-4">
               <p className="text-sm font-medium text-gray-700 mb-2">
-                Current Images (Drag to reorder)
+                Current Images
               </p>
               <div className="grid grid-cols-6 gap-3">
                 {existingImages.map((image, index) => (
@@ -260,16 +286,17 @@ const EditProductModal = ({ isOpen, onClose, product, onUpdate }) => {
           )}
 
           {/* New Images Preview */}
+          <p className="text-sm font-medium text-gray-700 mb-2">
+            New Images (will be added after existing)
+          </p>
+
           {newImagePreviews.length > 0 && (
             <div className="mb-4">
-              <p className="text-sm font-medium text-gray-700 mb-2">
-                New Images (will be added after existing)
-              </p>
               <div className="grid grid-cols-6 gap-3">
                 {newImagePreviews.map((preview, index) => (
                   <div
                     key={index}
-                    className="relative group aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 border-blue-300"
+                    className="relative group aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200"
                   >
                     <img
                       src={preview}
@@ -328,13 +355,13 @@ const EditProductModal = ({ isOpen, onClose, product, onUpdate }) => {
                   />
                 </svg>
                 <p className="text-sm font-medium text-gray-700">
-                  Drag and drop or{" "}
-                  <label
+                  Drag or{" "}
+                  <Link
                     htmlFor="image-upload"
-                    className="text-blue-600 hover:text-blue-700 cursor-pointer underline"
+                    className="!text-blue-600 hover:!text-blue-700 cursor-pointer underline"
                   >
                     browse
-                  </label>
+                  </Link>
                 </p>
                 <input
                   id="image-upload"
@@ -352,6 +379,8 @@ const EditProductModal = ({ isOpen, onClose, product, onUpdate }) => {
         {/* Description */}
         <div className="space-y-2">
           <h3 className="text-lg font-bold mb-3">DESCRIPTION</h3>
+
+          {/* Handle existing description */}
           <label
             htmlFor="description"
             className="block text-gray-700 font-semibold"
@@ -373,58 +402,26 @@ const EditProductModal = ({ isOpen, onClose, product, onUpdate }) => {
           )}
         </div>
 
-        {/* Read-only Product Info */}
-        <section className="border-t pt-5">
-          <h3 className="text-sm font-bold text-gray-500 mb-3">
-            PRODUCT INFO (UNEDITABLE)
-          </h3>
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between text-gray-600">
-              <span>Product Name:</span>
-              <span className="font-medium">{product?.name}</span>
-            </div>
-            <div className="flex justify-between text-gray-600">
-              <span>Start Price:</span>
-              <span className="font-medium">
-                {product?.start_price?.toLocaleString("vi-VN")} VND
-              </span>
-            </div>
-            {product?.buy_now_price && (
-              <div className="flex justify-between text-gray-600">
-                <span>Buy Now Price:</span>
-                <span className="font-medium">
-                  {product?.buy_now_price?.toLocaleString("vi-VN")} VND
-                </span>
-              </div>
-            )}
-            <div className="flex justify-between text-gray-600">
-              <span>Step Price:</span>
-              <span className="font-medium">
-                {product?.step_price?.toLocaleString("vi-VN")} VND
-              </span>
-            </div>
-          </div>
-        </section>
-
         {/* Buttons */}
-        <div className="flex gap-3 justify-end pt-6 border-t">
+        <div className="flex gap-3 justify-end">
           <button
             type="button"
             onClick={handleClose}
             disabled={isSubmitting}
-            className="px-6 py-2 !bg-gray-500 text-white rounded-lg font-medium hover:!bg-gray-600 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="btn-secondary"
           >
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="px-6 py-2 !bg-blue-600 text-white rounded-lg font-medium hover:!bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
+          <button type="submit" disabled={isSubmitting} className="btn-primary">
             {isSubmitting ? "Updating..." : "Update Product"}
           </button>
         </div>
       </form>
+      {submitError && (
+        <div className="mb-4 p-4 !bg-red-100 !border-red-400 !text-red-700">
+          {submitError}
+        </div>
+      )}
     </Modal>
   );
 };

@@ -83,7 +83,7 @@ const ProductCard = ({ product }) => {
 
   return (
     <div
-      className="flex gap-4 bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-500 transition-shadow cursor-pointer"
+      className="product-card flex gap-4 cursor-pointer"
       onClick={handleCardClick}
     >
       {/* Product Image */}
@@ -91,27 +91,20 @@ const ProductCard = ({ product }) => {
         <img
           src={thumbnail}
           alt={productName || "Product"}
-          className="w-full h-full object-cover rounded-lg"
+          className="product-image"
         />
         {/* Watchlist Button */}
         <button
           onClick={handleWatchlistClick}
-          className="absolute top-2 right-2 w-10 h-10 bg-white rounded-full border-none cursor-pointer flex items-center justify-center hover:bg-gray-100 transition-colors shadow-md"
+          className={`btn-watchlist ${isWatchlist ? "active" : ""}`}
           aria-label="Add to watchlist"
         >
           <svg
-            width="20"
-            height="20"
             viewBox="0 0 24 24"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
-            <path
-              d="M7 2C3.15265 2 1 5.07874 1 8.21053C1 10.4032 2.2622 12.083 3.27074 13.1579L11.2707 21.6842C11.4598 21.8857 11.7237 22 12 22C12.2763 22 12.5402 21.8857 12.7293 21.6842L20.7293 13.1579C21.7378 12.083 23 10.4032 23 8.21053C23 5.07874 20.8473 2 17 2C16.1223 2 15.2016 2.14991 14.2134 2.68203C13.4883 3.07246 12.7609 3.65031 12 4.46722C11.2391 3.65031 10.5117 3.07246 9.7866 2.68203C8.79839 2.14991 7.87768 2 7 2Z"
-              fill={isWatchlist ? "#191919" : "none"}
-              stroke={isWatchlist ? "none" : "#191919"}
-              strokeWidth={isWatchlist ? "0" : "2"}
-            />
+            <path d="M7 2C3.15265 2 1 5.07874 1 8.21053C1 10.4032 2.2622 12.083 3.27074 13.1579L11.2707 21.6842C11.4598 21.8857 11.7237 22 12 22C12.2763 22 12.5402 21.8857 12.7293 21.6842L20.7293 13.1579C21.7378 12.083 23 10.4032 23 8.21053C23 5.07874 20.8473 2 17 2C16.1223 2 15.2016 2.14991 14.2134 2.68203C13.4883 3.07246 12.7609 3.65031 12 4.46722C11.2391 3.65031 10.5117 3.07246 9.7866 2.68203C8.79839 2.14991 7.87768 2 7 2Z" />
           </svg>
         </button>
       </div>
@@ -119,15 +112,15 @@ const ProductCard = ({ product }) => {
       {/* Product Info */}
       <div className="flex-1 flex flex-col">
         {/* Product Name */}
-        <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
+        <h3 className="text-product-title text-midnight font-semibold mb-2 line-clamp-2">
           {productName || "Product name"}
         </h3>
 
         {/* Bid Info */}
         <div className="mb-3">
           <div className="mb-2">
-            <span className="text-sm text-gray-600">Max bid: </span>
-            <span className="text-base font-bold text-red-600">
+            <span className="text-sm text-pebble">Max bid: </span>
+            <span className="text-base font-bold text-midnight">
               {currentPrice > 0
                 ? `${currentPrice.toLocaleString("vi-VN")} VND`
                 : "N/A"}
@@ -136,22 +129,26 @@ const ProductCard = ({ product }) => {
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <span className="text-sm text-gray-600">Highest bid: </span>
-              <span className="text-base font-medium">{highestBidder}</span>
+              <span className="text-sm text-pebble">Highest bid: </span>
+              <span className="text-base font-medium text-midnight">
+                {highestBidder}
+              </span>
             </div>
             <div>
-              <span className="text-sm text-gray-600">Bids: </span>
-              <span className="text-base font-semibold">{bidCount}</span>
+              <span className="text-sm text-pebble">Bids: </span>
+              <span className="text-base font-semibold text-midnight">
+                {bidCount}
+              </span>
             </div>
             <div>
-              <span className="text-sm text-gray-600">Posted: </span>
-              <span className="text-sm font-medium">
+              <span className="text-sm text-pebble">Posted: </span>
+              <span className="text-sm font-medium text-midnight">
                 {formatDate(postedDate)} at {formatTime(postedDate)}
               </span>
             </div>
             <div>
-              <span className="text-sm text-gray-600">Time left: </span>
-              <span className="text-base font-semibold text-orange-600">
+              <span className="text-sm text-pebble">Time left: </span>
+              <span className="text-base font-semibold text-midnight">
                 {getTimeLeft()}
               </span>
             </div>
@@ -161,8 +158,8 @@ const ProductCard = ({ product }) => {
         {/* Buy Now Price */}
         {buyNowPrice > 0 && (
           <div className="mb-3">
-            <span className="text-sm text-gray-600">Price: </span>
-            <span className="text-lg font-bold text-gray-900">
+            <span className="text-sm text-pebble">Price: </span>
+            <span className="text-lg font-bold text-midnight">
               {buyNowPrice.toLocaleString("vi-VN")} VND
             </span>
           </div>
@@ -172,14 +169,14 @@ const ProductCard = ({ product }) => {
         <div className="flex gap-3 mt-auto">
           <button
             onClick={handlePlaceBid}
-            className="flex-1 !bg-blue-600 text-white mx-4 py-2 px-4 rounded-full font-medium hover:!bg-blue-700 !border-blue-600 transition-colors"
+            className="btn-primary flex-1 text-center"
           >
             Place bid
           </button>
           {buyNowPrice > 0 && (
             <button
               onClick={handleBuyNow}
-              className="flex-1 !bg-white text-blue-600 mx-4 !border-2 !border-blue-600 py-2 px-4 rounded-full font-medium hover:!bg-blue-50 transition-colors"
+              className="btn-outline flex-1 text-center"
             >
               Buy now
             </button>

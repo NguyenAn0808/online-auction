@@ -716,7 +716,7 @@ const ListingForm = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-8 py-3 !bg-blue-600 text-white rounded-lg font-semibold hover:!bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="px-8 py-3 text-white rounded-lg font-semibold transition disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             {isSubmitting ? "Creating..." : "List Item"}
           </button>
