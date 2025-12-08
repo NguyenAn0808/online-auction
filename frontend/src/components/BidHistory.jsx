@@ -1,127 +1,314 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import Notification from "./Notification";
-
-const bids = [
-  { id: 1, name: "Jane Cooper", time: "1 hour ago", amount: 200.0 },
-  { id: 2, name: "John Doe", time: "2 hours ago", amount: 250.0 },
-  { id: 3, name: "Alex Smith", time: "3 hours ago", amount: 180.0 },
-  { id: 4, name: "Lisa Wong", time: "30 minutes ago", amount: 275.0 },
-];
+import productService from "../services/productService";
+import {
+  COLORS,
+  TYPOGRAPHY,
+  SPACING,
+  BORDER_RADIUS,
+  SHADOWS,
+} from "../constants/designSystem";
 
 // Replace this with real auth in your app
 const CURRENT_USER_NAME = "Alex Smith";
 
-function classNames(...classes) {
-  return classes.filter(Boolean).join(" ");
+// demo ratings for bidders (would come from user service)
+const bidderRatings = {
+  "Jane Cooper": 4.5,
+  "John Doe": 4.2,
+  "Alex Smith": 4.0,
+  "Lisa Wong": 4.8,
+};
+
+function useBids() {
+  const [bids, setBids] = useState([]);
+  useEffect(() => {
+    setBids(productService.getBidHistory());
+  }, []);
+  return bids;
 }
 
 function maskName(fullName) {
   if (!fullName) return "-";
   if (fullName === CURRENT_USER_NAME) return "You";
-  const parts = fullName.split(" ");
-  const first = parts[0] || "";
-  const last = parts.length > 1 ? parts[parts.length - 1] : "";
-  const firstChar = first.charAt(0) || "";
-  const lastChar = last.charAt(0) || "";
-  return `${firstChar}••• ${lastChar}.`;
+  const parts = fullName.trim().split(" ");
+  if (parts.length > 1) {
+    const last = parts[parts.length - 1];
+    return `**** ${last}`;
+  }
+  // single name: show first char and mask rest
+  if (fullName.length <= 1) return "*";
+  return `${fullName.charAt(0)}***`;
 }
 
 export default function BidHistory() {
+  const bids = useBids();
   const sorted = useMemo(
     () => [...bids].sort((a, b) => b.amount - a.amount),
-    []
+    [bids]
   );
   const highest = sorted[0];
   const isCurrentUserHighest = highest && highest.name === CURRENT_USER_NAME;
 
-  return (
-    <div className="space-y-8 bg-gray-50">
-      <div className="mx-auto max-w-2xl pt-16 sm:px-6 sm:py-24 lg:max-w-7xl lg:px-8 bg-white border-t border-b border-gray-200 shadow-xs sm:rounded-lg sm:border">
-        <div className="space-y-2 px-4 sm:flex sm:items-baseline sm:justify-between sm:space-y-0 sm:px-0">
-          <div className="flex sm:items-baseline sm:space-x-4">
-            <h2 className="text-lg font-medium text-gray-900">
-              Bidding history
-            </h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Latest bids for this auction. Bidder names are masked for privacy.
-            </p>
-          </div>
-          <div className="mt-4 sm:mt-0 sm:ml-4 sm:shrink-0">
-            {isCurrentUserHighest ? (
-              <Notification />
-            ) : (
-              <div className="text-sm text-gray-500">
-                Current high:{" "}
-                <span className="font-semibold text-gray-900">
-                  ${highest?.amount?.toFixed(2)}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
+  function renderRating(rating) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+        <span style={{ fontSize: TYPOGRAPHY.SIZE_LABEL, color: COLORS.PEBBLE }}>
+          {rating.toFixed(1)} stars
+        </span>
+        <span style={{ fontSize: TYPOGRAPHY.SIZE_LABEL, color: "#FBBF24" }}>
+          ★
+        </span>
+      </div>
+    );
+  }
 
-        <div className="mt-6 -mx-4 sm:mx-0">
-          <table className="min-w-full divide-y divide-gray-300">
-            <thead>
-              <tr>
-                <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-                  Bidder
-                </th>
-                <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                  Amount
-                </th>
-                <th className="hidden px-3 py-3.5 text-left text-sm font-semibold text-gray-900 sm:table-cell">
-                  Time
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
-              {sorted.map((bid, idx) => {
-                const isHighest = idx === 0;
-                return (
-                  <tr
-                    key={bid.id}
-                    className={classNames(
-                      isHighest ? "bg-indigo-50" : "",
-                      "hover:bg-gray-50"
-                    )}
-                  >
-                    <td
-                      className={classNames("py-4 pl-4 pr-3 text-sm sm:pl-6")}
-                    >
-                      <div className="flex items-center">
-                        <div className="ml-0">
-                          <div
-                            className={classNames(
-                              "font-medium",
-                              isHighest ? "text-indigo-700" : "text-gray-900"
-                            )}
-                          >
-                            {maskName(bid.name)}{" "}
-                            {isHighest ? (
-                              <span className="ml-1 text-xs font-medium text-indigo-600">
-                                (Highest)
-                              </span>
-                            ) : null}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-3.5 text-sm text-gray-900">
-                      ${bid.amount.toFixed(2)}
-                    </td>
-                    <td className="hidden px-3 py-3.5 text-sm text-gray-500 sm:table-cell">
-                      {bid.time}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+  return (
+    <>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "baseline",
+          justifyContent: "space-between",
+          gap: SPACING.L,
+          marginBottom: SPACING.L,
+        }}
+      >
+        <div
+          style={{ display: "flex", alignItems: "baseline", gap: SPACING.M }}
+        >
+          <h2
+            style={{
+              fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
+              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+              color: COLORS.MIDNIGHT_ASH,
+              margin: 0,
+            }}
+          >
+            Bidding history
+          </h2>
+          <p
+            style={{
+              fontSize: TYPOGRAPHY.SIZE_LABEL,
+              color: COLORS.PEBBLE,
+              margin: 0,
+            }}
+          >
+            Latest bids for this auction. Bidder names are masked for privacy.
+          </p>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: SPACING.M,
+          }}
+        >
+          {isCurrentUserHighest ? (
+            <Notification />
+          ) : (
+            <div
+              style={{
+                fontSize: TYPOGRAPHY.SIZE_LABEL,
+                color: COLORS.PEBBLE,
+              }}
+            >
+              Current high:{" "}
+              <span
+                style={{
+                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                  color: COLORS.MIDNIGHT_ASH,
+                }}
+              >
+                ${highest?.amount?.toFixed(2)}
+              </span>
+            </div>
+          )}
         </div>
       </div>
-    </div>
+
+      <div style={{ overflowX: "auto" }}>
+        <table
+          style={{
+            minWidth: "100%",
+            borderCollapse: "collapse",
+          }}
+        >
+          <thead>
+            <tr
+              style={{
+                backgroundColor: COLORS.SOFT_CLOUD,
+                borderBottom: `1px solid ${COLORS.MORNING_MIST}`,
+              }}
+            >
+              <th
+                style={{
+                  paddingTop: SPACING.M,
+                  paddingBottom: SPACING.M,
+                  paddingLeft: SPACING.M,
+                  paddingRight: SPACING.M,
+                  textAlign: "left",
+                  fontSize: TYPOGRAPHY.SIZE_LABEL,
+                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                  color: COLORS.MIDNIGHT_ASH,
+                }}
+              >
+                Bidder
+              </th>
+              <th
+                style={{
+                  paddingLeft: SPACING.M,
+                  paddingRight: SPACING.M,
+                  paddingTop: SPACING.M,
+                  paddingBottom: SPACING.M,
+                  textAlign: "left",
+                  fontSize: TYPOGRAPHY.SIZE_LABEL,
+                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                  color: COLORS.MIDNIGHT_ASH,
+                }}
+              >
+                Amount
+              </th>
+              <th
+                style={{
+                  paddingLeft: SPACING.M,
+                  paddingRight: SPACING.M,
+                  paddingTop: SPACING.M,
+                  paddingBottom: SPACING.M,
+                  textAlign: "left",
+                  fontSize: TYPOGRAPHY.SIZE_LABEL,
+                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                  color: COLORS.MIDNIGHT_ASH,
+                }}
+              >
+                Rating
+              </th>
+              <th
+                style={{
+                  paddingLeft: SPACING.M,
+                  paddingRight: SPACING.M,
+                  paddingTop: SPACING.M,
+                  paddingBottom: SPACING.M,
+                  textAlign: "left",
+                  fontSize: TYPOGRAPHY.SIZE_LABEL,
+                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                  color: COLORS.MIDNIGHT_ASH,
+                }}
+              >
+                Time
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((bid, idx) => {
+              const isHighest = idx === 0;
+              return (
+                <tr
+                  key={bid.id}
+                  style={{
+                    backgroundColor: isHighest
+                      ? COLORS.SOFT_CLOUD
+                      : COLORS.WHITE,
+                    borderBottom: `1px solid ${COLORS.MORNING_MIST}`,
+                    transition: "background-color 0.2s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = COLORS.SOFT_CLOUD;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = isHighest
+                      ? COLORS.SOFT_CLOUD
+                      : COLORS.WHITE;
+                  }}
+                >
+                  <td
+                    style={{
+                      paddingTop: SPACING.M,
+                      paddingBottom: SPACING.M,
+                      paddingLeft: SPACING.M,
+                      paddingRight: SPACING.M,
+                      fontSize: TYPOGRAPHY.SIZE_BODY,
+                    }}
+                  >
+                    <div>
+                      <div
+                        style={{
+                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                          color: isHighest
+                            ? COLORS.MIDNIGHT_ASH
+                            : COLORS.MIDNIGHT_ASH,
+                        }}
+                      >
+                        {maskName(bid.name)}{" "}
+                        {isHighest ? (
+                          <span
+                            style={{
+                              marginLeft: SPACING.S,
+                              fontSize: TYPOGRAPHY.SIZE_LABEL,
+                              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                              color: "#4F46E5",
+                            }}
+                          >
+                            (Highest)
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </td>
+                  <td
+                    style={{
+                      paddingLeft: SPACING.M,
+                      paddingRight: SPACING.M,
+                      paddingTop: SPACING.M,
+                      paddingBottom: SPACING.M,
+                      fontSize: TYPOGRAPHY.SIZE_BODY,
+                      color: COLORS.MIDNIGHT_ASH,
+                    }}
+                  >
+                    ${bid.amount.toFixed(2)}
+                  </td>
+                  <td
+                    style={{
+                      paddingLeft: SPACING.M,
+                      paddingRight: SPACING.M,
+                      paddingTop: SPACING.M,
+                      paddingBottom: SPACING.M,
+                    }}
+                  >
+                    {bidderRatings[bid.name] ? (
+                      renderRating(bidderRatings[bid.name])
+                    ) : (
+                      <span
+                        style={{
+                          fontSize: TYPOGRAPHY.SIZE_LABEL,
+                          color: COLORS.PEBBLE,
+                        }}
+                      >
+                        No rating
+                      </span>
+                    )}
+                  </td>
+                  <td
+                    style={{
+                      paddingLeft: SPACING.M,
+                      paddingRight: SPACING.M,
+                      paddingTop: SPACING.M,
+                      paddingBottom: SPACING.M,
+                      fontSize: TYPOGRAPHY.SIZE_LABEL,
+                      color: COLORS.PEBBLE,
+                    }}
+                  >
+                    {new Date(bid.time).toLocaleString()}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }

@@ -3,11 +3,13 @@ let _transactions = [];
 let _id = 1;
 
 export const STATUS = {
+  PENDING_BUYER: "PENDING_BUYER",
   WAITING_SELLER_CONFIRMATION: "WAITING_SELLER_CONFIRMATION",
   PAYMENT_REJECTED: "PAYMENT_REJECTED",
   IN_TRANSIT: "IN_TRANSIT",
   COMPLETED_AWAITING_RATING: "COMPLETED_AWAITING_RATING",
   COMPLETED: "COMPLETED",
+  CANCELLED: "CANCELLED",
 };
 
 export function resetStore() {
@@ -111,8 +113,42 @@ export function markWinner(id) {
 // convenience to seed demo data
 export function seedDemo() {
   resetStore();
-  createTransaction({
+
+  // Demo transaction for Zip Tote Basket - ended auction
+  // Winner: buyer-1 (Lisa Wong), Seller: seller-1
+  const zipToteTx = {
+    id: "tx-ziptote",
+    productId: "prod-1",
+    productName: "Zip Tote Basket",
+    productImage:
+      "https://tailwindui.com/plus-assets/img/ecommerce-images/product-page-03-product-01.jpg",
+    winningBid: 275.0,
     buyerId: "buyer-1",
+    buyerName: "Lisa Wong",
+    sellerId: "seller-1",
+    sellerName: "Seller Co.",
+    status: STATUS.PENDING_BUYER,
+    paymentInvoice: null,
+    shippingInvoice: null,
+    deliveryAddress: null,
+    ratings: { buyer: null, seller: null },
+    messages: [
+      {
+        id: 1,
+        sender: "seller-1",
+        senderName: "Seller Co.",
+        text: "Congratulations! You won the auction for the Zip Tote Basket at $275.00. Please complete your payment and shipping details to proceed.",
+        time: Date.now() - 3600000, // 1 hour ago
+      },
+    ],
+    lastReadAt: {},
+    createdAt: Date.now() - 3600000,
+  };
+  _transactions.push(zipToteTx);
+
+  // Keep existing demo transactions
+  createTransaction({
+    buyerId: "buyer-2",
     sellerId: "seller-1",
     paymentInvoice: {
       method: "Bank Transfer",
@@ -127,7 +163,7 @@ export function seedDemo() {
     },
   });
   createTransaction({
-    buyerId: "buyer-2",
+    buyerId: "buyer-3",
     sellerId: "seller-1",
     paymentInvoice: { method: "PayPal", reference: "PP-9876", uploaded: null },
     deliveryAddress: {

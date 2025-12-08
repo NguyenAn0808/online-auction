@@ -3,7 +3,7 @@ import Header from "../components/Header";
 import SimpleProductList from "../components/SimpleProductList";
 import Carousel from "../components/Carousel";
 import CategorySection from "../components/CategorySection";
-import { productService } from "../services/productService";
+import productService from "../services/productService";
 
 const HomePage = () => {
   const [topEndingProducts, setTopEndingProducts] = useState([]);

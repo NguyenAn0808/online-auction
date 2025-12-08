@@ -1,105 +1,249 @@
-import React from "react";
+import React, { useState } from "react";
 import Header from "../components/Header";
 import Tabs from "../components/Tabs";
 import Sidebar from "../components/Sidebar";
-import CompactOrderSummary from "../components/CompactOrderSummary";
+import BidOfferCard from "../components/BidOfferCard";
+import FeedbackModal from "../components/FeedbackModal";
+import {
+  COLORS,
+  TYPOGRAPHY,
+  SPACING,
+  BORDER_RADIUS,
+  SHADOWS,
+} from "../constants/designSystem";
 
 const demoBids = [
   {
     id: 1,
-    name: "Nomad Tumbler",
-    status: "Highest bid",
+    name: "Zip Tote Basket",
+    imageSrc:
+      "https://tailwindui.com/plus-assets/img/ecommerce-images/product-page-03-product-01.jpg",
+    status: "Highest Bid",
     amount: "275.00",
     endTime: "2d 4h",
+    type: "bid",
   },
   {
     id: 2,
-    name: "Vintage Chair",
+    name: "Canvas Weekend Bag",
+    imageSrc:
+      "https://tailwindui.com/plus-assets/img/ecommerce-images/product-page-03-related-product-02.jpg",
     status: "Outbid",
     amount: "120.00",
     endTime: "5h 12m",
+    type: "bid",
   },
 ];
 
-const demoOffers = [
+const demoWon = [
   {
-    id: 11,
-    name: "Museum Print",
-    status: "Offer pending",
-    amount: "45.00",
-    endTime: "3d",
+    id: 31,
+    name: "Waxed Canvas Backpack",
+    imageSrc:
+      "https://tailwindui.com/plus-assets/img/ecommerce-images/product-page-03-related-product-04.jpg",
+    status: "Won",
+    amount: "89.99",
+    endTime: "Nov 15",
+    type: "won",
   },
 ];
 
 const demoLost = [
-  { id: 21, name: "Retro Lamp", status: "Lost", amount: "30.00" },
+  {
+    id: 21,
+    name: "Classic Leather Satchel",
+    imageSrc:
+      "https://tailwindui.com/plus-assets/img/ecommerce-images/product-page-03-related-product-01.jpg",
+    status: "Lost",
+    amount: "95.00",
+    endTime: "Nov 10",
+    type: "lost",
+  },
 ];
 
 export default function BidsOffers() {
+  const [feedbackModal, setFeedbackModal] = useState({
+    isOpen: false,
+    item: null,
+  });
+
+  const handleViewAuction = (item) => {
+    console.log("View auction/item:", item);
+  };
+
+  const handleFeedback = (item) => {
+    setFeedbackModal({
+      isOpen: true,
+      item,
+    });
+  };
+
+  const handleSubmitFeedback = async (feedbackData) => {
+    console.log("Feedback submitted:", feedbackData);
+    alert("Feedback submitted successfully!");
+  };
+
+  const closeFeedbackModal = () => {
+    setFeedbackModal({
+      isOpen: false,
+      item: null,
+    });
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ backgroundColor: COLORS.WHISPER, minHeight: "100vh" }}>
       <Header />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+      <div
+        style={{ maxWidth: "1400px", margin: "0 auto", padding: SPACING.M }}
+        className="mx-auto px-4 sm:px-6 lg:px-8 mt-6"
+      >
         <div className="lg:flex lg:space-x-6">
           {/* Sidebar */}
-          <div className="hidden lg:block lg:w-64">
+          <div className="hidden lg:block" style={{ width: "256px" }}>
             <Sidebar />
           </div>
 
           {/* Main area */}
           <div className="flex-1 min-w-0">
-            <div className="mb-6">
+            <div style={{ marginBottom: SPACING.L }}>
               <Tabs />
             </div>
 
-            <div className="space-y-8">
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: SPACING.XL,
+              }}
+            >
+              {/* Bidding Section */}
               <section>
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                <h2
+                  style={{
+                    fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
+                    fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+                    color: COLORS.MIDNIGHT_ASH,
+                    marginBottom: SPACING.M,
+                  }}
+                >
                   Bidding (Ongoing)
                 </h2>
-                <div className="space-y-3">
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: SPACING.S,
+                  }}
+                >
                   {demoBids.length === 0 ? (
-                    <div className="rounded-md border border-dashed border-gray-200 bg-white p-6 text-center text-gray-500">
+                    <div
+                      style={{
+                        borderRadius: BORDER_RADIUS.MEDIUM,
+                        border: `2px dashed ${COLORS.MORNING_MIST}`,
+                        backgroundColor: COLORS.WHITE,
+                        padding: SPACING.L,
+                        textAlign: "center",
+                        color: COLORS.PEBBLE,
+                      }}
+                    >
                       No active bids
                     </div>
                   ) : (
-                    demoBids.map((b) => (
-                      <CompactOrderSummary key={b.id} item={b} />
+                    demoBids.map((bid) => (
+                      <BidOfferCard
+                        key={bid.id}
+                        {...bid}
+                        onAction={handleViewAuction}
+                      />
                     ))
                   )}
                 </div>
               </section>
 
+              {/* Won Items Section */}
               <section>
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                  Offers
+                <h2
+                  style={{
+                    fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
+                    fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+                    color: COLORS.MIDNIGHT_ASH,
+                    marginBottom: SPACING.M,
+                  }}
+                >
+                  Won Items
                 </h2>
-                <div className="space-y-3">
-                  {demoOffers.length === 0 ? (
-                    <div className="rounded-md border border-dashed border-gray-200 bg-white p-6 text-center text-gray-500">
-                      No offers
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: SPACING.S,
+                  }}
+                >
+                  {demoWon.length === 0 ? (
+                    <div
+                      style={{
+                        borderRadius: BORDER_RADIUS.MEDIUM,
+                        border: `2px dashed ${COLORS.MORNING_MIST}`,
+                        backgroundColor: COLORS.WHITE,
+                        padding: SPACING.L,
+                        textAlign: "center",
+                        color: COLORS.PEBBLE,
+                      }}
+                    >
+                      You haven't won any items yet
                     </div>
                   ) : (
-                    demoOffers.map((o) => (
-                      <CompactOrderSummary key={o.id} item={o} />
+                    demoWon.map((item) => (
+                      <BidOfferCard
+                        key={item.id}
+                        {...item}
+                        onFeedback={handleFeedback}
+                      />
                     ))
                   )}
                 </div>
               </section>
 
+              {/* Didn't Win Section */}
               <section>
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                <h2
+                  style={{
+                    fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
+                    fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+                    color: COLORS.MIDNIGHT_ASH,
+                    marginBottom: SPACING.M,
+                  }}
+                >
                   Didn't Win
                 </h2>
-                <div className="space-y-3">
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: SPACING.S,
+                  }}
+                >
                   {demoLost.length === 0 ? (
-                    <div className="rounded-md border border-dashed border-gray-200 bg-white p-6 text-center text-gray-500">
+                    <div
+                      style={{
+                        borderRadius: BORDER_RADIUS.MEDIUM,
+                        border: `2px dashed ${COLORS.MORNING_MIST}`,
+                        backgroundColor: COLORS.WHITE,
+                        padding: SPACING.L,
+                        textAlign: "center",
+                        color: COLORS.PEBBLE,
+                      }}
+                    >
                       No lost items
                     </div>
                   ) : (
-                    demoLost.map((l) => (
-                      <CompactOrderSummary key={l.id} item={l} />
+                    demoLost.map((lost) => (
+                      <BidOfferCard
+                        key={lost.id}
+                        {...lost}
+                        onAction={handleViewAuction}
+                      />
                     ))
                   )}
                 </div>
@@ -108,6 +252,14 @@ export default function BidsOffers() {
           </div>
         </div>
       </div>
+
+      {/* Feedback Modal */}
+      <FeedbackModal
+        isOpen={feedbackModal.isOpen}
+        item={feedbackModal.item}
+        onSubmit={handleSubmitFeedback}
+        onClose={closeFeedbackModal}
+      />
     </div>
   );
 }

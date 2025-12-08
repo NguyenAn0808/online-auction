@@ -4,21 +4,53 @@ import {
   getUnreadCount,
   listTransactions,
 } from "../services/transactionService";
+import {
+  COLORS,
+  TYPOGRAPHY,
+  SPACING,
+  BORDER_RADIUS,
+  SHADOWS,
+} from "../constants/designSystem";
 
 function getCurrentUser() {
   return localStorage.getItem("userId") || "buyer-1";
 }
 
 export default function ChatBubble() {
-  const [open, setOpen] = useState(false);
+  // open state for ChatBox visibility
+  const [open, setOpen] = useState(true);
+  const [txId, setTxId] = useState(null);
   const [badge, setBadge] = useState(0);
+  const [contextProduct, setContextProduct] = useState(null);
 
   const userId = getCurrentUser();
 
+  // Update badge count periodically
   useEffect(() => {
     setBadge(getUnreadCount(userId));
     const iv = setInterval(() => setBadge(getUnreadCount(userId)), 3000);
     return () => clearInterval(iv);
+  }, [userId]);
+
+  useEffect(() => {
+    // expose a global helper for other components to open chat with product context
+    window.openChat = (payload = {}) => {
+      // payload: { product, txId }
+      const { product, txId: openTxId } = payload;
+      setContextProduct(product || null);
+      setTxId(openTxId || null);
+      setOpen(true);
+    };
+
+    function onOpenChatEvent(e) {
+      const { product, txId: openTxId } = e.detail || {};
+      setContextProduct(product || null);
+      setTxId(openTxId || null);
+      setOpen(true);
+    }
+
+    window.addEventListener("openChat", onOpenChatEvent);
+    return () => window.removeEventListener("openChat", onOpenChatEvent);
   }, []);
 
   function findFirstUnreadTx() {
@@ -33,35 +65,78 @@ export default function ChatBubble() {
     return null;
   }
 
-  function handleClick() {
+  function handleToggle() {
     if (!open) {
-      // opening: if there are unread messages, open the first one
-      const txId = findFirstUnreadTx();
-      if (txId) {
-        setOpen({ txId });
-        // store badge update
+      // Opening: if there are unread messages, open the first one
+      const unreadTxId = findFirstUnreadTx();
+      if (unreadTxId) {
+        setTxId(unreadTxId);
         setTimeout(() => setBadge(getUnreadCount(userId)), 500);
-        return;
       }
     }
-    setOpen((s) => (s ? false : true));
+    setOpen((s) => !s);
   }
 
   return (
     <>
       <ChatBox
-        open={!!open}
+        open={open}
         onClose={() => setOpen(false)}
-        openForTx={open && open.txId}
+        openForTx={txId}
+        contextProduct={contextProduct}
       />
       <button
-        onClick={handleClick}
-        aria-label="Open chat"
-        className="fixed right-6 bottom-6 z-50 inline-flex items-center justify-center h-14 w-14 rounded-full bg-indigo-600 text-gray-700 shadow-lg"
+        onClick={handleToggle}
+        aria-label="Toggle messages panel"
+        style={{
+          position: "fixed",
+          right: SPACING.L,
+          bottom: `calc(${SPACING.L} + 520px)`,
+          zIndex: 51,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "56px",
+          width: "56px",
+          borderRadius: BORDER_RADIUS.FULL,
+          backgroundColor: COLORS.MIDNIGHT_ASH,
+          color: COLORS.WHITE,
+          boxShadow: SHADOWS.LIGHT,
+          border: "none",
+          cursor: "pointer",
+          transition: "all 200ms cubic-bezier(0.4, 0, 0.2, 1)",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = "scale(1.1)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "scale(1)";
+        }}
       >
-        <span>Chat</span>
+        <span
+          style={{
+            fontSize: TYPOGRAPHY.SIZE_BODY,
+            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+          }}
+        >
+          Chat
+        </span>
         {badge > 0 && (
-          <span className="ml-2 inline-flex items-center justify-center h-5 w-5 rounded-full bg-red-500 text-white text-xs">
+          <span
+            style={{
+              marginLeft: SPACING.S,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "20px",
+              width: "20px",
+              borderRadius: BORDER_RADIUS.FULL,
+              backgroundColor: "#EF4444",
+              color: COLORS.WHITE,
+              fontSize: TYPOGRAPHY.SIZE_LABEL,
+              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+            }}
+          >
             {badge}
           </span>
         )}

@@ -16,9 +16,15 @@ import Watchlist from "./pages/Watchlist";
 import Ratings from "./pages/Ratings";
 import BidsOffers from "./pages/BidsOffers";
 import TransactionWizard from "./pages/TransactionWizard";
+import TransactionPage from "./pages/TransactionPage";
 import SellerTransactions from "./pages/SellerTransactions";
+import SellingRequestPage from "./pages/SellingRequestPage";
+import { seedDemo } from "./services/transactionService";
 // import ProductDetailPage from "./pages/ProductDetailPage";
 // import ProductListingPage from "./pages/ProductListingPage";
+
+// Seed demo transactions on app load
+seedDemo();
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -36,8 +42,13 @@ const router = createBrowserRouter(
       <Route path="watchlists/:userId" element={<Watchlist />} />
       <Route path="ratings/:userId" element={<Ratings />} />
       <Route path="products/:userId/bidding" element={<BidsOffers />} />
-      <Route path="transactions" element={<TransactionWizard />} />
+      <Route path="transactions/:transactionId" element={<TransactionPage />} />
+      <Route
+        path="transactions-old/:transactionId"
+        element={<TransactionWizard />}
+      />
       <Route path="seller/transactions" element={<SellerTransactions />} />
+      <Route path="selling-request" element={<SellingRequestPage />} />
     </Route>
   )
 );

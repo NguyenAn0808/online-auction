@@ -1,5 +1,12 @@
 import { Fragment } from "react";
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
+import {
+  COLORS,
+  TYPOGRAPHY,
+  SPACING,
+  BORDER_RADIUS,
+  SHADOWS,
+} from "../constants/designSystem";
 
 const tabs = [
   {
@@ -62,73 +69,143 @@ const tabs = [
 
 export default function ProductFeatures() {
   return (
-    <div className="bg-white">
-      <section
-        aria-labelledby="features-heading"
-        className="mx-auto max-w-7xl py-32 sm:px-2 lg:px-8"
-      >
-        <div className="mx-auto max-w-2xl px-4 lg:max-w-none lg:px-0">
-          <div className="max-w-3xl">
-            <h2
-              id="features-heading"
-              className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl"
+    <>
+      <section aria-labelledby="features-heading">
+        <div style={{ maxWidth: "800px" }}>
+          <h2
+            id="features-heading"
+            style={{
+              fontSize: TYPOGRAPHY.SIZE_HEADING_XL,
+              fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+              color: COLORS.MIDNIGHT_ASH,
+            }}
+          >
+            Item Specifications
+          </h2>
+          <p
+            style={{
+              marginTop: SPACING.M,
+              fontSize: TYPOGRAPHY.SIZE_BODY,
+              color: COLORS.PEBBLE,
+            }}
+          >
+            The Organize modular system offers endless options for arranging
+            your favorite and most used items. Keep everything at reach and in
+            its place, while dressing up your workspace.
+          </p>
+        </div>
+
+        <TabGroup style={{ marginTop: SPACING.M }}>
+          <div
+            style={{
+              display: "flex",
+              overflowX: "auto",
+              marginLeft: "-16px",
+              marginRight: "-16px",
+            }}
+          >
+            <div
+              style={{
+                flex: 1,
+                borderBottom: `1px solid ${COLORS.MORNING_MIST}`,
+                paddingLeft: SPACING.M,
+                paddingRight: SPACING.M,
+              }}
             >
-              Item Specifications
-            </h2>
-            <p className="mt-4 text-gray-500">
-              The Organize modular system offers endless options for arranging
-              your favorite and most used items. Keep everything at reach and in
-              its place, while dressing up your workspace.
-            </p>
+              <TabList
+                style={{
+                  display: "flex",
+                  gap: SPACING.L,
+                  marginBottom: "-1px",
+                }}
+              >
+                {tabs.map((tab) => (
+                  <Tab
+                    key={tab.name}
+                    className="data-selected:border-b-2 data-selected:text-midnight-ash"
+                    style={{
+                      borderBottom: "2px solid transparent",
+                      paddingTop: SPACING.L,
+                      paddingBottom: SPACING.L,
+                      fontSize: TYPOGRAPHY.SIZE_BODY,
+                      fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
+                      whiteSpace: "nowrap",
+                      color: COLORS.PEBBLE,
+                      backgroundColor: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    {tab.name}
+                  </Tab>
+                ))}
+              </TabList>
+            </div>
           </div>
 
-          <TabGroup className="mt-4">
-            <div className="-mx-4 flex overflow-x-auto sm:mx-0">
-              <div className="flex-auto border-b border-gray-200 px-4 sm:px-0">
-                <TabList className="-mb-px flex space-x-10">
-                  {tabs.map((tab) => (
-                    <Tab
-                      key={tab.name}
-                      className="border-b-2 border-transparent py-6 text-sm font-medium whitespace-nowrap text-gray-500 hover:border-gray-300 hover:text-gray-700 data-selected:border-indigo-500 data-selected:text-indigo-600"
-                    >
-                      {tab.name}
-                    </Tab>
-                  ))}
-                </TabList>
-              </div>
-            </div>
-
-            <TabPanels as={Fragment}>
-              {tabs.map((tab) => (
-                <TabPanel key={tab.name} className="space-y-16 pt-10 lg:pt-16">
-                  {tab.features.map((feature) => (
-                    <div
-                      key={feature.name}
-                      className="flex flex-col-reverse lg:grid lg:grid-cols-12 lg:gap-x-8"
-                    >
-                      <div className="mt-6 lg:col-span-5 lg:mt-0">
-                        <h3 className="text-lg font-medium text-gray-900">
-                          {feature.name}
-                        </h3>
-                        <p className="mt-2 text-sm text-gray-500">
-                          {feature.description}
-                        </p>
-                      </div>
-                      <div className="lg:col-span-7">
-                        <img
-                          alt={feature.imageAlt}
-                          src={feature.imageSrc}
-                          className="aspect-2/1 w-full rounded-lg bg-gray-100 object-cover sm:aspect-5/2"
-                        />
-                      </div>
+          <TabPanels as={Fragment}>
+            {tabs.map((tab) => (
+              <TabPanel
+                key={tab.name}
+                style={{
+                  display: "grid",
+                  gap: SPACING.L,
+                  paddingTop: SPACING.L,
+                  paddingLeft: 0,
+                  paddingRight: 0,
+                  paddingBottom: 0,
+                }}
+              >
+                {tab.features.map((feature) => (
+                  <div
+                    key={feature.name}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: SPACING.L,
+                    }}
+                  >
+                    <div style={{ paddingTop: SPACING.M }}>
+                      <h3
+                        style={{
+                          fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
+                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                          color: COLORS.MIDNIGHT_ASH,
+                        }}
+                      >
+                        {feature.name}
+                      </h3>
+                      <p
+                        style={{
+                          marginTop: SPACING.S,
+                          fontSize: TYPOGRAPHY.SIZE_BODY,
+                          color: COLORS.PEBBLE,
+                        }}
+                      >
+                        {feature.description}
+                      </p>
                     </div>
-                  ))}
-                </TabPanel>
-              ))}
-            </TabPanels>
-          </TabGroup>
-        </div>
+                    <div>
+                      <img
+                        alt={feature.imageAlt}
+                        src={feature.imageSrc}
+                        style={{
+                          width: "100%",
+                          borderRadius: BORDER_RADIUS.MEDIUM,
+                          backgroundColor: COLORS.SOFT_CLOUD,
+                          objectFit: "cover",
+                          aspectRatio: "5/2",
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </TabPanel>
+            ))}
+          </TabPanels>
+        </TabGroup>
       </section>
-    </div>
+    </>
   );
 }

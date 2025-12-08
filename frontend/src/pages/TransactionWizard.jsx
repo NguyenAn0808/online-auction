@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 import Header from "../components/Header";
 import TransactionStepper from "../components/TransactionStepper";
 import TransactionSummary from "../components/TransactionSummary";
@@ -20,11 +21,20 @@ function useMockAuth() {
 }
 
 export default function TransactionWizard() {
+  const { transactionId } = useParams();
   const auth = useMockAuth();
   const [tx, setTx] = useState(null);
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
+    if (transactionId) {
+      const t = getTransaction(transactionId);
+      if (t) {
+        setTx(t);
+        return;
+      }
+    }
+
     // create a demo transaction for the buyer if none exists
     const existing = listTransactions((t) => t.buyerId === auth.userId)[0];
     if (existing) setTx(existing);
@@ -35,7 +45,7 @@ export default function TransactionWizard() {
       });
       setTx(newTx);
     }
-  }, [auth.userId, auth.role]);
+  }, [transactionId, auth.userId, auth.role]);
 
   function showToast(message) {
     setToast(message);
@@ -64,6 +74,7 @@ export default function TransactionWizard() {
 
   function handleSellerReject(reason) {
     if (!tx) return;
+    console.log("Reject reason:", reason);
     updateTransaction(tx.id, { status: STATUS.PAYMENT_REJECTED });
     setTx(getTransaction(tx.id));
     showToast("Payment rejected — buyer notified");
