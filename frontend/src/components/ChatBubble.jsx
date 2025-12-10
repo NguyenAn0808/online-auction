@@ -91,7 +91,7 @@ export default function ChatBubble() {
         style={{
           position: "fixed",
           right: SPACING.L,
-          bottom: `calc(${SPACING.L} + 520px)`,
+          bottom: SPACING.L,
           zIndex: 51,
           display: "inline-flex",
           alignItems: "center",

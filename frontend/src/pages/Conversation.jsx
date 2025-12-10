@@ -476,7 +476,7 @@ export default function Conversation() {
                       flex: 1,
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor: COLORS.WHISPER,
+                      backgroundColor: COLORS.WHITE,
                     }}
                   >
                     {selectedMessage ? (

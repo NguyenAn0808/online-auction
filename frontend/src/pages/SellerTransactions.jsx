@@ -39,7 +39,7 @@ export default function SellerTransactions() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-whisper">
       <Header />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-12 gap-6">
@@ -58,7 +58,10 @@ export default function SellerTransactions() {
                 </div>
               )}
               {transactions.map((t) => (
-                <div key={t.id} className="bg-white p-4 rounded-md border">
+                <div
+                  key={t.id}
+                  className="bg-white p-4 rounded-md border border-soft-cloud"
+                >
                   <div className="flex justify-between items-start">
                     <div>
                       <div className="text-sm font-medium">
@@ -73,7 +76,7 @@ export default function SellerTransactions() {
                         onClick={() => {
                           setSelected(t);
                         }}
-                        className="text-sm text-indigo-600"
+                        className="text-sm text-midnight-ash hover:text-pebble"
                       >
                         Open
                       </button>
@@ -97,7 +100,7 @@ export default function SellerTransactions() {
                 <pre className="text-xs text-gray-700 whitespace-pre-wrap">
                   {JSON.stringify(selected.paymentInvoice, null, 2)}
                 </pre>
-                <div className="mt-4">
+                <div className="mt-4 h-8 flex items-center w-full gap-2">
                   <button
                     onClick={() =>
                       handleConfirm(selected.id, {
@@ -105,13 +108,13 @@ export default function SellerTransactions() {
                         tracking: "TRK123",
                       })
                     }
-                    className="mr-3 px-3 py-2 bg-indigo-600 text-white rounded-md"
+                    className="mr-2 btn-primary px-3 py-2 rounded-md"
                   >
                     Confirm & send shipping
                   </button>
                   <button
                     onClick={() => handleReject(selected.id)}
-                    className="px-3 py-2 border rounded-md"
+                    className="px-3 py-2 border rounded-md  btn-secondary"
                   >
                     Reject
                   </button>

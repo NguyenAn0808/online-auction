@@ -1,8 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import BiddingQuickView from "./BiddingQuickView";
+import watchlistService from "../services/watchlistService";
 
 const ProductCard = ({ product }) => {
   const [isWatchlist, setIsWatchlist] = useState(false);
+  const [showBidQuickView, setShowBidQuickView] = useState(false);
   const navigate = useNavigate();
 
   const productId = product?.id;
@@ -19,6 +22,12 @@ const ProductCard = ({ product }) => {
     product?.images?.find((img) => img.is_thumbnail)?.image_url ||
     product?.images?.[0]?.image_url ||
     "/images/sample.jpg";
+
+  useEffect(() => {
+    if (productId) {
+      setIsWatchlist(watchlistService.isInWatchlist(productId));
+    }
+  }, [productId]);
 
   // Calculate time left
   const getTimeLeft = () => {
@@ -66,18 +75,27 @@ const ProductCard = ({ product }) => {
 
   const handleWatchlistClick = (e) => {
     e.stopPropagation();
+    if (isWatchlist) {
+      watchlistService.removeFromWatchlist(productId);
+    } else {
+      watchlistService.addToWatchlist({
+        id: productId,
+        name: productName,
+        images: product?.images || [],
+        price: currentPrice,
+      });
+    }
     setIsWatchlist(!isWatchlist);
   };
 
   const handlePlaceBid = (e) => {
     e.stopPropagation();
-    // TODO: Implement place bid modal/functionality
-    console.log("Place bid for:", productId);
+    setShowBidQuickView(true);
   };
 
   const handleBuyNow = (e) => {
     e.stopPropagation();
-    // TODO: Implement buy now functionality
+    navigate(`/transactions`);
     console.log("Buy now:", productId);
   };
 
@@ -176,13 +194,19 @@ const ProductCard = ({ product }) => {
           {buyNowPrice > 0 && (
             <button
               onClick={handleBuyNow}
-              className="btn-outline flex-1 text-center"
+              className="btn-outline hover:!bg-gray-200 flex-1 text-center"
             >
               Buy now
             </button>
           )}
         </div>
       </div>
+
+      {/* Bid quick view modal */}
+      <BiddingQuickView
+        open={showBidQuickView}
+        onClose={() => setShowBidQuickView(false)}
+      />
     </div>
   );
 };

@@ -51,7 +51,7 @@ export default function BidProduct() {
 
   return (
     <>
-      <div style={{ marginBottom: SPACING.XXL }}>
+      <div style={{ marginBottom: SPACING.L }}>
         <div
           style={{
             display: "flex",
@@ -61,7 +61,7 @@ export default function BidProduct() {
             flexWrap: "wrap",
           }}
         >
-          <h1
+          <h2
             style={{
               fontSize: TYPOGRAPHY.SIZE_HEADING_XL,
               fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
@@ -69,7 +69,7 @@ export default function BidProduct() {
             }}
           >
             Bidding History
-          </h1>
+          </h2>
           <div style={{ fontSize: TYPOGRAPHY.SIZE_BODY, color: COLORS.PEBBLE }}>
             Time left:{" "}
             <span
@@ -272,9 +272,7 @@ export default function BidProduct() {
                         color: isWinner ? "#15803d" : "#991b1b",
                       }}
                     >
-                      {isWinner
-                        ? "✓ Congrats, you won!"
-                        : "Good luck next time!"}
+                      {isWinner ? "Congrats, you won!" : "Good luck next time!"}
                     </p>
 
                     <div
@@ -495,7 +493,7 @@ export default function BidProduct() {
                         }}
                       >
                         {isCurrentUserHighest
-                          ? "✓ You are the highest bidder"
+                          ? "You are the highest bidder"
                           : "You are not the highest bidder"}
                       </span>
                       <span>

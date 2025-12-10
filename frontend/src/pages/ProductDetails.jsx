@@ -20,7 +20,7 @@ const ProductDetails = () => {
   return (
     <>
       <Header />
-      <div style={{ backgroundColor: COLORS.WHITE }}>
+      <div style={{ backgroundColor: COLORS.WHISPER }}>
         <div
           style={{
             marginLeft: "auto",
@@ -31,7 +31,7 @@ const ProductDetails = () => {
           }}
         >
           {/* Product Overview Section */}
-          <div style={{ paddingTop: SPACING.XXL, paddingBottom: SPACING.XXL }}>
+          <div>
             <ProductOverview />
           </div>
 

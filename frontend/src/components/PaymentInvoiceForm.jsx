@@ -53,7 +53,7 @@ export default function PaymentInvoiceForm({ initial, onSubmit }) {
       <div className="flex justify-end">
         <button
           type="submit"
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white btn-primary"
         >
           Submit payment invoice
         </button>

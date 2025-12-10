@@ -6,6 +6,7 @@ import {
   BORDER_RADIUS,
   SHADOWS,
 } from "../constants/designSystem";
+import { useNavigate } from "react-router-dom";
 
 /**
  * BidOfferCard - Universal reusable card for bids, offers, lost items, and won items
@@ -31,6 +32,7 @@ export default function BidOfferCard({
   onAction,
   onFeedback,
 }) {
+  const navigate = useNavigate();
   const handleCardClick = (e) => {
     if (e.target.closest("button")) {
       return;
@@ -259,6 +261,9 @@ export default function BidOfferCard({
               actionButton.primary ? "hover:opacity-90" : "hover:bg-whisper"
             }
           >
+            {/* {actionButton.label == "View Item" ? ({
+              navigate(`/products/${id}`);
+            }) : actionButton.label}  */}
             {actionButton.label}
           </button>
         </div>

@@ -50,7 +50,7 @@ const Carousel = () => {
         <button
           type="button"
           onClick={prevSlide}
-          className="absolute top-1/2 -translate-y-1/2 left-4 z-30 flex items-center justify-center w-12 h-12 rounded-full bg-gray-500/60 hover:bg-gray-500/80 cursor-pointer group focus:outline-none"
+          className="absolute top-1/2 -translate-y-1/2 left-4 z-30 flex items-center justify-center w-12 h-12 rounded-full bg-white hover:bg-gray-100 cursor-pointer group focus:outline-none"
         >
           <svg
             className="w-6 h-6 text-gray-800"
@@ -72,7 +72,7 @@ const Carousel = () => {
         <button
           type="button"
           onClick={nextSlide}
-          className="absolute top-1/2 -translate-y-1/2 right-4 z-30 flex items-center justify-center w-12 h-12 rounded-full bg-gray-500/60 hover:bg-gray-500/80 cursor-pointer group focus:outline-none"
+          className="absolute top-1/2 -translate-y-1/2 right-4 z-30 flex items-center justify-center w-12 h-12 rounded-full bg-white hover:bg-gray-100 cursor-pointer group focus:outline-none"
         >
           <svg
             className="w-6 h-6 text-gray-800"

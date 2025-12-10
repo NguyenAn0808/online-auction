@@ -117,7 +117,7 @@ export default function ChatBox({ open, onClose, openForTx, contextProduct }) {
       style={{
         position: "fixed",
         right: SPACING.L,
-        bottom: SPACING.L,
+        bottom: `calc(${SPACING.L} + 72px`,
         zIndex: 50,
         transform: "scale(1)",
         transformOrigin: "bottom right",

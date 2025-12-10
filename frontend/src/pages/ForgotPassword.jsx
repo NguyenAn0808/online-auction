@@ -73,7 +73,7 @@ export default function ForgotPassword() {
                         autoComplete="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:outline-indigo-600 sm:text-sm"
+                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-midnight-ash outline-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:outline-midnight-ash sm:text-sm"
                       />
                     </div>
                   </div>
@@ -84,7 +84,7 @@ export default function ForgotPassword() {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-indigo-600"
+                      className="flex w-full justify-center rounded-md btn-primary px-3 py-1.5 text-sm font-semibold text-white shadow-xs focus-visible:outline-2 focus-visible:outline-midnight-ash"
                     >
                       {loading ? "Sending..." : "Send reset link"}
                     </button>
@@ -102,10 +102,7 @@ export default function ForgotPassword() {
               )}
 
               <p className="mt-6 text-center text-sm text-gray-500">
-                <Link
-                  to="/auth/signin"
-                  className="font-semibold text-indigo-600 hover:text-indigo-500"
-                >
+                <Link to="/auth/signin" className="font-semibold ">
                   Back to Login
                 </Link>
               </p>

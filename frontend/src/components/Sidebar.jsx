@@ -40,7 +40,7 @@ export default function Sidebar() {
       aria-label="Sidebar"
       className="flex flex-1 flex-col"
       style={{
-        backgroundColor: COLORS.SOFT_CLOUD,
+        backgroundColor: COLORS.WHITE,
         borderRadius: BORDER_RADIUS.MEDIUM,
         padding: SPACING.M,
       }}
@@ -53,8 +53,8 @@ export default function Sidebar() {
               className={({ isActive }) =>
                 classNames(
                   isActive
-                    ? "text-midnight-ash font-bold"
-                    : "text-pebble hover:text-midnight-ash hover:bg-whisper",
+                    ? "text-pebble font-bold"
+                    : "text-midnight-ash hover:text-midnight-ash hover:bg-whisper",
                   "group flex gap-x-3 rounded-md p-2 text-sm font-semibold transition-all duration-200 pl-4"
                 )
               }

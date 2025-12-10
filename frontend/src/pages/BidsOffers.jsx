@@ -127,7 +127,7 @@ export default function BidsOffers() {
                     marginBottom: SPACING.M,
                   }}
                 >
-                  Bidding (Ongoing)
+                  ONGOING
                 </h2>
                 <div
                   style={{
@@ -171,7 +171,7 @@ export default function BidsOffers() {
                     marginBottom: SPACING.M,
                   }}
                 >
-                  Won Items
+                  WON ITEMS
                 </h2>
                 <div
                   style={{
@@ -215,7 +215,7 @@ export default function BidsOffers() {
                     marginBottom: SPACING.M,
                   }}
                 >
-                  Didn't Win
+                  NOT WIN
                 </h2>
                 <div
                   style={{

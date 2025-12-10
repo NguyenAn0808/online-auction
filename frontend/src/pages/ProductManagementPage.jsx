@@ -320,7 +320,7 @@ const ProductManagementPage = () => {
       <div className="border border-gray-200 rounded-lg overflow-hidden">
         {loading ? (
           <div className="flex flex-col justify-center items-center py-16">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4"></div>
+            <div className="animate-spin rounded-full h-10 w-10  mb-4"></div>
             <p className="text-gray-500 text-sm">Loading products...</p>
           </div>
         ) : currentProducts.length > 0 ? (
@@ -351,7 +351,7 @@ const ProductManagementPage = () => {
                         <span className="text-xs font-medium text-gray-500 uppercase tracking-wide w-20">
                           Current
                         </span>
-                        <span className="text-lg font-bold text-blue-600">
+                        <span className="text-lg font-bold text-pebble">
                           {formatCurrency(
                             product.current_price || product.start_price
                           )}
@@ -381,13 +381,13 @@ const ProductManagementPage = () => {
                 <div className="flex flex-col items-end justify-center gap-2.5 min-w-[110px]">
                   <button
                     onClick={() => setSelectedProduct(product)}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all"
+                    className="w-full px-4 py-2 bg-morning-mist text-midnight-ash rounded-lg text-sm font-semibold hover:!bg-gray-300 transition-all"
                   >
                     Details
                   </button>
                   <button
                     onClick={() => handleEditProduct(product)}
-                    className="w-full px-4 py-2 bg-blue-50 border-2 border-blue-200 text-blue-600 rounded-lg text-sm font-semibold hover:bg-blue-100 hover:border-blue-300 transition-all"
+                    className="w-full px-4 py-2 bg-whisper text-pebble rounded-lg text-sm font-semibold hover:bg-soft-cloud transition-all"
                   >
                     Edit
                   </button>
@@ -529,7 +529,7 @@ const ProductManagementPage = () => {
                   <label className="text-sm font-medium text-gray-500">
                     Current Price
                   </label>
-                  <p className="text-blue-600 font-bold text-lg mt-1">
+                  <p className="text-pebble font-bold text-lg mt-1">
                     {formatCurrency(
                       selectedProduct.current_price ||
                         selectedProduct.start_price

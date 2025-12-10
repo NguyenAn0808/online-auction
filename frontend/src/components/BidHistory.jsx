@@ -11,12 +11,6 @@ import {
   SHADOWS,
 } from "../constants/designSystem";
 
-// Helper to get user name from ID
-function getUserName(userId) {
-  const user = usersData.find((u) => u.id === userId);
-  return user?.fullname || "Unknown";
-}
-
 // Fallbacks for demo/dev: some components assume globals like CURRENT_USER_ID / CURRENT_USER_NAME
 // Provide safe defaults from localStorage to avoid ReferenceError in dev environment.
 const CURRENT_USER_ID = (() => {
@@ -67,9 +61,15 @@ const bidderRatings = {
 function useBids() {
   const [bids, setBids] = useState([]);
   useEffect(() => {
-    setBids(productService.getBidHistory());
+    // seed from productService; add defaults for status & bidder_id fallback
+    const initial = productService.getBidHistory().map((bid) => ({
+      ...bid,
+      bidder_id: bid.bidder_id || bid.name || bid.id,
+      status: bid.status || "pending",
+    }));
+    setBids(initial);
   }, []);
-  return bids;
+  return [bids, setBids];
 }
 
 function maskName(fullName, userId) {
@@ -85,29 +85,34 @@ function maskName(fullName, userId) {
   return `${fullName.charAt(0)}***`;
 }
 
-export default function BidHistory() {
-  const bids = useBids();
-  const sorted = useMemo(
-    () => [...bids].sort((a, b) => b.amount - a.amount),
-    [bids]
-  );
+export default function BidHistory({ isSeller = true, productId = null }) {
+  const [localBids, setLocalBids] = useBids();
+  const [blocklist, setBlocklist] = useState([]);
+  const [showBlocklist, setShowBlocklist] = useState(false);
+  const [isProcessing, setIsProcessing] = useState({});
+
+  // compute list excluding blocked bidders
+  const sorted = useMemo(() => {
+    const filtered = localBids.filter(
+      (bid) => !blocklist.some((b) => b.bidder_id === bid.bidder_id)
+    );
+    return [...filtered].sort((a, b) => b.amount - a.amount);
+  }, [localBids, blocklist]);
+
   const highest = sorted[0];
   const isCurrentUserHighest = highest && highest.bidder_id === CURRENT_USER_ID;
 
   const handleAcceptBid = async (bidId) => {
     try {
       setIsProcessing((prev) => ({ ...prev, [bidId]: true }));
-      // TODO: Uncomment when backend is ready
-      // await bidService.acceptBid(bidId);
-
-      // Mock: Update locally for now
+      // TODO: Wire to backend via bidService.acceptBid
       setLocalBids((prev) =>
         prev.map((b) => (b.id === bidId ? { ...b, status: "accepted" } : b))
       );
       alert("Bid accepted successfully!");
     } catch (error) {
       console.error("Failed to accept bid:", error);
-      alert(error.response?.data?.message || "Failed to accept bid");
+      alert(error?.response?.data?.message || "Failed to accept bid");
     } finally {
       setIsProcessing((prev) => ({ ...prev, [bidId]: false }));
     }
@@ -119,40 +124,27 @@ export default function BidHistory() {
     }
     try {
       setIsProcessing((prev) => ({ ...prev, [bidId]: true }));
-      // await bidService.rejectBid(bidId);
+      // TODO: Wire to backend via bidService.rejectBid
 
-      // Mock: Update locally for now
       setLocalBids((prev) =>
         prev.map((b) => (b.id === bidId ? { ...b, status: "rejected" } : b))
       );
 
-      // Fetch updated blocklist to filter out blocked bidders
-      if (productId) {
-        try {
-          // TODO: Uncomment when backend is ready
-          // const updatedBlocklist = await bidService.getProductBlocklist(productId);
-          // setBlocklist(updatedBlocklist || []);
-
-          // Mock: Add to blocklist locally
-          const rejectedBid = localBids.find((b) => b.id === bidId);
-          if (rejectedBid) {
-            setBlocklist((prev) => [
-              ...prev,
-              {
-                bidder_id: rejectedBid.bidder_id || rejectedBid.name, // Use name as fallback for mock
-                blocked_at: new Date().toISOString(),
-              },
-            ]);
-          }
-        } catch (error) {
-          console.error("Failed to fetch blocklist:", error);
-        }
+      const rejectedBid = localBids.find((b) => b.id === bidId);
+      if (rejectedBid) {
+        setBlocklist((prev) => [
+          ...prev,
+          {
+            bidder_id: rejectedBid.bidder_id || rejectedBid.name,
+            blocked_at: new Date().toISOString(),
+          },
+        ]);
       }
 
       alert("Bid rejected and bidder blocked from this product.");
     } catch (error) {
       console.error("Failed to reject bid:", error);
-      alert(error.response?.data?.message || "Failed to reject bid");
+      alert(error?.response?.data?.message || "Failed to reject bid");
     } finally {
       setIsProcessing((prev) => ({ ...prev, [bidId]: false }));
     }
@@ -164,15 +156,12 @@ export default function BidHistory() {
     }
     try {
       setIsProcessing((prev) => ({ ...prev, [bidderId]: true }));
-      // TODO: Uncomment when backend is ready
-      // await bidService.unblockBidder(productId, bidderId);
-
-      // Mock: Remove from blocklist locally
+      // TODO: Wire to backend via bidService.unblockBidder
       setBlocklist((prev) => prev.filter((b) => b.bidder_id !== bidderId));
       alert("Bidder unblocked successfully!");
     } catch (error) {
       console.error("Failed to unblock bidder:", error);
-      alert(error.response?.data?.message || "Failed to unblock bidder");
+      alert(error?.response?.data?.message || "Failed to unblock bidder");
     } finally {
       setIsProcessing((prev) => ({ ...prev, [bidderId]: false }));
     }
@@ -182,7 +171,7 @@ export default function BidHistory() {
     return (
       <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
         <span style={{ fontSize: TYPOGRAPHY.SIZE_LABEL, color: COLORS.PEBBLE }}>
-          {rating.toFixed(1)} stars
+          {rating.toFixed(1)}
         </span>
         <span style={{ fontSize: TYPOGRAPHY.SIZE_LABEL, color: "#FBBF24" }}>
           ★
@@ -222,9 +211,7 @@ export default function BidHistory() {
               color: COLORS.PEBBLE,
               margin: 0,
             }}
-          >
-            Latest bids for this auction. Bidder names are masked for privacy.
-          </p>
+          ></p>
         </div>
         <div
           style={{
@@ -326,6 +313,36 @@ export default function BidHistory() {
               >
                 Time
               </th>
+              <th
+                style={{
+                  paddingLeft: SPACING.M,
+                  paddingRight: SPACING.M,
+                  paddingTop: SPACING.M,
+                  paddingBottom: SPACING.M,
+                  textAlign: "left",
+                  fontSize: TYPOGRAPHY.SIZE_LABEL,
+                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                  color: COLORS.MIDNIGHT_ASH,
+                }}
+              >
+                Status
+              </th>
+              {isSeller && (
+                <th
+                  style={{
+                    paddingLeft: SPACING.M,
+                    paddingRight: SPACING.M,
+                    paddingTop: SPACING.M,
+                    paddingBottom: SPACING.M,
+                    textAlign: "right",
+                    fontSize: TYPOGRAPHY.SIZE_LABEL,
+                    fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                    color: COLORS.MIDNIGHT_ASH,
+                  }}
+                >
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -363,9 +380,7 @@ export default function BidHistory() {
                       <div
                         style={{
                           fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                          color: isHighest
-                            ? COLORS.MIDNIGHT_ASH
-                            : COLORS.MIDNIGHT_ASH,
+                          color: COLORS.MIDNIGHT_ASH,
                         }}
                       >
                         {maskName(bid.name)}{" "}
@@ -375,7 +390,7 @@ export default function BidHistory() {
                               marginLeft: SPACING.S,
                               fontSize: TYPOGRAPHY.SIZE_LABEL,
                               fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                              color: "#4F46E5",
+                              color: COLORS.PEBBLE,
                             }}
                           >
                             (Highest)
@@ -427,14 +442,250 @@ export default function BidHistory() {
                       color: COLORS.PEBBLE,
                     }}
                   >
-                    {new Date(bid.time).toLocaleString()}
+                    {formatTimeAgo(bid.time)}
                   </td>
+                  <td
+                    style={{
+                      paddingLeft: SPACING.M,
+                      paddingRight: SPACING.M,
+                      paddingTop: SPACING.M,
+                      paddingBottom: SPACING.M,
+                      fontSize: TYPOGRAPHY.SIZE_LABEL,
+                    }}
+                  >
+                    {/* {bid.status === "accepted" && (
+                      <span
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: BORDER_RADIUS.FULL,
+                          backgroundColor: "#DCFCE7",
+                          color: "#166534",
+                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                          fontSize: TYPOGRAPHY.SIZE_LABEL,
+                        }}
+                      >
+                        Accepted
+                      </span>
+                    )} */}
+                    {bid.status === "rejected" && (
+                      <span
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: BORDER_RADIUS.FULL,
+                          backgroundColor: "#FEE2E2",
+                          color: "#991B1B",
+                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                          fontSize: TYPOGRAPHY.SIZE_LABEL,
+                        }}
+                      >
+                        Rejected
+                      </span>
+                    )}
+                    {bid.status === "pending" && (
+                      <span
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: BORDER_RADIUS.FULL,
+                          backgroundColor: "#FEF9C3",
+                          color: "#854D0E",
+                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                          fontSize: TYPOGRAPHY.SIZE_LABEL,
+                        }}
+                      >
+                        Pending
+                      </span>
+                    )}
+                  </td>
+                  {isSeller && (
+                    <td
+                      style={{
+                        paddingLeft: SPACING.M,
+                        paddingRight: SPACING.M,
+                        paddingTop: SPACING.M,
+                        paddingBottom: SPACING.M,
+                        fontSize: TYPOGRAPHY.SIZE_LABEL,
+                        textAlign: "right",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {bid.status === "pending" ? (
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: SPACING.S,
+                            justifyContent: "flex-end",
+                          }}
+                        >
+                          {/* <button
+                            type="button"
+                            onClick={() => handleAcceptBid(bid.id)}
+                            disabled={!!isProcessing[bid.id]}
+                            style={{
+                              padding: "6px 12px",
+                              borderRadius: BORDER_RADIUS.FULL,
+                              border: "none",
+                              backgroundColor: "#16A34A",
+                              color: COLORS.WHITE,
+                              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                              cursor: isProcessing[bid.id]
+                                ? "not-allowed"
+                                : "pointer",
+                              opacity: isProcessing[bid.id] ? 0.7 : 1,
+                            }}
+                          >
+                            {isProcessing[bid.id] ? "..." : "Accept"}
+                          </button> */}
+                          <button
+                            type="button"
+                            onClick={() => handleRejectBid(bid.id)}
+                            disabled={!!isProcessing[bid.id]}
+                            style={{
+                              padding: "6px 12px",
+                              borderRadius: BORDER_RADIUS.FULL,
+                              border: "none",
+                              backgroundColor: "#DC2626",
+                              color: COLORS.WHITE,
+                              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                              cursor: isProcessing[bid.id]
+                                ? "not-allowed"
+                                : "pointer",
+                              opacity: isProcessing[bid.id] ? 0.7 : 1,
+                            }}
+                          >
+                            {isProcessing[bid.id] ? "..." : "Reject"}
+                          </button>
+                        </div>
+                      ) : (
+                        <span style={{ color: COLORS.PEBBLE }}>—</span>
+                      )}
+                    </td>
+                  )}
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+
+      {isSeller && (
+        <div
+          style={{
+            marginTop: SPACING.XL,
+            paddingTop: SPACING.XL,
+            borderTop: `1px solid ${COLORS.MORNING_MIST}`,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: SPACING.M,
+            }}
+          >
+            <h3
+              style={{
+                fontSize: TYPOGRAPHY.SIZE_HEADING_XS,
+                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                color: COLORS.MIDNIGHT_ASH,
+                margin: 0,
+              }}
+            >
+              Blocked bidders ({blocklist.length})
+            </h3>
+            <button
+              type="button"
+              onClick={() => setShowBlocklist((v) => !v)}
+              style={{
+                padding: "6px 12px",
+                borderRadius: BORDER_RADIUS.FULL,
+                backgroundColor: COLORS.WHITE,
+                color: COLORS.MIDNIGHT_ASH,
+                cursor: "pointer",
+              }}
+            >
+              {showBlocklist ? "Hide" : "Show"}
+            </button>
+          </div>
+
+          {showBlocklist && (
+            <div
+              style={{
+                display: "grid",
+                gap: SPACING.S,
+                backgroundColor: COLORS.SOFT_CLOUD,
+                borderRadius: BORDER_RADIUS.MD,
+              }}
+            >
+              {blocklist.length === 0 ? (
+                <span
+                  style={{
+                    color: COLORS.PEBBLE,
+                    fontSize: TYPOGRAPHY.SIZE_LABEL,
+                  }}
+                >
+                  No blocked bidders
+                </span>
+              ) : (
+                blocklist.map((blocked) => (
+                  <div
+                    key={blocked.bidder_id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      backgroundColor: COLORS.WHITE,
+                      borderRadius: BORDER_RADIUS.SM,
+                      boxShadow: SHADOWS.XS,
+                    }}
+                  >
+                    <div>
+                      <div
+                        style={{
+                          fontSize: TYPOGRAPHY.SIZE_BODY,
+                          color: COLORS.MIDNIGHT_ASH,
+                          fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
+                        }}
+                      >
+                        {maskName(blocked.bidder_id)}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: TYPOGRAPHY.SIZE_LABEL,
+                          color: COLORS.PEBBLE,
+                        }}
+                      >
+                        Blocked on{" "}
+                        {new Date(blocked.blocked_at).toLocaleString()}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleUnblockBidder(blocked.bidder_id)}
+                      disabled={!!isProcessing[blocked.bidder_id]}
+                      style={{
+                        padding: "6px 12px",
+                        borderRadius: BORDER_RADIUS.FULL,
+                        border: "none",
+                        backgroundColor: COLORS.MIDNIGHT_ASH,
+                        color: COLORS.WHITE,
+                        fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                        fontSize: TYPOGRAPHY.SIZE_LABEL,
+                        cursor: isProcessing[blocked.bidder_id]
+                          ? "not-allowed"
+                          : "pointer",
+                        opacity: isProcessing[blocked.bidder_id] ? 0.7 : 1,
+                      }}
+                    >
+                      {isProcessing[blocked.bidder_id] ? "..." : "Unblock"}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </>
   );
 }

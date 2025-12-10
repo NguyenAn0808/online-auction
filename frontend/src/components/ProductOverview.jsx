@@ -17,7 +17,22 @@ import { StarIcon } from "@heroicons/react/20/solid";
 import { HeartIcon, MinusIcon, PlusIcon } from "@heroicons/react/24/outline";
 import BiddingQuickView from "./BiddingQuickView";
 import EditProductModal from "./EditProductModal";
+import EditDescriptionModal from "./EditDescriptionModal";
 import { productService } from "../services/productService";
+
+// Mock function to get all descriptions for a product
+function getProductDescriptions(productId) {
+  if (!productId) return [];
+  const storageKey = `product_descriptions_${productId}`;
+  const stored = localStorage.getItem(storageKey);
+  try {
+    return stored ? JSON.parse(stored) : [];
+  } catch (e) {
+    console.warn("Failed to parse descriptions:", e);
+    return [];
+  }
+}
+
 const product = {
   name: "Zip Tote Basket",
   price: "$140",
@@ -45,7 +60,7 @@ const product = {
     },
   ],
   description: `
-    <p>The Zip Tote Basket is the perfect midpoint between shopping tote and comfy backpack. With convertible straps, you can hand carry, should sling, or backpack this convenient and spacious bag. The zip top and durable canvas construction keeps your goods protected for all-day use.</p>
+    The Zip Tote Basket is the perfect midpoint between shopping tote and comfy backpack. With convertible straps, you can hand carry, should sling, or backpack this convenient and spacious bag. The zip top and durable canvas construction keeps your goods protected for all-day use.
   `,
   details: [
     {
@@ -80,6 +95,7 @@ function classNames(...classes) {
 export default function ProductOverview() {
   const [product, setProduct] = useState(null);
   const [selectedColor, setSelectedColor] = useState(null);
+  const [productDescriptions, setProductDescriptions] = useState([]);
 
   const [inWatchlist, setInWatchlist] = useState(false);
   const navigate = useNavigate();
@@ -88,6 +104,7 @@ export default function ProductOverview() {
   const [isEnded, setIsEnded] = useState(false);
   const [isWinner, setIsWinner] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isEditDescOpen, setIsEditDescOpen] = useState(false);
 
   const openBidQuickView = () => {
     setShowBidQuickView(true);
@@ -95,6 +112,8 @@ export default function ProductOverview() {
   const closeBidQuickView = () => setShowBidQuickView(false);
   const openEdit = () => setIsEditOpen(true);
   const closeEdit = () => setIsEditOpen(false);
+  const openEditDesc = () => setIsEditDescOpen(true);
+  const closeEditDesc = () => setIsEditDescOpen(false);
 
   const handleUpdateProduct = async (productId, data) => {
     const payload = {
@@ -110,11 +129,23 @@ export default function ProductOverview() {
     alert("Product updated successfully!");
   };
 
+  const handleUpdateDescription = async (productId, data) => {
+    // Mock: Just show success message
+    console.log("Description added:", data);
+    alert("Description added successfully!");
+  };
+
   useEffect(() => {
     const p = productService.getProduct();
     setProduct(p);
     setSelectedColor(p?.colors?.[0] || null);
     if (p && p.id) setInWatchlist(watchlistService.isInWatchlist(p.id));
+
+    // Load all descriptions for this product
+    if (p && p.id) {
+      const descs = getProductDescriptions(p.id);
+      setProductDescriptions(descs);
+    }
 
     if (p) {
       const ended = new Date(p.dueTime) <= new Date();
@@ -131,7 +162,7 @@ export default function ProductOverview() {
   if (!product) return null;
 
   return (
-    <div className="bg-white">
+    <div className="bg-whisper">
       <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-24 lg:max-w-7xl lg:px-8">
         <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-8">
           {/* Image gallery */}
@@ -142,7 +173,7 @@ export default function ProductOverview() {
                 {product.images.map((image) => (
                   <Tab
                     key={image.id}
-                    className="group relative flex h-24 cursor-pointer items-center justify-center rounded-md bg-white text-sm font-medium text-gray-900 uppercase hover:bg-gray-50 focus:ring-3 focus:ring-indigo-500/50 focus:ring-offset-4 focus:outline-hidden"
+                    className="group relative flex h-24 cursor-pointer items-center justify-center rounded-md bg-white text-sm font-medium text-gray-900 uppercase hover:bg-gray-50 focus:ring-3 focus:ring-gray-900/50 focus:ring-offset-4 focus:outline-hidden"
                   >
                     <span className="sr-only">{image.name}</span>
                     <span className="absolute inset-0 overflow-hidden rounded-md">
@@ -154,7 +185,7 @@ export default function ProductOverview() {
                     </span>
                     <span
                       aria-hidden="true"
-                      className="pointer-events-none absolute inset-0 rounded-md ring-2 ring-transparent ring-offset-2 group-data-selected:ring-indigo-500"
+                      className="pointer-events-none absolute inset-0 rounded-md ring-2 ring-transparent ring-offset-2 group-data-selected:ring-gray-900 group-hover:ring-gray-300"
                     />
                   </Tab>
                 ))}
@@ -233,7 +264,7 @@ export default function ProductOverview() {
                       aria-hidden="true"
                       className={classNames(
                         product.rating > rating
-                          ? "text-indigo-500"
+                          ? "text-yellow-500"
                           : "text-gray-300",
                         "size-5 shrink-0"
                       )}
@@ -281,13 +312,74 @@ export default function ProductOverview() {
               </div>
             </div>
 
-            <div className="mt-6">
-              <h3 className="sr-only">Description</h3>
+            <div className="mt-6 space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Product Description
+                </h3>
+                <button
+                  type="button"
+                  onClick={openEditDesc}
+                  className="text-sm font-medium text-midnight-ash hover:text-pebble underline"
+                >
+                  + Add more details
+                </button>
+              </div>
 
-              <div
-                dangerouslySetInnerHTML={{ __html: product.description }}
-                className="space-y-6 text-base text-gray-700"
-              />
+              {/* Display all descriptions in timeline format */}
+              <div className="space-y-4">
+                {productDescriptions.length === 0 ? (
+                  <div
+                    dangerouslySetInnerHTML={{ __html: product.description }}
+                    className="space-y-6 text-base text-gray-700"
+                  />
+                ) : (
+                  productDescriptions.map((desc, index) => (
+                    <div
+                      key={desc.id}
+                      className="relative pl-8 border-l-2 border-gray-300 pb-8 last:pb-0"
+                    >
+                      {/* Timeline dot */}
+                      <div className="absolute -left-1 top-1 w-2 h-2 bg-morning-mist rounded-full"></div>
+
+                      {/* Description content */}
+                      <div className="space-y-2 bg-white py-1 px-2 rounded-md border-1 border-gray-200">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="text-xs text-gray-500 space-y-1">
+                              <div className="font-semibold text-gray-900 text-sm">
+                                {"At "}
+
+                                {new Date(desc.timestamp).toLocaleDateString({
+                                  weekday: "long",
+                                  year: "numeric",
+                                  month: "long",
+                                })}
+                              </div>
+                            </div>
+                            {desc.type === "initial" && (
+                              <span className="text-xs bg-whisper text-pebble px-2 py-1 rounded font-medium">
+                                Original
+                              </span>
+                            )}
+                            {desc.type === "supplement" && (
+                              <span className="text-xs bg-gray-100 text-morning-mist px-2 py-1 rounded font-medium">
+                                Added
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Render HTML content from WYSIWYG editor */}
+                        <div
+                          className="text-base text-gray-700 text-sm leading-relaxed [&_p]:mb-4 [&_strong]:font-bold [&_em]:italic [&_u]:underline [&_ol]:list-decimal [&_ol]:list-inside [&_ul]:list-disc [&_ul]:list-inside [&_a]:text-blue-600 [&_a]:underline"
+                          dangerouslySetInnerHTML={{ __html: desc.content }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
 
             <form className="mt-6">
@@ -497,7 +589,7 @@ export default function ProductOverview() {
                   <Disclosure key={detail.name} as="div">
                     <h3>
                       <DisclosureButton className="group relative flex w-full items-center justify-between py-6 text-left">
-                        <span className="text-sm font-medium text-gray-900 group-data-open:text-indigo-600">
+                        <span className="text-sm font-medium text-gray-900 group-data-open:text-gray-900">
                           {detail.name}
                         </span>
                         <span className="ml-6 flex items-center">
@@ -507,7 +599,7 @@ export default function ProductOverview() {
                           />
                           <MinusIcon
                             aria-hidden="true"
-                            className="hidden size-6 text-indigo-400 group-hover:text-indigo-500 group-data-open:block"
+                            className="hidden size-6 text-gray-900 group-hover:text-gray-700 group-data-open:block"
                           />
                         </span>
                       </DisclosureButton>
@@ -566,6 +658,18 @@ export default function ProductOverview() {
           ],
         }}
         onUpdate={handleUpdateProduct}
+      />
+      {/* Edit description modal (controlled) */}
+      <EditDescriptionModal
+        isOpen={isEditDescOpen}
+        onClose={closeEditDesc}
+        product={{
+          id: product?.id || "550e8400-e29b-41d4-a716-446655440000",
+          name: product?.name,
+          description: product?.description,
+          postedAt: product?.postedAt,
+        }}
+        onUpdate={handleUpdateDescription}
       />
     </div>
   );

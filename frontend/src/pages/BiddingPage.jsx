@@ -8,7 +8,7 @@ export const BiddingPage = () => {
   return (
     <>
       <Header />
-      <div style={{ backgroundColor: COLORS.WHITE }}>
+      <div style={{ backgroundColor: COLORS.WHISPER }}>
         <div
           style={{
             marginLeft: "auto",

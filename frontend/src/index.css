@@ -136,7 +136,7 @@ button {
 
 /* Secondary Button - Cancel/View More */
 .btn-secondary {
-  background-color: transparent;
+  background-color: white;
   color: var(--midnight-ash);
   padding: 12px 24px;
   border-radius: 6px;
@@ -146,7 +146,7 @@ button {
 }
 
 .btn-secondary:hover {
-  background-color: var(--whisper);
+  background-color: var(--morning-mist);
 }
 
 /* Outline Button */
@@ -440,7 +440,7 @@ button {
   background-color: var(--pebble);
 }
 
-.bg-midnight {
+.bg-midnight-ash {
   background-color: var(--midnight-ash);
 }
 
@@ -461,7 +461,7 @@ button {
   color: var(--pebble);
 }
 
-.text-midnight {
+.text-midnight-ash {
   color: var(--midnight-ash);
 }
 
@@ -482,7 +482,7 @@ button {
   border-color: var(--pebble);
 }
 
-.border-midnight {
+.border-midnight-ash {
   border-color: var(--midnight-ash);
 }
 
@@ -845,7 +845,7 @@ button {
 
 .pagination-btn:hover:not(:disabled) {
   border-color: var(--midnight-ash);
-  background-color: var(--whisper);
+  background-color: var(--gray-100);
 }
 
 .pagination-btn-active {

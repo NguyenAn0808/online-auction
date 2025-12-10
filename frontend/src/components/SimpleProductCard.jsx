@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import watchlistService from "../services/watchlistService";
 
 const SimpleProductCard = ({ product }) => {
   const [isWatchlist, setIsWatchlist] = useState(false);
@@ -19,6 +20,12 @@ const SimpleProductCard = ({ product }) => {
     product?.images?.[0]?.image_url ||
     "/images/sample.jpg";
 
+  useEffect(() => {
+    if (productId) {
+      setIsWatchlist(watchlistService.isInWatchlist(productId));
+    }
+  }, [productId]);
+
   const handleCardClick = () => {
     if (productId) {
       navigate(`/products/${productId}`);
@@ -27,10 +34,18 @@ const SimpleProductCard = ({ product }) => {
 
   const handleWatchlistClick = (e) => {
     e.stopPropagation();
-    // TODO: Implement API call to POST /watchlist
+    if (isWatchlist) {
+      watchlistService.removeFromWatchlist(productId);
+    } else {
+      watchlistService.addToWatchlist({
+        id: productId,
+        name: productName,
+        images: product?.images || [],
+        price: displayPrice,
+      });
+    }
     setIsWatchlist(!isWatchlist);
   };
-
   return (
     <div
       className="product-card !p-0"
@@ -38,22 +53,21 @@ const SimpleProductCard = ({ product }) => {
       onClick={handleCardClick}
     >
       {/* Product Image */}
-      <div className="product-image ">
+      <div className="relative w-48 h-48 flex-shrink-0">
         <img
           src={thumbnail}
           alt={productName || "Product"}
-          className="w-full h-full object-cover rounded-t-lg"
+          className="product-image"
         />
-
         {/* Watchlist Button */}
         <button
           onClick={handleWatchlistClick}
           className={`btn-watchlist ${isWatchlist ? "active" : ""}`}
-          aria-label="Add to watchlists"
+          aria-label="Add to watchlist"
         >
           <svg
             viewBox="0 0 24 24"
-            className="sm:w-6 sm:h-6"
+            fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
             <path d="M7 2C3.15265 2 1 5.07874 1 8.21053C1 10.4032 2.2622 12.083 3.27074 13.1579L11.2707 21.6842C11.4598 21.8857 11.7237 22 12 22C12.2763 22 12.5402 21.8857 12.7293 21.6842L20.7293 13.1579C21.7378 12.083 23 10.4032 23 8.21053C23 5.07874 20.8473 2 17 2C16.1223 2 15.2016 2.14991 14.2134 2.68203C13.4883 3.07246 12.7609 3.65031 12 4.46722C11.2391 3.65031 10.5117 3.07246 9.7866 2.68203C8.79839 2.14991 7.87768 2 7 2Z" />

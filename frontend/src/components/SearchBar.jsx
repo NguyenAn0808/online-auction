@@ -10,7 +10,7 @@ const SearchBar = ({ value, onChange, onSearch, placeholder, onKeyDown }) => (
     />
     <button
       onClick={onSearch}
-      className="px-6 py-2.5 !bg-blue-600 text-white rounded-full font-medium text-sm"
+      className="px-6 py-2.5 btn-primary text-white !rounded-full font-medium text-sm"
     >
       Search
     </button>

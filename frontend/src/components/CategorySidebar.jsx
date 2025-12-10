@@ -57,13 +57,11 @@ const CategorySidebar = () => {
 
   return (
     <div className="w-64 bg-white border border-gray-200 rounded-lg p-4">
-      <h3 className="text-lg font-bold mb-4">Category</h3>
-
       {/* All Categories */}
       <button
         onClick={() => handleCategoryClick(null)}
-        className={`w-full text-left px-3 py-2 rounded-md transition hover:bg-gray-50 ${
-          isAllActive ? "!font-semibold !bg-gray-200 !text-gray-900" : ""
+        className={`w-full text-left px-3 py-2 rounded-md transition hover:bg-soft-cloud hover:text-pebble ${
+          isAllActive ? "!font-semibold bg-soft-cloud text-midnight-ash" : ""
         }`}
       >
         All
@@ -83,9 +81,9 @@ const CategorySidebar = () => {
               {/* Parent Category */}
               <button
                 onClick={() => handleCategoryClick(parentId)}
-                className={`w-full text-left px-3 py-2 rounded-md transition hover:bg-gray-50 focus:outline-none ${
+                className={`w-full text-left px-3 py-2 rounded-md transition hover:bg-soft-cloud hover:text-pebble focus:outline-none ${
                   isActive(parentId)
-                    ? "!font-semibold !bg-gray-200 !text-gray-900"
+                    ? "!font-semibold bg-soft-cloud text-midnight-ash"
                     : ""
                 }`}
               >
@@ -102,9 +100,9 @@ const CategorySidebar = () => {
                       <button
                         key={childId}
                         onClick={() => handleCategoryClick(childId)}
-                        className={`w-full text-left px-3 py-2 rounded-md transition text-sm hover:bg-gray-50 focus:outline-none ${
+                        className={`w-full text-left px-3 py-2 rounded-md transition text-sm hover:bg-soft-cloud hover:text-pebble focus:outline-none ${
                           isActive(childId)
-                            ? "!font-semibold !bg-gray-200 !text-gray-900"
+                            ? "!font-semibold bg-soft-cloud text-midnight-ash"
                             : ""
                         }`}
                       >

@@ -128,9 +128,9 @@ const Menu = () => {
                       setShowMenu(false);
                       setHoverParentId(null);
                     }}
-                    className={`w-full text-left px-3 py-2 rounded-md transition hover:bg-gray-100 ${
+                    className={`w-full text-left px-3 py-2 rounded-md transition hover:bg-soft-cloud ${
                       hoverParentId === (parent.id || parent._id)
-                        ? "bg-gray-100"
+                        ? "bg-whisper text-pebble"
                         : ""
                     }`}
                   >
@@ -158,7 +158,7 @@ const Menu = () => {
                         setShowMenu(false);
                         setHoverParentId(null);
                       }}
-                      className="w-full text-left px-3 py-2 rounded-md transition hover:bg-blue-50"
+                      className="w-full text-left px-3 py-2 rounded-md transition hover:bg-soft-cloud"
                     >
                       <span className="text-sm text-gray-700">
                         {child.name}

@@ -48,16 +48,6 @@ export const BidderProfilePage = () => {
                     padding: SPACING.L,
                   }}
                 >
-                  <h2
-                    style={{
-                      fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
-                      fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
-                      color: COLORS.MIDNIGHT_ASH,
-                      marginBottom: SPACING.M,
-                    }}
-                  >
-                    Profile
-                  </h2>
                   <BidderProfile />
                 </div>
               </section>

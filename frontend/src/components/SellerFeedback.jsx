@@ -40,7 +40,7 @@ const seller = {
 
 function SellerInfo({ seller }) {
   return (
-    <div style={{ marginBottom: SPACING.L, backgroundColor: COLORS.WHITE }}>
+    <div style={{ marginBottom: SPACING.L }}>
       <div
         style={{
           display: "flex",

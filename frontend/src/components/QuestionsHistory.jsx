@@ -97,6 +97,7 @@ export default function QuestionsHistory() {
               color: COLORS.MIDNIGHT_ASH,
               fontFamily: "inherit",
               transition: "border-color 0.2s ease",
+              backgroundColor: COLORS.WHITE,
             }}
             onFocus={(e) => {
               e.target.style.borderColor = COLORS.MIDNIGHT_ASH;

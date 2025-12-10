@@ -22,7 +22,7 @@ const SimpleProductList = ({ title, products = [], limit = 5 }) => {
         <h2 className="text-2xl text-center font-bold my-3">{title}</h2>
 
         <div className="flex justify-center px-4 py-2">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+          <div className="grid sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
             {limitedProducts.map((product) => (
               <SimpleProductCard key={product.id} product={product} />
             ))}
