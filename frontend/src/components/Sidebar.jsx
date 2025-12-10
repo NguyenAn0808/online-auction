@@ -30,7 +30,7 @@ export default function Sidebar() {
     },
     {
       name: "Selling Request",
-      to: `/selling-request`,
+      to: `/upgrade-requests`,
       icon: CurrencyDollarIcon,
     },
   ];

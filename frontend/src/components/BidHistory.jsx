@@ -17,6 +17,29 @@ function getUserName(userId) {
   return user?.fullname || "Unknown";
 }
 
+// Fallbacks for demo/dev: some components assume globals like CURRENT_USER_ID / CURRENT_USER_NAME
+// Provide safe defaults from localStorage to avoid ReferenceError in dev environment.
+const CURRENT_USER_ID = (() => {
+  try {
+    return (
+      localStorage.getItem("userId") || localStorage.getItem("userName") || null
+    );
+  } catch (e) {
+    return null;
+  }
+})();
+
+const CURRENT_USER_NAME = (() => {
+  try {
+    return localStorage.getItem("userName") || null;
+  } catch (e) {
+    return null;
+  }
+})();
+
+// Minimal usersData mock to prevent runtime errors in demo mode when user service is not wired.
+const usersData = window.__USERS_DATA__ || [];
+
 // Helper to format time ago
 function formatTimeAgo(dateString) {
   const date = new Date(dateString);

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import CategorySidebar from "../components/CategorySidebar";
 import SortBar from "../components/SortBar";
@@ -12,6 +12,7 @@ import categoriesMock from "../data/categories.json";
 
 const ProductListingPage = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -117,6 +118,51 @@ const ProductListingPage = () => {
 
           setProducts(list);
           setTotalPages(Math.ceil(list.length / 5) || 1);
+
+          // Inject demo Zip Tote product into listing under Fashion category
+          try {
+            const demo = productService.getProduct();
+            const demoId = "1";
+            const already = list.find((p) => p.id === demoId);
+            if (!already) {
+              const demoEntry = {
+                id: demoId,
+                seller_id: demo.seller?.id || "s-demo",
+                category_id: "22222222-2222-2222-2222-222222222221", // Fashion parent category
+                name: demo.name || "Zip Tote Basket",
+                description: demo.description || "",
+                start_price: demo.price || 0,
+                step_price: demo.minIncrement || 0,
+                current_price: demo.highestBid || demo.price || 0,
+                buy_now_price: demo.buyNowPrice || null,
+                start_time: demo.postedAt || new Date().toISOString(),
+                end_time:
+                  demo.dueTime || demo.postedAt || new Date().toISOString(),
+                status: "ACTIVE",
+                allow_unrated_bidder: !!demo.seller?.allowUnratedBuyers,
+                auto_extend: false,
+                bid_count: (demo.bids && demo.bids.length) || 0,
+                highest_bidder_id: demo.highestBidder?.name || "",
+                posted_date: demo.postedAt || new Date().toISOString(),
+                images: (demo.images || []).map((img, idx) => ({
+                  id: `img-demo-${idx}`,
+                  product_id: demoId,
+                  is_thumbnail: idx === 0,
+                  image_url: img.src || img.url || img.imageSrc || "",
+                  position: idx + 1,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                })),
+              };
+
+              // put demo at the front so it's visible
+              list.unshift(demoEntry);
+              setProducts(list);
+              setTotalPages(Math.ceil(list.length / 5) || 1);
+            }
+          } catch (e) {
+            console.warn("Failed to inject demo product:", e);
+          }
         } else {
           const params = {};
           if (categoryId) params.category_id = categoryId;
@@ -207,9 +253,35 @@ const ProductListingPage = () => {
               </div>
             ) : currentProducts.length > 0 ? (
               <div className="space-y-4">
-                {currentProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
+                {currentProducts.map((product) => {
+                  const handleClick = () => {
+                    // If this is the demo Zip Tote, mark the current user as the highest bidder for demo
+                    if (product.id === "prod-1") {
+                      try {
+                        const demo = productService.getProduct();
+                        const bidderName =
+                          demo.highestBidder?.name ||
+                          product.highest_bidder_id ||
+                          demo.highestBidder?.name ||
+                          "You";
+                        localStorage.setItem("userName", bidderName);
+                      } catch {
+                        // ignore
+                      }
+                    }
+                    navigate(`/products/${product.id}`);
+                  };
+
+                  return (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      onClick={handleClick}
+                      onPlaceBid={() => navigate(`/bids/${product.id}`)}
+                      onBuyNow={() => navigate(`/orders/${product.id}`)}
+                    />
+                  );
+                })}
               </div>
             ) : (
               <div className="flex justify-center items-center min-h-[40vh]">

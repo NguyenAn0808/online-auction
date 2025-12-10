@@ -279,7 +279,7 @@ export function reset() {
   createDemo();
 }
 
-const productService = {
+export const productService = {
   getProduct,
   getBidEligibility,
   suggestNextBid,

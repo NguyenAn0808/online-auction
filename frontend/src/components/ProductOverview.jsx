@@ -64,7 +64,6 @@ const product = {
   ],
   dueTime: "2025-12-31T23:59:59Z",
 };
-import productService from "../services/productService";
 import watchlistService from "../services/watchlistService";
 import {
   COLORS,
@@ -88,6 +87,7 @@ export default function ProductOverview() {
   const [showBidQuickView, setShowBidQuickView] = useState(false);
   const [isEnded, setIsEnded] = useState(false);
   const [isWinner, setIsWinner] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const openBidQuickView = () => {
     setShowBidQuickView(true);
@@ -444,6 +444,9 @@ export default function ProductOverview() {
 
                     <button
                       type="button"
+                      onClick={() =>
+                        navigate(`/transactions?productId=${product.id}`)
+                      }
                       style={{
                         backgroundColor: COLORS.MIDNIGHT_ASH,
                         color: COLORS.WHITE,

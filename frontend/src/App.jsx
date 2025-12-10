@@ -4,33 +4,56 @@ import {
   RouterProvider,
   createRoutesFromElements,
 } from "react-router-dom";
+
+// Authentication Pages
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+
+// Layouts
 import MainLayout from "./layouts/MainLayout";
 import AdminLayout from "./layouts/AdminLayout";
+
+// Pages - General
 import HomePage from "./pages/HomePage";
 import NotFoundPage from "./pages/NotFoundPage";
+import Conversation from "./pages/Conversation";
+
+// Pages - Products & Categories
+import ProductListingPage from "./pages/ProductListingPage";
 import ProductDetails from "./pages/ProductDetails";
+// import ProductDetailPage from "./pages/ProductDetailPage"; // Kept commented as per source
+
+// Pages - Buying & Bidding
 import { BiddingPage } from "./pages/BiddingPage";
 import OrderPage from "./pages/OrderPage";
-import { BidderProfilePage } from "./pages/BidderProfilePage";
-import Conversation from "./pages/Conversation";
-import Watchlist from "./pages/Watchlist";
-import Ratings from "./pages/Ratings";
 import BidsOffers from "./pages/BidsOffers";
+import Watchlist from "./pages/Watchlist";
+
+// Pages - User & Profile
+import { BidderProfilePage } from "./pages/BidderProfilePage";
+import Ratings from "./pages/Ratings";
+
+// Pages - Transactions
 import TransactionWizard from "./pages/TransactionWizard";
 import TransactionPage from "./pages/TransactionPage";
 import SellerTransactions from "./pages/SellerTransactions";
-import ProductListingPage from "./pages/ProductListingPage";
+
+// Pages - Selling
 import ListingPage from "./pages/ListingPage";
+import SellingRequestPage from "./pages/SellingRequestPage";
+
+// Pages - Admin
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import CategoryManagementPage from "./pages/CategoryManagementPage";
 import ProductManagementPage from "./pages/ProductManagementPage";
 import UserManagementPage from "./pages/UserManagementPage";
 import SellerUpgradesPage from "./pages/SellerUpgradesPage";
 import SystemSettingsPage from "./pages/SystemSettingsPage";
-import SellingRequestPage from "./pages/SellingRequestPage";
+
+// Services
 import { seedDemo } from "./services/transactionService";
-// import ProductDetailPage from "./pages/ProductDetailPage";
-// import ProductListingPage from "./pages/ProductListingPage";
 
 // Seed demo transactions on app load
 seedDemo();
@@ -38,24 +61,58 @@ seedDemo();
 const router = createBrowserRouter(
   createRoutesFromElements(
     <>
+      {/* Authentication */}
+      <Route path="/auth/*" element={<MainLayout />}>
+        <Route path="signin" element={<Login />} />
+        <Route path="signup" element={<Signup />} />
+        <Route path="forgot-password" element={<ForgotPassword />} />
+        <Route path="reset-password" element={<ResetPassword />} />
+      </Route>
+      {/* --- Main Client Layout --- */}
       <Route path="/" element={<MainLayout />}>
         <Route index element={<HomePage />} />
+
+        {/* Product Routes */}
         <Route path="products" element={<ProductListingPage />} />
         <Route path="products/:productId" element={<ProductDetails />} />
+        <Route path="products/:userId/bidding" element={<BidsOffers />} />
+
+        {/* Bidding & Orders */}
         <Route path="bids/:bidId" element={<BiddingPage />} />
         <Route path="orders/:productId" element={<OrderPage />} />
+
+        {/* User Specific */}
         <Route path="conversations" element={<Conversation />} />
         <Route path="summary/:userId" element={<BidderProfilePage />} />
         <Route path="watchlists/:userId" element={<Watchlist />} />
         <Route path="ratings/:userId" element={<Ratings />} />
-        <Route path="products/:userId/bidding" element={<BidsOffers />} />
+
+        {/* Transactions */}
+        {/* Note: Kept all variations found in source to ensure coverage */}
         <Route path="transactions" element={<TransactionWizard />} />
+        <Route
+          path="transactions/:transactionId"
+          element={<TransactionPage />}
+        />
+        <Route
+          path="transactions-old/:transactionId"
+          element={<TransactionWizard />}
+        />
+
+        {/* Seller Specific inside Main Layout */}
         <Route path="seller/transactions" element={<SellerTransactions />} />
+        <Route path="upgrade-requests" element={<SellingRequestPage />} />
+
+        {/* Catch-all */}
         <Route path="*" element={<NotFoundPage />} />
       </Route>
+
+      {/* --- Specialized Seller Listing Layout --- */}
       <Route path="/sl" element={<MainLayout />}>
         <Route path="listing" element={<ListingPage />} />
       </Route>
+
+      {/* --- Admin Layout --- */}
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<AdminDashboardPage />} />
         <Route path="categories" element={<CategoryManagementPage />} />
@@ -65,33 +122,9 @@ const router = createBrowserRouter(
         <Route path="settings" element={<SystemSettingsPage />} />
       </Route>
     </>
-    <Route path="/" element={<MainLayout />}>
-      <Route index element={<HomePage />} />
-      {/* <Route path="products" element={<ProductListingPage />} />
-      <Route path="products/:productId" element={<ProductDetailPage />} />
-      <Route path="categories/:categoryId" element={<ProductListingPage />} /> */}
-      <Route path="*" element={<NotFoundPage />} />
-      <Route path="products/:productId" element={<ProductDetails />} />
-      <Route path="bids/:bidId" element={<BiddingPage />} />
-      <Route path="orders/:productId" element={<OrderPage />} />
-      <Route path="conversations" element={<Conversation />} />
-      <Route path="summary/:userId" element={<BidderProfilePage />} />
-      <Route path="watchlists/:userId" element={<Watchlist />} />
-      <Route path="ratings/:userId" element={<Ratings />} />
-      <Route path="products/:userId/bidding" element={<BidsOffers />} />
-      <Route path="transactions/:transactionId" element={<TransactionPage />} />
-      <Route
-        path="transactions-old/:transactionId"
-        element={<TransactionWizard />}
-      />
-      <Route path="seller/transactions" element={<SellerTransactions />} />
-      <Route path="selling-request" element={<SellingRequestPage />} />
-    </Route>
   )
 );
 
-function App() {
+export default function App() {
   return <RouterProvider router={router} />;
 }
-
-export default App;
