@@ -1,104 +1,123 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import logo from "../assets/logo.png";
+import { Link } from "react-router-dom";
 import api from "../services/api";
 
-function ForgotPassword() {
-  const navigate = useNavigate();
+export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  const validate = () => {
+    // if (!email) return "Email is required";
+    // const re = /^\S+@\S+\.\S+$/;
+    // if (!re.test(email)) return "Enter a valid email";
+    return null;
+  };
 
   const onSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     setError("");
+    const v = validate();
+    if (v) {
+      setError(v);
+      return;
+    }
     setLoading(true);
-
     try {
-      const response = await api.post("/auth/forgot-password", { email });
-      
-      if (response.data.success) {
-        // Navigate to verify OTP page with email in state
-        navigate("/auth/verify-reset-otp", { 
-          state: { email, expiresIn: response.data.data.expiresIn } 
-        });
-      }
+      await api.post("/auth/forgot-password", { email });
+      setSuccess(true);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to send reset code");
+      const msg =
+        err?.response?.data?.message || err.message || "Request failed";
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="relative min-h-screen bg-white flex items-center justify-center px-4">
-      {/* Logo top-left */}
-      <div className="absolute top-6 left-7">
-        <img src={logo} alt="ebay" className="h-7 w-auto" />
-      </div>
+    <>
+      <div className="flex min-h-full flex-1">
+        <div className="flex flex-1 flex-col justify-center px-4 py-12 sm:px-6 lg:flex-none lg:px-20 xl:px-24">
+          <div className="mx-auto w-full max-w-sm lg:w-96">
+            <div>
+              <Link to="/" className="navbar-logo">
+                eBid
+              </Link>
+              <h2 className="mt-8 text-2xl font-bold tracking-tight text-gray-900">
+                Reset your password
+              </h2>
+              <p className="mt-2 text-sm text-gray-500">
+                Enter your email address and we will send you a link to reset
+                your password.
+              </p>
+            </div>
 
-      <div className="w-full max-w-md">
-        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 text-center">
-          Reset your password
-        </h1>
+            <div className="mt-10">
+              {!success && (
+                <form onSubmit={onSubmit} className="space-y-6">
+                  <div>
+                    <label
+                      htmlFor="email"
+                      className="block text-sm font-medium text-gray-900"
+                    >
+                      Email address
+                    </label>
+                    <div className="mt-2">
+                      <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        required
+                        autoComplete="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-midnight-ash outline-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:outline-midnight-ash sm:text-sm"
+                      />
+                    </div>
+                  </div>
 
-        <p className="text-sm text-gray-600 text-center mb-6">
-          Enter the email address or username associated with your account and
-          we'll send you instructions to reset your password.
-        </p>
+                  {error && <div className="text-red-600 text-sm">{error}</div>}
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4">
-            {error}
+                  <div>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="flex w-full justify-center rounded-md btn-primary px-3 py-1.5 text-sm font-semibold text-white shadow-xs focus-visible:outline-2 focus-visible:outline-midnight-ash"
+                    >
+                      {loading ? "Sending..." : "Send reset link"}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {success && (
+                <div className="rounded-md bg-green-50 p-4">
+                  <p className="text-green-700">
+                    If that email is registered, we've sent a reset link. Check
+                    your inbox.
+                  </p>
+                </div>
+              )}
+
+              <p className="mt-6 text-center text-sm text-gray-500">
+                <Link to="/auth/signin" className="font-semibold ">
+                  Back to Login
+                </Link>
+              </p>
+            </div>
           </div>
-        )}
-
-        <form onSubmit={onSubmit} className="w-full space-y-6">
-          <div>
-            <label htmlFor="email" className="sr-only">
-              Email address
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="block w-full h-12 px-4 text-sm border border-gray-200 rounded-full bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0064d2]"
-              placeholder="Email address"
-              required
-            />
-          </div>
-
-          <button
-            type="submit"
-            className={`w-full h-12 rounded-full font-semibold text-white ${
-              !email || loading
-                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                : "bg-[#0064d2] hover:bg-[#0057b8]"
-            }`}
-            disabled={!email || loading}
-          >
-            {loading ? "Sending..." : "Continue"}
-          </button>
-        </form>
-
-        <div className="flex items-center justify-center my-6">
-          <div className="flex-1 h-px bg-gray-200" />
-          <span className="px-3 text-sm text-gray-400">or</span>
-          <div className="flex-1 h-px bg-gray-200" />
         </div>
 
-        <div className="flex justify-center text-sm text-gray-500 gap-4">
-          <Link to="/auth/signup" className="text-blue-600 hover:underline">
-            Create an account
-          </Link>
-          <Link to="/auth/login" className="text-gray-700 hover:underline">
-            Sign in
-          </Link>
+        <div className="relative hidden w-0 flex-1 lg:block">
+          <img
+            alt="background"
+            src="https://images.unsplash.com/photo-1496917756835-20cb06e75b4e?ixlib=rb-1.2.1&auto=format&fit=crop&w=1908&q=80"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
         </div>
       </div>
-    </div>
+    </>
   );
 }
-
-export default ForgotPassword;

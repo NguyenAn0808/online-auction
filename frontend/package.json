@@ -10,13 +10,20 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.9",
+    "@heroicons/react": "^2.2.0",
+    "@hookform/resolvers": "^5.2.2",
     "@tailwindcss/vite": "^4.1.16",
+    "@tinymce/tinymce-react": "^6.3.0",
     "axios": "^1.13.2",
-    "flowbite": "^3.1.2",
-    "flowbite-react": "^0.12.10",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-router-dom": "^7.9.5"
+    "react-google-recaptcha": "^3.1.0",
+    "react-hook-form": "^7.67.0",
+    "react-router-dom": "^7.9.6",
+    "tailwindcss": "^4.1.16",
+    "tinymce": "^8.3.0",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
