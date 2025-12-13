@@ -7,6 +7,7 @@ backend/
 ├── src/
 │   ├── config/           # Configuration files (database, environment, etc.)
 │   ├── controllers/      # Request handlers and business logic
+│   ├── libs/             # Shared libraries and reusable modules
 │   ├── middleware/       # Handles authentication and authorization logic
 │   ├── models/           # Data models and database schemas
 │   ├── routes/           # Route definitions and endpoint mapping
