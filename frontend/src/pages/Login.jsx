@@ -48,10 +48,9 @@ export default function Login() {
 
   // OAuth redirect helper - explicit mappings
   const oauth = (provider) => {
-    const base = import.meta.env.VITE_API_URL || "http://localhost:3000"; // Fallback to local API port if needed
+    const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"; // Fallback to local API port if needed
     const map = {
       google: "google",
-      github: "github",
       facebook: "facebook",
     };
     const p = map[provider] || provider;
@@ -182,7 +181,7 @@ export default function Login() {
                 </div>
               </div>
 
-              <div className="mt-6 grid grid-cols-3 gap-4">
+              <div className="mt-6 grid grid-cols-2 gap-4">
                 <button
                   onClick={() => oauth("google")}
                   className="flex w-full items-center justify-center gap-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-midnight-ash ring-1 ring-gray-300 ring-inset hover:bg-gray-50 focus-visible:ring-transparent"
@@ -195,21 +194,6 @@ export default function Login() {
                   />
                   <span className="flex-1 text-center text-gray-700">
                     Google
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => oauth("github")}
-                  className="flex w-full items-center justify-center gap-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-gray-300 ring-inset hover:bg-gray-50 focus-visible:ring-transparent"
-                  type="button"
-                >
-                  <img
-                    src="https://www.svgrepo.com/show/448225/github.svg"
-                    alt="GitHub"
-                    className=" w-5 h-5"
-                  />
-                  <span className="flex-1 text-center text-gray-700">
-                    GitHub
                   </span>
                 </button>
 

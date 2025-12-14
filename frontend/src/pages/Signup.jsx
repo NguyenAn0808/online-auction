@@ -19,7 +19,7 @@ export default function Signup() {
   const [otp, setOtp] = useState("");
   const [recaptchaToken, setRecaptchaToken] = useState(null);
 
-  const siteKey = "6LeIxAcTAAAAAJcZVRqyHh7BTLVkzFlt07c_yfM1"; // test key from Google
+  const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
   const verifyOtp = async (email, otp) => {
     return api.post("/auth/verify-otp", { email, otp });
@@ -51,17 +51,16 @@ export default function Signup() {
     try {
       // Send registration to backend (backend should hash password)
       const payload = {
-        name: fullName,
+        fullName: fullName,
         address,
         email,
-        password, // send raw password over HTTPS; backend is responsible for hashing
+        password,
         recaptchaToken,
       };
-      // Debug: log payload without password when debugging reCAPTCHA
       console.log("Signup payload (debug):", {
+        fullName,
         email,
         address,
-        name: fullName,
         recaptchaToken: !!recaptchaToken,
       });
       await api.post("/auth/signup", payload);
@@ -88,7 +87,7 @@ export default function Signup() {
       setStage("done");
       // small delay to let user read message, then navigate to login
       setTimeout(() => {
-        navigate("/auth/login");
+        navigate("/auth/signin");
       }, 900);
     } catch (err) {
       const msg =

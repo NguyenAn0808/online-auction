@@ -1,5 +1,12 @@
 import api from "../services/api";
-import { createContext, useState, useEffect, useContext, useMemo } from "react";
+import {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  useMemo,
+  useCallback,
+} from "react";
 
 const AuthContext = createContext(null);
 
@@ -14,9 +21,14 @@ export const AuthProvider = ({ children }) => {
     // Check if user is logged in on mount
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      setActiveRole(parsedUser.role || "guest");
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        setActiveRole(parsedUser.role || "guest");
+      } catch (err) {
+        console.error("Failed to parse user from storage", err);
+        localStorage.removeItem("user");
+      }
     }
     setLoading(false);
   }, []);
@@ -24,16 +36,13 @@ export const AuthProvider = ({ children }) => {
   // Sync activeRole when user changes
   useEffect(() => {
     if (user) {
-      // If the user is already set, ensure activeRole matches their capability
-      // e.g. If I am 'seller', I start as 'seller'.
-      // This check prevents activeRole from being stuck on 'guest' after login
       if (activeRole === "guest") {
         setActiveRole(user.role);
       }
     } else {
       setActiveRole("guest");
     }
-  }, [user]);
+  }, [user, activeRole]);
 
   const signin = async (login, password) => {
     try {
@@ -57,6 +66,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Oauth
+  const loginWithToken = useCallback((userData, accessToken) => {
+    localStorage.setItem("accessToken", accessToken);
+    localStorage.setItem("user", JSON.stringify(userData));
+    setUser(userData);
+    setActiveRole(userData.role);
+  }, []);
+
   const signup = async (userData) => {
     try {
       const response = await api.post("/auth/register", userData);
@@ -77,6 +94,8 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("user");
       setUser(null);
+      setActiveRole("guest");
+      window.location.href = "/auth/signin";
     }
   };
 
@@ -84,24 +103,24 @@ export const AuthProvider = ({ children }) => {
   const switchRole = (newRole) => {
     if (!user) return;
 
-    // 1. ADMINS: Can switch to anything (God mode)
+    // ADMINS: Can switch to anything
     if (user.role === "admin") {
-      setActiveRole(targetRole);
+      setActiveRole(newRole);
       return;
     }
 
-    // 2. SELLERS: Can ONLY switch to 'bidder' (or back to 'seller')
+    // SELLERS: Can ONLY switch to 'bidder' (or back to 'seller')
     // STRICTLY BLOCK switching to 'admin'
     if (user.role === "seller") {
-      if (targetRole === "bidder" || targetRole === "seller") {
-        setActiveRole(targetRole);
+      if (newRole === "bidder" || newRole === "seller") {
+        setActiveRole(newRole);
       } else {
         console.error("Security Alert: Seller attempted to switch to Admin.");
       }
       return;
     }
 
-    // 3. BIDDERS: Cannot switch to anything
+    // BIDDERS: Cannot switch to anything
     if (user.role === "bidder") {
       console.warn("Bidders cannot switch roles.");
       return;
@@ -117,11 +136,12 @@ export const AuthProvider = ({ children }) => {
       signin,
       signup,
       signout,
+      loginWithToken,
       isAuthenticated: !!user,
       isAdmin: user?.role === "admin",
       isSeller: user?.role === "seller",
     }),
-    [user, loading]
+    [user, loading, activeRole, loginWithToken]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

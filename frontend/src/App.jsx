@@ -54,7 +54,7 @@ import SystemSettingsPage from "./pages/SystemSettingsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 // Services
 import { seedDemo } from "./services/transactionService";
-
+import OAuthCallback from "./pages/OAuthCallback";
 // Seed demo transactions on app load
 seedDemo();
 
@@ -67,6 +67,7 @@ const router = createBrowserRouter(
         <Route path="signup" element={<Signup />} />
         <Route path="forgot-password" element={<ForgotPassword />} />
         <Route path="reset-password" element={<ResetPassword />} />
+        <Route path="callback" element={<OAuthCallback />} />
       </Route>
       {/* --- Main Client Layout --- */}
       <Route path="/" element={<MainLayout />}>

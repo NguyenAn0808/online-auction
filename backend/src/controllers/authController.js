@@ -20,40 +20,30 @@ const generateOTP = () => {
 
 export const signUp = async (req, res) => {
   try {
-    const {
-      username,
-      password,
-      email,
-      fullName,
-      phone,
-      address,
-      birthdate,
-      recaptchaToken,
-    } = req.body;
+    const { password, email, fullName, address, recaptchaToken } = req.body;
 
     // Validation
-    if (!username || !password || !email || !fullName) {
+    if (!password || !email || !fullName) {
       return res.status(400).json({
         success: false,
         message: "Missing required fields",
       });
     }
 
-    // Verify reCAPTCHA (optional in development)
-    // if (config.RECAPTCHA_SECRET_KEY && recaptchaToken) {
-    //   const recaptchaResult = await verifyRecaptcha(recaptchaToken);
+    if (config.RECAPTCHA_SECRET_KEY && recaptchaToken) {
+      const recaptchaResult = await verifyRecaptcha(recaptchaToken);
 
-    //   if (!recaptchaResult.success) {
-    //     return res.status(400).json({
-    //       success: false,
-    //       message: recaptchaResult.error || "reCAPTCHA verification failed",
-    //     });
-    //   }
+      if (!recaptchaResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: recaptchaResult.error || "reCAPTCHA verification failed",
+        });
+      }
 
-    //   console.log(
-    //     `✅ reCAPTCHA verified - Score: ${recaptchaResult.score || "N/A"}`
-    //   );
-    // }
+      console.log(
+        `✅ reCAPTCHA verified - Score: ${recaptchaResult.score || "N/A"}`
+      );
+    }
 
     // Email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -73,15 +63,7 @@ export const signUp = async (req, res) => {
     }
 
     // Check if user exists
-    const duplicate_username = await User.findByUsername(username);
     const duplicate_email = await User.findByEmail(email);
-
-    if (duplicate_username) {
-      return res.status(409).json({
-        success: false,
-        message: "Username already taken",
-      });
-    }
 
     if (duplicate_email) {
       return res.status(409).json({
@@ -97,13 +79,10 @@ export const signUp = async (req, res) => {
     try {
       // Create user with is_verified = false
       newUser = await User.create({
-        username,
         hashedPassword,
         email,
-        phone,
         fullName,
         address,
-        birthdate,
         role: "bidder",
         isVerified: false,
       });
@@ -220,7 +199,6 @@ export const verifyOTP = async (req, res) => {
       data: {
         user: {
           id: verifiedUser.id,
-          username: verifiedUser.username,
           email: verifiedUser.email,
           fullName: verifiedUser.fullName,
           role: verifiedUser.role,
@@ -276,7 +254,13 @@ export const resendOTP = async (req, res) => {
 
     // Delete old OTP and create new one atomically
     await OTP.deleteByEmail(email, purpose);
-    const newOTP = await OTP.create(user.id, email, otpCode, purpose, expiresAt);
+    const newOTP = await OTP.create(
+      user.id,
+      email,
+      otpCode,
+      purpose,
+      expiresAt
+    );
 
     // Send OTP email
     try {
@@ -315,28 +299,21 @@ export const resendOTP = async (req, res) => {
 export const signIn = async (req, res) => {
   try {
     // Get input
-    const { login, password } = req.body; // Login can be username or email
+    const { login, password } = req.body; // Login by email
 
     if (!login || !password) {
       return res.status(400).json({
         success: false,
-        message: "Missing username, email or password",
+        message: "Missing email or password",
       });
     }
 
-    const isEmail = login.includes("@");
-
-    let user;
-    if (isEmail) {
-      user = await User.findByEmail(login);
-    } else {
-      user = await User.findByUsername(login);
-    }
+    const user = await User.findByEmail(login);
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "Invalid username or password",
+        message: "Invalid email or password",
       });
     }
 
@@ -354,13 +331,13 @@ export const signIn = async (req, res) => {
     if (!passwordCorrect) {
       return res.status(401).json({
         success: false,
-        message: "Invalid username or password",
+        message: "Invalid email or password",
       });
     }
 
     // Create access token (JWT)
     const accessToken = jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
+      { id: user.id, email: user.email, role: user.role },
       config.ACCESS_TOKEN_SECRET,
       { expiresIn: ACCESS_TOKEN_TTL }
     );
@@ -389,7 +366,6 @@ export const signIn = async (req, res) => {
       data: {
         user: {
           id: user.id,
-          username: user.username,
           email: user.email,
           fullName: user.fullName,
           role: user.role,
@@ -460,7 +436,7 @@ export const changePassword = async (req, res) => {
     }
 
     // Fetch user from DB
-    const user = await User.findByUsername(req.user.username);
+    const user = await User.findByEmail(req.user.email);
 
     if (!user) {
       return res.status(404).json({
@@ -737,7 +713,7 @@ export const refreshToken = async (req, res) => {
     const accessToken = jwt.sign(
       {
         id: user.id,
-        username: user.username,
+        email: user.email,
         role: user.role,
       },
       config.ACCESS_TOKEN_SECRET,
@@ -773,7 +749,7 @@ export const googleOAuthCallback = async (req, res) => {
 
     // Generate tokens
     const accessToken = jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
+      { id: user.id, email: user.email, role: user.role },
       config.ACCESS_TOKEN_SECRET,
       { expiresIn: ACCESS_TOKEN_TTL }
     );
@@ -797,7 +773,6 @@ export const googleOAuthCallback = async (req, res) => {
     const redirectUrl = `${frontendUrl}/auth/callback?accessToken=${accessToken}&user=${encodeURIComponent(
       JSON.stringify({
         id: user.id,
-        username: user.username,
         email: user.email,
         fullName: user.fullName,
         role: user.role,
@@ -829,7 +804,7 @@ export const facebookOAuthCallback = async (req, res) => {
 
     // Generate tokens
     const accessToken = jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
+      { id: user.id, email: user.email, role: user.role },
       config.ACCESS_TOKEN_SECRET,
       { expiresIn: ACCESS_TOKEN_TTL }
     );
@@ -853,7 +828,6 @@ export const facebookOAuthCallback = async (req, res) => {
     const redirectUrl = `${frontendUrl}/auth/callback?accessToken=${accessToken}&user=${encodeURIComponent(
       JSON.stringify({
         id: user.id,
-        username: user.username,
         email: user.email,
         fullName: user.fullName,
         role: user.role,

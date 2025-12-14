@@ -128,7 +128,6 @@ export default function QuestionsHistory() {
           >
             <button
               type="submit"
-              // Remove disabled check for guest so they can click and trigger the redirect
               disabled={user ? sending || !questionText.trim() : false}
               style={{
                 borderRadius: BORDER_RADIUS.FULL,

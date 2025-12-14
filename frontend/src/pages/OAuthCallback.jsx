@@ -1,24 +1,29 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 function OAuthCallback() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const ranOnce = useRef(false);
 
   useEffect(() => {
-    const accessToken = searchParams.get("accessToken");
-    const userJson = searchParams.get("user");
+    if (ranOnce.current) return;
+    ranOnce.current = true;
+    console.log("🔵 OAuth Callback started...");
+    const params = new URLSearchParams(window.location.search);
+    const accessToken = params.get("accessToken");
+    const userJson = params.get("user");
 
     if (accessToken && userJson) {
       try {
+        console.log("🟢 Tokens found. Saving...");
         const user = JSON.parse(decodeURIComponent(userJson));
 
-        // Store in localStorage
         localStorage.setItem("accessToken", accessToken);
-        localStorage.setItem("user", JSON.stringify(user));
+        // userJson is URI encoded, so we decode it first
+        localStorage.setItem("user", decodeURIComponent(userJson));
 
-        // Redirect to dashboard - the AuthContext will pick up the user from localStorage
-        navigate("/dashboard", { replace: true });
+        window.location.href = "/";
       } catch (error) {
         console.error("Error parsing OAuth callback data:", error);
         navigate("/auth/login", { replace: true });
@@ -27,7 +32,7 @@ function OAuthCallback() {
       // No tokens in URL, redirect to login
       navigate("/auth/login", { replace: true });
     }
-  }, [searchParams, navigate]);
+  }, [navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">
