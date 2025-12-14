@@ -3,6 +3,7 @@ import {
   BookmarkSquareIcon,
   CalendarDaysIcon,
   LifebuoyIcon,
+  ArrowRightStartOnRectangleIcon,
 } from "@heroicons/react/24/outline";
 import {
   COLORS,
@@ -11,7 +12,8 @@ import {
   BORDER_RADIUS,
   SHADOWS,
 } from "../constants/designSystem";
-
+import { useAuth } from "../context/AuthContext"; // 1. Import Hook
+import { useNavigate } from "react-router-dom";
 const resources = [
   {
     name: "Summary",
@@ -64,6 +66,15 @@ const recentMessages = [
 ];
 
 export default function FlyoutMenu({ alignRight = false }) {
+  const { signout } = useAuth(); // 2. Get the signout function
+  const navigate = useNavigate();
+  const handleLogout = async () => {
+    // 3. Call the context function (not the API directly)
+    await signout();
+
+    // 4. Redirect to home or login page
+    navigate("/auth/signin");
+  };
   // alignRight: when true, position the panel to the right of its container (for profile button)
   const containerStyle = alignRight
     ? {
@@ -265,6 +276,60 @@ export default function FlyoutMenu({ alignRight = false }) {
             ))}
           </ul>
         </div>
+        <button
+          onClick={handleLogout}
+          className="group hover:bg-red-50" // Light red hover for logout
+          style={{
+            display: "flex",
+            alignItems: "center",
+            width: "100%",
+            textAlign: "left",
+            border: "none",
+            borderTop: `1px solid ${COLORS.MORNING_MIST}40`,
+            backgroundColor: COLORS.WHITE,
+            cursor: "pointer",
+            padding: SPACING.M,
+            gap: SPACING.L,
+            transition: "background-color 0.2s ease",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              width: "44px",
+              height: "44px",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: BORDER_RADIUS.MEDIUM,
+              backgroundColor: COLORS.SOFT_CLOUD,
+              transition: "background-color 0.2s ease",
+            }}
+            className="group-hover:bg-white"
+          >
+            <ArrowRightStartOnRectangleIcon
+              style={{
+                width: "24px",
+                height: "24px",
+                color: COLORS.PEBBLE,
+                transition: "color 0.2s ease",
+              }}
+              className="group-hover:text-red-600" // Turn red on hover
+            />
+          </div>
+          <div>
+            <div
+              style={{
+                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                color: COLORS.MIDNIGHT_ASH,
+                fontSize: TYPOGRAPHY.SIZE_BODY,
+                transition: "color 0.2s ease",
+              }}
+              className="group-hover:text-red-700"
+            >
+              Sign out
+            </div>
+          </div>
+        </button>
       </div>
     </div>
   );

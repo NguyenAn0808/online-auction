@@ -1,5 +1,5 @@
 "use client";
-
+import { useAuth } from "../context/AuthContext";
 import { useState, useEffect } from "react";
 import {
   Disclosure,
@@ -93,6 +93,7 @@ function classNames(...classes) {
 }
 
 export default function ProductOverview() {
+  const { user } = useAuth(); // Check if user is logged in
   const [product, setProduct] = useState(null);
   const [selectedColor, setSelectedColor] = useState(null);
   const [productDescriptions, setProductDescriptions] = useState([]);
@@ -129,10 +130,39 @@ export default function ProductOverview() {
     alert("Product updated successfully!");
   };
 
+  // 1. Helper Function: Checks login and redirects if needed
+  const requireAuth = (actionCallback) => {
+    if (!user) {
+      // Redirect to Login, remembering the current page
+      navigate("/auth/signin", { state: { from: location } });
+      return;
+    }
+    actionCallback();
+  };
+
   const handleUpdateDescription = async (productId, data) => {
     // Mock: Just show success message
     console.log("Description added:", data);
     alert("Description added successfully!");
+  };
+
+  const handleBidClick = () => {
+    requireAuth(() => {
+      setShowBidQuickView(true);
+    });
+  };
+
+  const handleBuyNow = () => {
+    requireAuth(() => {
+      navigate(`/transactions?productId=${product.id}`);
+    });
+  };
+
+  const handleAddToBag = () => {
+    requireAuth(() => {
+      // Your Add to bag logic here
+      console.log("Added to bag!");
+    });
   };
 
   useEffect(() => {
@@ -484,7 +514,7 @@ export default function ProductOverview() {
                   <>
                     <button
                       type="button"
-                      onClick={openBidQuickView}
+                      onClick={handleBidClick}
                       style={{
                         backgroundColor: COLORS.MIDNIGHT_ASH,
                         color: COLORS.WHITE,
@@ -536,9 +566,7 @@ export default function ProductOverview() {
 
                     <button
                       type="button"
-                      onClick={() =>
-                        navigate(`/transactions?productId=${product.id}`)
-                      }
+                      onClick={handleBuyNow}
                       style={{
                         backgroundColor: COLORS.MIDNIGHT_ASH,
                         color: COLORS.WHITE,
@@ -558,6 +586,7 @@ export default function ProductOverview() {
 
                     <button
                       type="button"
+                      onClick={handleAddToBag}
                       style={{
                         backgroundColor: COLORS.MIDNIGHT_ASH,
                         color: COLORS.WHITE,

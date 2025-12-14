@@ -9,10 +9,11 @@ import SellerFeedback from "../components/SellerFeedback";
 import BidHistory from "../components/BidHistory";
 import QuestionsHistory from "../components/QuestionsHistory";
 import { COLORS, SPACING } from "../constants/designSystem";
-
+import { useAuth } from "../context/AuthContext";
 import { useEffect } from "react";
 
 const ProductDetails = () => {
+  const { user } = useAuth();
   useEffect(() => {
     document.title = "Product Details — eBid";
   }, []);
@@ -69,15 +70,17 @@ const ProductDetails = () => {
           </div>
 
           {/* Bid History Section */}
-          <div
-            style={{
-              paddingTop: SPACING.XXL,
-              paddingBottom: SPACING.XXL,
-              borderTop: `1px solid ${COLORS.MORNING_MIST}20`,
-            }}
-          >
-            <BidHistory />
-          </div>
+          {user && (
+            <div
+              style={{
+                paddingTop: SPACING.XXL,
+                paddingBottom: SPACING.XXL,
+                borderTop: `1px solid ${COLORS.MORNING_MIST}20`,
+              }}
+            >
+              <BidHistory />
+            </div>
+          )}
 
           {/* Questions History Section */}
           <div

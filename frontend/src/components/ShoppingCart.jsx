@@ -38,9 +38,7 @@ const products = [
   // More products...
 ];
 
-export default function ShoppingCart() {
-  const [open, setOpen] = useState(true);
-
+export default function ShoppingCart({ open, setOpen }) {
   return (
     <Dialog open={open} onClose={setOpen} className="relative z-100">
       <DialogBackdrop

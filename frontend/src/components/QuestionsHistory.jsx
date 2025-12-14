@@ -7,11 +7,16 @@ import {
   BORDER_RADIUS,
   SHADOWS,
 } from "../constants/designSystem";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function QuestionsHistory() {
   const [qa, setQa] = useState([]);
   const [questionText, setQuestionText] = useState("");
   const [sending, setSending] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     setQa(productService.getQuestions());
@@ -19,9 +24,15 @@ export default function QuestionsHistory() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!user) {
+      navigate("/auth/signin", { state: { from: location } });
+      return;
+    }
+
     if (!questionText.trim()) return;
     setSending(true);
     const currentUser = localStorage.getItem("userName") || "Anonymous";
+    // Todo Q&A integrate service
     // Add to demo store immediately
     const added = productService.addQuestion({
       question: questionText.trim(),
@@ -117,7 +128,8 @@ export default function QuestionsHistory() {
           >
             <button
               type="submit"
-              disabled={sending || !questionText.trim()}
+              // Remove disabled check for guest so they can click and trigger the redirect
+              disabled={user ? sending || !questionText.trim() : false}
               style={{
                 borderRadius: BORDER_RADIUS.FULL,
                 backgroundColor: COLORS.MIDNIGHT_ASH,

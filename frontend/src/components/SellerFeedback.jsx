@@ -6,7 +6,8 @@ import {
   BORDER_RADIUS,
   SHADOWS,
 } from "../constants/designSystem";
-
+import { useAuth } from "../context/AuthContext";
+import { useNavigate, useLocation } from "react-router-dom";
 const reviews = {
   average: 4,
   totalCount: 1624,
@@ -39,6 +40,25 @@ const seller = {
 };
 
 function SellerInfo({ seller }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const handleChatClick = () => {
+    if (!user) {
+      navigate("/auth/signin", { state: { from: location } });
+      return;
+    }
+
+    if (window && typeof window.openChat === "function") {
+      const product = window.__CURRENT_PRODUCT || null;
+      try {
+        window.openChat({ product });
+      } catch (err) {
+        console.warn("openChat failed", err);
+        window.openChat();
+      }
+    }
+  };
   return (
     <div style={{ marginBottom: SPACING.L }}>
       <div
@@ -132,17 +152,7 @@ function SellerInfo({ seller }) {
             </a>
             <button
               type="button"
-              onClick={() => {
-                if (window && typeof window.openChat === "function") {
-                  const product = window.__CURRENT_PRODUCT || null;
-                  try {
-                    window.openChat({ product });
-                  } catch (err) {
-                    console.warn("openChat failed", err);
-                    window.openChat();
-                  }
-                }
-              }}
+              onClick={handleChatClick}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -177,6 +187,18 @@ function SellerInfo({ seller }) {
 }
 
 export default function SellerFeedback() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const handleWriteReview = (e) => {
+    e.preventDefault();
+    if (!user) {
+      navigate("/auth/signin", { state: { from: location } });
+      return;
+    }
+    // Logic to open review form goes here
+    console.log("Open review form...");
+  };
   return (
     <>
       <div
@@ -344,8 +366,8 @@ export default function SellerFeedback() {
               customers
             </p>
 
-            <a
-              href="#"
+            <button
+              onClick={handleWriteReview}
               style={{
                 marginTop: SPACING.L,
                 display: "inline-flex",
@@ -374,7 +396,7 @@ export default function SellerFeedback() {
               }}
             >
               Write a review
-            </a>
+            </button>
           </div>
         </div>
 

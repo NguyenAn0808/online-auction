@@ -51,7 +51,7 @@ import ProductManagementPage from "./pages/ProductManagementPage";
 import UserManagementPage from "./pages/UserManagementPage";
 import SellerUpgradesPage from "./pages/SellerUpgradesPage";
 import SystemSettingsPage from "./pages/SystemSettingsPage";
-
+import ProtectedRoute from "./components/ProtectedRoute";
 // Services
 import { seedDemo } from "./services/transactionService";
 
@@ -72,54 +72,69 @@ const router = createBrowserRouter(
       <Route path="/" element={<MainLayout />}>
         <Route index element={<HomePage />} />
 
+        {/* PUBLIC ROUTES (Guest, Bidder, Seller) */}
         {/* Product Routes */}
         <Route path="products" element={<ProductListingPage />} />
         <Route path="products/:productId" element={<ProductDetails />} />
-        <Route path="products/:userId/bidding" element={<BidsOffers />} />
 
-        {/* Bidding & Orders */}
-        <Route path="bids/:bidId" element={<BiddingPage />} />
-        <Route path="orders/:productId" element={<OrderPage />} />
-
-        {/* User Specific */}
-        <Route path="conversations" element={<Conversation />} />
-        <Route path="summary/:userId" element={<BidderProfilePage />} />
-        <Route path="watchlists/:userId" element={<Watchlist />} />
-        <Route path="ratings/:userId" element={<Ratings />} />
-
-        {/* Transactions */}
-        {/* Note: Kept all variations found in source to ensure coverage */}
-        <Route path="transactions" element={<TransactionWizard />} />
+        {/* PROTECTED ROUTES (Logged in Users Only - Bidders & Sellers) */}
         <Route
-          path="transactions/:transactionId"
-          element={<TransactionPage />}
-        />
-        <Route
-          path="transactions-old/:transactionId"
-          element={<TransactionWizard />}
-        />
+          element={
+            <ProtectedRoute allowedRoles={["bidder", "seller", "admin"]} />
+          }
+        >
+          <Route path="products/:userId/bidding" element={<BidsOffers />} />
 
-        {/* Seller Specific inside Main Layout */}
-        <Route path="seller/transactions" element={<SellerTransactions />} />
-        <Route path="upgrade-requests" element={<SellingRequestPage />} />
+          {/* Bidding & Orders */}
+          <Route path="bids/:bidId" element={<BiddingPage />} />
+          <Route path="orders/:productId" element={<OrderPage />} />
 
-        {/* Catch-all */}
+          {/* User Specific */}
+          <Route path="conversations" element={<Conversation />} />
+          <Route path="summary/:userId" element={<BidderProfilePage />} />
+          <Route path="watchlists/:userId" element={<Watchlist />} />
+          <Route path="ratings/:userId" element={<Ratings />} />
+          {/* Transactions */}
+          {/* Note: Kept all variations found in source to ensure coverage */}
+          <Route path="transactions" element={<TransactionWizard />} />
+          <Route
+            path="transactions/:transactionId"
+            element={<TransactionPage />}
+          />
+          <Route
+            path="transactions-old/:transactionId"
+            element={<TransactionWizard />}
+          />
+        </Route>
+
+        {/* SELLER ONLY ROUTES */}
+        <Route element={<ProtectedRoute allowedRoles={["seller", "admin"]} />}>
+          <Route path="seller/transactions" element={<SellerTransactions />} />
+          {/* Note: 'upgrade-requests' is typically for Bidders who want to become Sellers, 
+                so it might need 'bidder' access depending on your flow */}
+          <Route path="upgrade-requests" element={<SellingRequestPage />} />
+        </Route>
+
         <Route path="*" element={<NotFoundPage />} />
       </Route>
 
-      {/* --- Specialized Seller Listing Layout --- */}
-      <Route path="/sl" element={<MainLayout />}>
-        <Route path="listing" element={<ListingPage />} />
+      {/* --- Specialized Seller Listing Layout (SELLER ONLY) --- */}
+      <Route element={<ProtectedRoute allowedRoles={["seller", "admin"]} />}>
+        <Route path="/sl" element={<MainLayout />}>
+          <Route path="listing" element={<ListingPage />} />
+        </Route>
       </Route>
 
-      {/* --- Admin Layout --- */}
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<AdminDashboardPage />} />
-        <Route path="categories" element={<CategoryManagementPage />} />
-        <Route path="products" element={<ProductManagementPage />} />
-        <Route path="users" element={<UserManagementPage />} />
-        <Route path="seller-upgrades" element={<SellerUpgradesPage />} />
-        <Route path="settings" element={<SystemSettingsPage />} />
+      {/* --- Admin Layout (ADMIN ONLY) --- */}
+      <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboardPage />} />
+          <Route path="categories" element={<CategoryManagementPage />} />
+          <Route path="products" element={<ProductManagementPage />} />
+          <Route path="users" element={<UserManagementPage />} />
+          <Route path="seller-upgrades" element={<SellerUpgradesPage />} />
+          <Route path="settings" element={<SystemSettingsPage />} />
+        </Route>
       </Route>
     </>
   )

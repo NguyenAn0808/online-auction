@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import BiddingQuickView from "./BiddingQuickView";
 import watchlistService from "../services/watchlistService";
+import { useAuth } from "../context/AuthContext";
 
 const ProductCard = ({ product }) => {
+  const { user } = useAuth();
   const [isWatchlist, setIsWatchlist] = useState(false);
   const [showBidQuickView, setShowBidQuickView] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const productId = product?.id;
   const productName = product?.name;
@@ -28,6 +31,15 @@ const ProductCard = ({ product }) => {
       setIsWatchlist(watchlistService.isInWatchlist(productId));
     }
   }, [productId]);
+
+  const requireAuth = (actionCallback) => {
+    if (!user) {
+      // Redirect to login, saving current page to return to
+      navigate("/auth/signin", { state: { from: location } });
+      return;
+    }
+    actionCallback();
+  };
 
   // Calculate time left
   const getTimeLeft = () => {
@@ -73,30 +85,39 @@ const ProductCard = ({ product }) => {
     }
   };
 
-  const handleWatchlistClick = (e) => {
-    e.stopPropagation();
-    if (isWatchlist) {
-      watchlistService.removeFromWatchlist(productId);
-    } else {
-      watchlistService.addToWatchlist({
-        id: productId,
-        name: productName,
-        images: product?.images || [],
-        price: currentPrice,
-      });
-    }
-    setIsWatchlist(!isWatchlist);
-  };
-
   const handlePlaceBid = (e) => {
     e.stopPropagation();
-    setShowBidQuickView(true);
+    // Wrap with auth check
+    requireAuth(() => {
+      setShowBidQuickView(true);
+    });
   };
 
   const handleBuyNow = (e) => {
     e.stopPropagation();
-    navigate(`/transactions`);
-    console.log("Buy now:", productId);
+    // Wrap with auth check
+    requireAuth(() => {
+      navigate(`/transactions`);
+      console.log("Buy now:", productId);
+    });
+  };
+
+  const handleWatchlistClick = (e) => {
+    e.stopPropagation();
+
+    requireAuth(() => {
+      if (isWatchlist) {
+        watchlistService.removeFromWatchlist(productId);
+      } else {
+        watchlistService.addToWatchlist({
+          id: productId,
+          name: productName,
+          images: product?.images || [],
+          price: currentPrice,
+        });
+      }
+      setIsWatchlist(!isWatchlist);
+    });
   };
 
   return (

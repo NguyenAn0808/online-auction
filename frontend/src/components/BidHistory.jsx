@@ -10,7 +10,7 @@ import {
   BORDER_RADIUS,
   SHADOWS,
 } from "../constants/designSystem";
-
+import { useAuth } from "../context/AuthContext";
 // Fallbacks for demo/dev: some components assume globals like CURRENT_USER_ID / CURRENT_USER_NAME
 // Provide safe defaults from localStorage to avoid ReferenceError in dev environment.
 const CURRENT_USER_ID = (() => {
@@ -86,10 +86,18 @@ function maskName(fullName, userId) {
 }
 
 export default function BidHistory({ isSeller = true, productId = null }) {
+  const { user } = useAuth();
   const [localBids, setLocalBids] = useBids();
   const [blocklist, setBlocklist] = useState([]);
   const [showBlocklist, setShowBlocklist] = useState(false);
   const [isProcessing, setIsProcessing] = useState({});
+  if (!user) {
+    return null;
+  }
+
+  // Use user data from context
+  const currentUserId = user.id;
+  const currentUserName = user.fullName || user.username || "You";
 
   // compute list excluding blocked bidders
   const sorted = useMemo(() => {
@@ -100,7 +108,7 @@ export default function BidHistory({ isSeller = true, productId = null }) {
   }, [localBids, blocklist]);
 
   const highest = sorted[0];
-  const isCurrentUserHighest = highest && highest.bidder_id === CURRENT_USER_ID;
+  const isCurrentUserHighest = highest && highest.bidder_id === currentUserId;
 
   const handleAcceptBid = async (bidId) => {
     try {

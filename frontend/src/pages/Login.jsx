@@ -1,6 +1,7 @@
 import { useState } from "react";
 import api, { saveAccessToken, setAuthHeader } from "../services/api";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -10,7 +11,8 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
+  const { signin } = useAuth();
+  const location = useLocation();
   const validate = () => {
     if (!email) return "Email is required";
     const re = /^\S+@\S+\.\S+$/;
@@ -19,6 +21,8 @@ export default function Login() {
     if (password.length < 6) return "Password must be at least 6 characters";
     return null;
   };
+
+  const from = location.state?.from?.pathname || "/";
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -29,29 +33,26 @@ export default function Login() {
       return;
     }
     setLoading(true);
-    try {
-      const res = await api.post(`/auth/signin`, { email, password });
-      const token = res?.data?.token ?? res?.data?.accessToken ?? null;
-      if (token) {
-        saveAccessToken(token, remember);
-        setAuthHeader(token);
-      }
-      navigate("/dashboard", { replace: true });
-    } catch (err) {
-      const msg = err?.response?.data?.message || err.message || "Login failed";
-      setError(msg);
-    } finally {
-      setLoading(false);
+    // Use the AuthContext signin to ensure global state updates
+    const result = await signin(email, password);
+
+    setLoading(false);
+
+    if (result.success) {
+      // Redirect back to the page they came from (e.g., Product Details)
+      navigate(from, { replace: true });
+    } else {
+      setError(result.message || "Signin failed");
     }
   };
 
   // OAuth redirect helper - explicit mappings
   const oauth = (provider) => {
-    const base = import.meta.env.VITE_API_URL || window.location.origin;
+    const base = import.meta.env.VITE_API_URL || "http://localhost:3000"; // Fallback to local API port if needed
     const map = {
       google: "google",
       github: "github",
-      facebook: "facebook", // placeholder
+      facebook: "facebook",
     };
     const p = map[provider] || provider;
     window.location.href = `${base}/auth/${p}`;

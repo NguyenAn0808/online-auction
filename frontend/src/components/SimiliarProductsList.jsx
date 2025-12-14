@@ -7,14 +7,22 @@ import {
   BORDER_RADIUS,
   SHADOWS,
 } from "../constants/designSystem";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function SimiliarProductsList() {
   const [products, setProducts] = useState([]);
-
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   useEffect(() => {
     setProducts(productService.getSimilarProducts());
   }, []);
 
+  const handleCardClick = (productId) => {
+    navigate(`/products/${productId}`);
+    window.scrollTo(0, 0);
+  };
   return (
     <>
       <h2
@@ -38,6 +46,7 @@ export default function SimiliarProductsList() {
         {products.map((product) => (
           <div
             key={product.id}
+            onClick={() => handleCardClick(product.id)}
             style={{
               backgroundColor: COLORS.WHITE,
               border: `1px solid ${COLORS.MORNING_MIST}33`,
@@ -132,34 +141,6 @@ export default function SimiliarProductsList() {
               >
                 {product.color}
               </p>
-
-              <a
-                href={product.href}
-                style={{
-                  display: "inline-flex",
-                  width: "100%",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: BORDER_RADIUS.FULL,
-                  border: "none",
-                  backgroundColor: COLORS.MIDNIGHT_ASH,
-                  paddingLeft: SPACING.M,
-                  paddingRight: SPACING.M,
-                  paddingTop: "4px",
-                  paddingBottom: "4px",
-                  fontSize: TYPOGRAPHY.SIZE_LABEL,
-                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                  color: COLORS.WHITE,
-                  textDecoration: "none",
-                  cursor: "pointer",
-                  transition: "opacity 0.2s ease",
-                  marginTop: SPACING.M,
-                }}
-                onMouseEnter={(e) => (e.target.style.opacity = "0.9")}
-                onMouseLeave={(e) => (e.target.style.opacity = "1")}
-              >
-                Add to bag
-              </a>
             </div>
           </div>
         ))}
