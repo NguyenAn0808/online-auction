@@ -573,10 +573,17 @@ export const forgotPassword = async (req, res) => {
 export const resetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
-    if (!email || !otp || !newPassword) {
+    if (!otp) {
       return res.status(400).json({
         success: false,
-        message: "Email, OTP, and new password are required",
+        message: "OTP code is required",
+      });
+    }
+
+    if (!newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password is required",
       });
     }
 

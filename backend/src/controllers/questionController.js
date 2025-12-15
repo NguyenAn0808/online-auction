@@ -2,6 +2,7 @@ import ProductModel from "../models/product.model.js";
 import Question from "../models/Question.js";
 import User from "../models/User.js";
 import * as EmailService from "../services/emailService.js";
+import Answer from "../models/Answer.js";
 
 export const createQuestion = async (req, res) => {
   try {
@@ -110,7 +111,14 @@ export const getQuestionsByProduct = async (req, res) => {
   try {
     const { productId } = req.params;
     const questions = await Question.findAllByProduct(productId);
-    return res.status(200).json({ success: true, data: questions });
+    const data = await Promise.all(
+      questions.map(async (q) => {
+        const answers = await Answer.findAllByQuestion(q.id);
+        return { ...q, answers }; // Return question WITH answers attached
+      })
+    );
+
+    return res.status(200).json({ success: true, data });
   } catch (error) {
     console.error("Error in get questions by product:", error);
     return res.status(500).json({

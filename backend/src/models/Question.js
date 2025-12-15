@@ -112,12 +112,14 @@ class Question {
 
   static async findAllByProduct(productId) {
     const query = `
-      SELECT id, product_id as "productId", user_id as "userId",
-             question_text as "questionText",
-             created_at as "createdAt", updated_at as "updatedAt"
-      FROM questions
-      WHERE product_id = $1
-      ORDER BY created_at DESC
+      SELECT q.id, q.product_id as "productId", q.user_id as "userId",
+             u.full_name as "askerName", -- Get the user's name
+             q.question_text as "questionText",
+             q.created_at as "createdAt", q.updated_at as "updatedAt"
+      FROM questions q
+      JOIN users u ON q.user_id = u.id
+      WHERE q.product_id = $1
+      ORDER BY q.created_at DESC
     `;
     const result = await pool.query(query, [productId]);
     return result.rows;
