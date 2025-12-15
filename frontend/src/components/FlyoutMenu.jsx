@@ -13,60 +13,9 @@ import {
   SHADOWS,
 } from "../constants/designSystem";
 import { useAuth } from "../context/AuthContext"; // 1. Import Hook
-import { useNavigate } from "react-router-dom";
-const resources = [
-  {
-    name: "Summary",
-    description: "Get all of your questions answered",
-    href: "/summary/1",
-    icon: LifebuoyIcon,
-  },
-  {
-    name: "Ratings",
-    description: "Learn how to maximize our platform",
-    href: "/ratings/1",
-    icon: BookmarkSquareIcon,
-  },
-  {
-    name: "Watchlist",
-    description: "See meet-ups and other events near you",
-    href: "/watchlists/1",
-    icon: CalendarDaysIcon,
-  },
-  {
-    name: "Purchase History",
-    description: "See meet-ups and other events near you",
-    href: "/products/1",
-    icon: CalendarDaysIcon,
-  },
-];
-const recentMessages = [
-  {
-    id: 1,
-    title: "Boost your conversion rate",
-    href: "#",
-    date: "Mar 5, 2023",
-    datetime: "2023-03-05",
-  },
-  {
-    id: 2,
-    title:
-      "How to use search engine optimization to drive traffic to your site",
-    href: "#",
-    date: "Feb 25, 2023",
-    datetime: "2023-02-25",
-  },
-  {
-    id: 3,
-    title: "Improve your customer experience",
-    href: "#",
-    date: "Feb 21, 2023",
-    datetime: "2023-02-21",
-  },
-];
-
+import { useNavigate, Link } from "react-router-dom";
 export default function FlyoutMenu({ alignRight = false }) {
-  const { signout } = useAuth(); // 2. Get the signout function
+  const { user, signout } = useAuth(); // 2. Get the signout function
   const navigate = useNavigate();
   const handleLogout = async () => {
     // 3. Call the context function (not the API directly)
@@ -75,6 +24,57 @@ export default function FlyoutMenu({ alignRight = false }) {
     // 4. Redirect to home or login page
     navigate("/auth/signin");
   };
+  const userId = user?.id;
+  const resources = [
+    {
+      name: "Summary",
+      description: "Get all of your questions answered",
+      href: userId ? `/summary/${userId}` : "/auth/signin",
+      icon: LifebuoyIcon,
+    },
+    {
+      name: "Ratings",
+      description: "Learn how to maximize our platform",
+      href: userId ? `/ratings/${userId}` : "/auth/signin",
+      icon: BookmarkSquareIcon,
+    },
+    {
+      name: "Watchlist",
+      description: "See meet-ups and other events near you",
+      href: userId ? `/watchlists/${userId}` : "/auth/signin",
+      icon: CalendarDaysIcon,
+    },
+    {
+      name: "Purchase History",
+      description: "See meet-ups and other events near you",
+      href: userId ? `/products/${userId}/bidding` : "/auth/signin",
+      icon: CalendarDaysIcon,
+    },
+  ];
+  const recentMessages = [
+    {
+      id: 1,
+      title: "Boost your conversion rate",
+      href: "#",
+      date: "Mar 5, 2023",
+      datetime: "2023-03-05",
+    },
+    {
+      id: 2,
+      title:
+        "How to use search engine optimization to drive traffic to your site",
+      href: "#",
+      date: "Feb 25, 2023",
+      datetime: "2023-02-25",
+    },
+    {
+      id: 3,
+      title: "Improve your customer experience",
+      href: "#",
+      date: "Feb 21, 2023",
+      datetime: "2023-02-21",
+    },
+  ];
   // alignRight: when true, position the panel to the right of its container (for profile button)
   const containerStyle = alignRight
     ? {
@@ -125,6 +125,7 @@ export default function FlyoutMenu({ alignRight = false }) {
                 padding: SPACING.M,
                 transition: "background-color 0.2s ease",
                 backgroundColor: COLORS.WHITE,
+                position: "relative",
               }}
               className="group hover:bg-soft-cloud"
             >
@@ -154,8 +155,8 @@ export default function FlyoutMenu({ alignRight = false }) {
                 />
               </div>
               <div>
-                <a
-                  href={item.href}
+                <Link
+                  to={item.href}
                   style={{
                     fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
                     color: COLORS.MIDNIGHT_ASH,
@@ -171,7 +172,7 @@ export default function FlyoutMenu({ alignRight = false }) {
                       inset: 0,
                     }}
                   />
-                </a>
+                </Link>
                 <p
                   style={{
                     marginTop: SPACING.S,

@@ -1,16 +1,154 @@
-import React from "react";
+import { useState } from "react";
 import { PhotoIcon, UserCircleIcon } from "@heroicons/react/24/solid";
 import { ChevronDownIcon } from "@heroicons/react/16/solid";
+import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/outline";
 import {
   COLORS,
   TYPOGRAPHY,
   SPACING,
   BORDER_RADIUS,
 } from "../constants/designSystem";
+import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export default function BidderProfile() {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const { signout } = useAuth();
+  const navigate = useNavigate();
+
+  const [errors, setErrors] = useState({});
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  const handleGoToLogin = async () => {
+    await signout();
+    navigate("/auth/signin");
+  };
+
+  const handleChange = (e) => {
+    const { name } = e.target;
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const validateField = (target) => {
+    const { name, value, form } = target;
+    let error = "";
+
+    if (name === "old-password") {
+      if (!value) error = "Current password is required";
+    }
+
+    if (name === "new-password") {
+      if (!value) error = "New password is required";
+      else if (value.length < 8)
+        error = "Password must be at least 8 characters";
+
+      // re-check confirm password if user edits new password
+      if (form["confirm-password"].value) {
+        validateField(form["confirm-password"]);
+      }
+    }
+
+    if (name === "confirm-password") {
+      const newPass = form["new-password"].value;
+      if (!value) error = "Please confirm your password";
+      else if (!newPass) error = ""; // avoid early warning
+      else if (value !== newPass) error = "Passwords do not match";
+    }
+
+    setErrors((prev) => ({ ...prev, [name]: error }));
+    return error;
+  };
+
+  const handleBlur = (e) => {
+    validateField(e.target);
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    // setErrors({});
+    const form = e.target;
+
+    // Grab values directly from the form (Uncontrolled)
+    const currentPassword = form["old-password"].value;
+    const newPassword = form["new-password"].value;
+    const confirm = form["confirm-password"].value;
+
+    // Final Validation Check
+    const err1 = validateField(form["old-password"]);
+    const err2 = validateField(form["new-password"]);
+    const err3 = validateField(form["confirm-password"]);
+
+    if (err1 || err2 || err3) return;
+
+    if (currentPassword === newPassword) {
+      setErrors((prev) => ({
+        ...prev,
+        "new-password": "New password must be different",
+      }));
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 4. FIX: Use .patch to match your backend route
+      await api.post("/auth/change-password", {
+        currentPassword,
+        newPassword,
+      });
+
+      setShowSuccess(true);
+      form.reset(); // Clear the form visually
+    } catch (err) {
+      console.error(err);
+      const msg = err?.response?.data?.message || "Failed to change password";
+
+      // Map Backend Errors to specific inputs
+      if (
+        msg.toLowerCase().includes("current") ||
+        msg.toLowerCase().includes("incorrect")
+      ) {
+        setErrors((prev) => ({ ...prev, "old-password": msg }));
+      } else if (msg.toLowerCase().includes("new")) {
+        setErrors((prev) => ({ ...prev, "new-password": msg }));
+      } else {
+        setErrors((prev) => ({ ...prev, general: msg }));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="divide-y divide-gray-900/10">
+    <div className="divide-y divide-gray-900/10 relative">
+      {showSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center transform transition-all scale-100">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-4">
+              <CheckCircleIcon
+                className="h-10 w-10 text-green-600"
+                aria-hidden="true"
+              />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              Password Changed!
+            </h3>
+            <p className="text-sm text-gray-500 mb-6">
+              Your password has been updated successfully. Please log in again
+              to continue.
+            </p>
+            <button
+              onClick={handleGoToLogin}
+              className="w-full justify-center rounded-full bg-black px-4 py-3 text-sm font-semibold text-white shadow-lg hover:bg-gray-800 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900"
+            >
+              Go to Login
+            </button>
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-x-8 gap-y-8 py-10 md:grid-cols-3">
         <div className="px-4 sm:px-0">
           <h2 className="text-base/7 font-semibold text-gray-900">Profile</h2>
@@ -378,123 +516,151 @@ export default function BidderProfile() {
         </form>
       </div>
 
-      <div className="grid grid-cols-1 gap-x-8 gap-y-8 py-10 md:grid-cols-3">
-        <div className="px-4 sm:px-0">
-          <h2 className="text-base/7 font-semibold text-gray-900">Security</h2>
-          <p className="mt-1 text-sm/6 text-gray-600">
-            Change your password to secure your account.
-          </p>
-        </div>
+      {/* --- PASSWORD / SECURITY SECTION --- */}
+      {user.hasPassword ? (
+        <div className="grid grid-cols-1 gap-x-8 gap-y-8 py-10 md:grid-cols-3">
+          <div className="px-4 sm:px-0">
+            <h2 className="text-base/7 font-semibold text-gray-900">
+              Security
+            </h2>
+            <p className="mt-1 text-sm/6 text-gray-600">
+              Change your password to secure your account.
+            </p>
+          </div>
 
-        <form
-          className="bg-white ring-1 shadow-xs ring-gray-900/5 sm:rounded-xl md:col-span-2"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const userId = localStorage.getItem("userId") || "buyer-1";
-            const form = e.target;
-            const oldPassword = form["old-password"].value.trim();
-            const newPassword = form["new-password"].value.trim();
-            const confirm = form["confirm-password"].value.trim();
-
-            if (!oldPassword) return alert("Current password is required");
-            if (newPassword.length < 8)
-              return alert("New password must be at least 8 characters");
-            if (newPassword !== confirm)
-              return alert("New passwords do not match");
-            if (!/[0-9]/.test(newPassword) || !/[A-Z]/.test(newPassword))
-              return alert(
-                "Password should contain a number and an uppercase letter"
-              );
-
-            try {
-              const res = await fetch(`/api/users/${userId}/change-password`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ oldPassword, newPassword }),
-              });
-              if (!res.ok) {
-                const body = await res.json().catch(() => ({}));
-                throw new Error(body.message || "Failed to change password");
-              }
-              alert("Password changed successfully");
-              form.reset();
-            } catch (err) {
-              alert("Error: " + err.message);
-            }
-          }}
-        >
-          <div className="px-4 py-6 sm:p-8">
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm/6 font-medium text-gray-900">
-                  Current password
-                </label>
-                <input
-                  name="old-password"
-                  type="password"
-                  className="mt-2 block w-full rounded-md bg-white px-3 py-2 text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-midnight-ash sm:text-sm/6"
-                />
-              </div>
-              <div>
-                <label className="block text-sm/6 font-medium text-gray-900">
-                  New password
-                </label>
-                <input
-                  name="new-password"
-                  type="password"
-                  className="mt-2 block w-full rounded-md bg-white px-3 py-2 text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-midnight-ash sm:text-sm/6"
-                />
-              </div>
-              <div>
-                <label className="block text-sm/6 font-medium text-gray-900">
-                  Confirm new password
-                </label>
-                <input
-                  name="confirm-password"
-                  type="password"
-                  className="mt-2 block w-full rounded-md bg-white px-3 py-2 text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-midnight-ash sm:text-sm/6"
-                />
+          <form
+            className="bg-white ring-1 shadow-xs ring-gray-900/5 sm:rounded-xl md:col-span-2"
+            onSubmit={handlePasswordChange}
+          >
+            <div className="px-4 py-6 sm:p-8">
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm/6 font-medium text-gray-900">
+                    Current password
+                  </label>
+                  <input
+                    name="old-password" // Keep name match input logic
+                    type="password"
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    className={`mt-2 block w-full rounded-md px-3 py-2 text-gray-900 outline-1 -outline-offset-1 sm:text-sm/6 transition-all ${
+                      errors["old-password"]
+                        ? "bg-red-50 outline-red-300 placeholder:text-red-300 focus:outline-red-600"
+                        : "bg-white outline-gray-300 placeholder:text-gray-400 focus:outline-midnight-ash"
+                    }`}
+                  />
+                  {errors["old-password"] && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                      <XCircleIcon className="h-4 w-4" />{" "}
+                      {errors["old-password"]}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm/6 font-medium text-gray-900">
+                    New password
+                  </label>
+                  <input
+                    name="new-password"
+                    type="password"
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    className={`mt-2 block w-full rounded-md px-3 py-2 text-gray-900 outline-1 -outline-offset-1 sm:text-sm/6 transition-all ${
+                      errors["new-password"]
+                        ? "bg-red-50 outline-red-300 placeholder:text-red-300 focus:outline-red-600"
+                        : "bg-white outline-gray-300 placeholder:text-gray-400 focus:outline-midnight-ash"
+                    }`}
+                  />
+                  {errors["new-password"] && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                      <XCircleIcon className="h-4 w-4" />{" "}
+                      {errors["new-password"]}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm/6 font-medium text-gray-900">
+                    Confirm new password
+                  </label>
+                  <input
+                    name="confirm-password"
+                    type="password"
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    className={`mt-2 block w-full rounded-md px-3 py-2 text-gray-900 outline-1 -outline-offset-1 sm:text-sm/6 transition-all ${
+                      errors["confirm-password"]
+                        ? "bg-red-50 outline-red-300 placeholder:text-red-300 focus:outline-red-600"
+                        : "bg-white outline-gray-300 placeholder:text-gray-400 focus:outline-midnight-ash"
+                    }`}
+                  />
+                  {errors["confirm-password"] && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                      <XCircleIcon className="h-4 w-4" />{" "}
+                      {errors["confirm-password"]}
+                    </p>
+                  )}
+                </div>
+                {errors.general && (
+                  <div className="rounded-md bg-red-50 p-3 flex items-start gap-2 border border-red-100">
+                    <XCircleIcon className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
+                    <p className="text-sm text-red-700 font-medium">
+                      {errors.general}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-          <div className="flex items-center justify-end gap-x-6 border-t border-gray-900/10 px-4 py-4 sm:px-8">
-            <button
-              type="button"
-              style={{
-                fontSize: TYPOGRAPHY.SIZE_BODY,
-                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                color: COLORS.MIDNIGHT_ASH,
-                backgroundColor: "transparent",
-                border: "none",
-                cursor: "pointer",
-                borderRadius: BORDER_RADIUS.FULL,
-                padding: `${SPACING.S} ${SPACING.L}`,
-                transition: "opacity 0.2s ease",
-              }}
-              className="hover:opacity-70"
+            <div className="flex items-center justify-end gap-x-6 border-t border-gray-900/10 px-4 py-4 sm:px-8">
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  borderRadius: BORDER_RADIUS.FULL,
+                  backgroundColor: COLORS.MIDNIGHT_ASH,
+                  padding: `${SPACING.S} ${SPACING.L}`,
+                  fontSize: TYPOGRAPHY.SIZE_BODY,
+                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                  color: COLORS.WHITE,
+                  border: "none",
+                  cursor: loading ? "wait" : "pointer",
+                  opacity: loading ? 0.7 : 1,
+                }}
+              >
+                {loading ? "Updating..." : "Update password"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : (
+        <div className="bg-white ring-1 shadow-xs ring-gray-900/5 sm:rounded-xl md:col-span-2 p-8 flex flex-col items-center text-center justify-center min-h-[300px]">
+          <div className="h-16 w-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-4">
+            {/* Optional: You can import `ShieldCheckIcon` from heroicons/24/outline */}
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="w-8 h-8"
             >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              style={{
-                borderRadius: BORDER_RADIUS.FULL,
-                backgroundColor: COLORS.MIDNIGHT_ASH,
-                padding: `${SPACING.S} ${SPACING.L}`,
-                fontSize: TYPOGRAPHY.SIZE_BODY,
-                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                color: COLORS.WHITE,
-                border: "none",
-                cursor: "pointer",
-                transition: "opacity 0.2s ease",
-              }}
-              className="hover:opacity-90"
-            >
-              Update password
-            </button>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z"
+              />
+            </svg>
           </div>
-        </form>
-      </div>
+
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Social Login Account
+          </h3>
+          <p className="text-sm text-gray-500 max-w-sm">
+            You are currently logged in via <strong>Google</strong> or{" "}
+            <strong>Facebook</strong>. Since you don't use a password to log in,
+            you don't need to change one here.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-x-8 gap-y-8 py-10 md:grid-cols-3">
         <div className="px-4 sm:px-0">

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
 
 export default function ForgotPassword() {
@@ -7,7 +7,7 @@ export default function ForgotPassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-
+  const navigate = useNavigate();
   const validate = () => {
     // if (!email) return "Email is required";
     // const re = /^\S+@\S+\.\S+$/;
@@ -27,6 +27,7 @@ export default function ForgotPassword() {
     try {
       await api.post("/auth/forgot-password", { email });
       setSuccess(true);
+      navigate(`/auth/reset-password?email=${encodeURIComponent(email)}`);
     } catch (err) {
       const msg =
         err?.response?.data?.message || err.message || "Request failed";
@@ -37,87 +38,135 @@ export default function ForgotPassword() {
   };
 
   return (
-    <>
-      <div className="flex min-h-full flex-1">
-        <div className="flex flex-1 flex-col justify-center px-4 py-12 sm:px-6 lg:flex-none lg:px-20 xl:px-24">
-          <div className="mx-auto w-full max-w-sm lg:w-96">
-            <div>
-              <Link to="/" className="navbar-logo">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gray-50">
+      {/* 1. Full Screen Background Image */}
+      <div className="absolute inset-0 z-0">
+        <img
+          alt="background"
+          src="https://images.unsplash.com/photo-1496917756835-20cb06e75b4e?ixlib=rb-1.2.1&auto=format&fit=crop&w=1908&q=80"
+          className="w-full h-full object-cover"
+        />
+        {/* Dark overlay to make text readable */}
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
+      </div>
+
+      {/* 2. Centered Card Container */}
+      <div className="relative z-10 w-full max-w-md p-4">
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden border border-white/20">
+          <div className="px-8 py-10">
+            {/* Logo & Header */}
+            <div className="text-center mb-8">
+              <Link
+                to="/"
+                className="text-3xl font-bold text-gray-900 tracking-tight"
+              >
                 eBid
               </Link>
-              <h2 className="mt-8 text-2xl font-bold tracking-tight text-gray-900">
+              <h2 className="mt-4 text-xl font-bold text-gray-800">
                 Reset your password
               </h2>
-              <p className="mt-2 text-sm text-gray-500">
+              <p className="mt-2 text-sm text-gray-600">
                 Enter your email address and we will send you a link to reset
                 your password.
               </p>
             </div>
 
-            <div className="mt-10">
-              {!success && (
-                <form onSubmit={onSubmit} className="space-y-6">
-                  <div>
-                    <label
-                      htmlFor="email"
-                      className="block text-sm font-medium text-gray-900"
-                    >
-                      Email address
-                    </label>
-                    <div className="mt-2">
-                      <input
-                        id="email"
-                        name="email"
-                        type="email"
-                        required
-                        autoComplete="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-midnight-ash outline-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:outline-midnight-ash sm:text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  {error && <div className="text-red-600 text-sm">{error}</div>}
-
-                  <div>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="flex w-full justify-center rounded-md btn-primary px-3 py-1.5 text-sm font-semibold text-white shadow-xs focus-visible:outline-2 focus-visible:outline-midnight-ash"
-                    >
-                      {loading ? "Sending..." : "Send reset link"}
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {success && (
-                <div className="rounded-md bg-green-50 p-4">
-                  <p className="text-green-700">
-                    If that email is registered, we've sent a reset link. Check
-                    your inbox.
-                  </p>
+            {/* Success State */}
+            {success ? (
+              <div className="rounded-lg bg-green-50 p-5 border border-green-100 text-center animate-fade-in">
+                <div className="flex justify-center mb-3">
+                  <svg
+                    className="w-8 h-8 text-green-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
                 </div>
-              )}
+                <h3 className="text-sm font-semibold text-green-800">
+                  Check your inbox
+                </h3>
+                <p className="mt-1 text-sm text-green-700">
+                  If that email is registered, we've sent a reset link.
+                </p>
+                <div className="mt-6">
+                  <Link
+                    to="/auth/signin"
+                    className="text-sm font-medium text-green-700 hover:text-green-600 underline"
+                  >
+                    Return to Login
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              /* Form State */
+              <form onSubmit={onSubmit} className="space-y-6">
+                <div>
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-semibold text-gray-700 mb-1.5"
+                  >
+                    Email address
+                  </label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="block w-full rounded-lg border-gray-300 bg-gray-50 px-4 py-2.5 text-base text-gray-900 shadow-sm focus:border-midnight-ash focus:ring-midnight-ash sm:text-sm"
+                    placeholder="you@example.com"
+                  />
+                </div>
 
-              <p className="mt-6 text-center text-sm text-gray-500">
-                <Link to="/auth/signin" className="font-semibold ">
-                  Back to Login
-                </Link>
-              </p>
-            </div>
+                {error && (
+                  <div className="rounded-md bg-red-50 p-3 text-sm text-red-600 border border-red-100">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex w-full justify-center rounded-lg bg-black px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
+                >
+                  {loading ? "Sending..." : "Send reset link"}
+                </button>
+
+                <div className="text-center pt-2">
+                  <Link
+                    to="/auth/signin"
+                    className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors flex items-center justify-center gap-1 group"
+                  >
+                    <svg
+                      className="w-4 h-4 transition-transform group-hover:-translate-x-1"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                      />
+                    </svg>
+                    Back to Login
+                  </Link>
+                </div>
+              </form>
+            )}
           </div>
         </div>
-
-        <div className="relative hidden w-0 flex-1 lg:block">
-          <img
-            alt="background"
-            src="https://images.unsplash.com/photo-1496917756835-20cb06e75b4e?ixlib=rb-1.2.1&auto=format&fit=crop&w=1908&q=80"
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-        </div>
       </div>
-    </>
+    </div>
   );
 }

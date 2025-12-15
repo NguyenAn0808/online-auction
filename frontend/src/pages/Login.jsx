@@ -123,23 +123,6 @@ export default function Login() {
               </div>
 
               <div className="flex items-center justify-between">
-                <div className="flex gap-3 items-center">
-                  <input
-                    id="remember-me"
-                    name="remember-me"
-                    type="checkbox"
-                    className="appearance-none rounded-sm border border-gray-300 bg-white checked:border-midnight-ash checked:bg-midnight-ash focus-visible:outline-2 focus-visible:outline-midnight-ash"
-                    checked={remember}
-                    onChange={(e) => setRemember(e.target.checked)}
-                  />
-                  <label
-                    htmlFor="remember-me"
-                    className="block text-sm/6 text-gray-900"
-                  >
-                    Remember me
-                  </label>
-                </div>
-
                 <div className="text-sm/6">
                   <Link
                     to="/auth/forgot-password"
@@ -155,9 +138,6 @@ export default function Login() {
               <div>
                 <button
                   type="submit"
-                  onClick={() => {
-                    navigate("/");
-                  }}
                   className="flex w-full justify-center rounded-md btn-primary px-3 py-1.5 text-sm/6 font-semibold text-white shadow-xs"
                   disabled={loading}
                 >

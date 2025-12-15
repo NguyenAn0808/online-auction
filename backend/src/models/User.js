@@ -94,7 +94,7 @@ class User {
   //  Find user by ID
   static async findById(id) {
     const query = `
-      SELECT id, email, phone, full_name as "fullName", address, birthdate, role, is_verified as "isVerified",
+      SELECT id, hashed_password as "hashedPassword", email, phone, full_name as "fullName", address, birthdate, role, is_verified as "isVerified",
              google_id as "googleId", facebook_id as "facebookId", created_at as "createdAt", updated_at as "updatedAt"
       FROM users WHERE id = $1
     `;
@@ -111,20 +111,6 @@ class User {
     `;
     const result = await pool.query(query, [email.toLowerCase()]);
     return result.rows[0] || null;
-  }
-
-  // Update user password
-  static async updatePassword(id, newHashedPassword) {
-    const query = `
-      UPDATE users
-      SET hashed_password = $1, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $2
-      RETURNING id, email, phone, full_name as "fullName", address, birthdate, role, is_verified as "isVerified",
-                google_id as "googleId", facebook_id as "facebookId", created_at as "createdAt", updated_at as "updatedAt"
-    `;
-    const values = [newHashedPassword, id];
-    const result = await pool.query(query, values);
-    return result.rows[0];
   }
 
   // Delete by id (fails when signup OTP verification is not completed)
@@ -200,6 +186,15 @@ class User {
     `;
     const result = await pool.query(query, [socialId, id]);
     return result.rows[0] || null;
+  }
+
+  static async updatePassword(userId, newPasswordHash) {
+    const query = `
+      UPDATE users 
+      SET hashed_password = $1, updated_at = CURRENT_TIMESTAMP 
+      WHERE id = $2
+    `;
+    await pool.query(query, [newPasswordHash, userId]);
   }
 }
 

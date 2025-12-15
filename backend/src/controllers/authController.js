@@ -426,7 +426,7 @@ export const signOut = async (req, res) => {
 export const changePassword = async (req, res) => {
   try {
     // User is authenticated via authMiddleware
-    const userId = req.user?.id;
+    const userId = req.user.id;
 
     if (!userId) {
       return res.status(401).json({
@@ -436,8 +436,7 @@ export const changePassword = async (req, res) => {
     }
 
     // Fetch user from DB
-    const user = await User.findByEmail(req.user.email);
-
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -445,14 +444,15 @@ export const changePassword = async (req, res) => {
       });
     }
 
-    // Block OAuth users from changing password (check early)
-    const isOAuthUser = !user.hashedPassword || user.hashedPassword === "";
+    const dbPassword = user.hashedPassword;
 
+    // Block OAuth users
+    const isOAuthUser = !dbPassword || dbPassword === "";
     if (isOAuthUser) {
       return res.status(403).json({
         success: false,
         message:
-          "You signed up with Google/Facebook. Password changes are not available for social login accounts. Manage your password through your Google/Facebook account.",
+          "Password changes are not available for social login accounts.",
       });
     }
 
@@ -473,18 +473,8 @@ export const changePassword = async (req, res) => {
       });
     }
 
-    if (newPassword === currentPassword) {
-      return res.status(400).json({
-        success: false,
-        message: "New password must be different from current password",
-      });
-    }
-
     // Verify current password
-    const passwordCorrect = await bcrypt.compare(
-      currentPassword,
-      user.hashedPassword
-    );
+    const passwordCorrect = await bcrypt.compare(currentPassword, dbPassword);
 
     if (!passwordCorrect) {
       return res.status(401).json({
@@ -493,13 +483,21 @@ export const changePassword = async (req, res) => {
       });
     }
 
+    if (newPassword === currentPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be different from current password",
+      });
+    }
     // Hash new password
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
 
     // Update password in DB
     await User.updatePassword(userId, hashedNewPassword);
 
-    await Session.deleteAllByUserId(userId);
+    if (Session && Session.deleteAllByUserId) {
+      await Session.deleteAllByUserId(userId);
+    }
 
     res.status(200).json({
       success: true,
@@ -742,18 +740,12 @@ export const googleOAuthCallback = async (req, res) => {
   try {
     const user = req.user;
 
-    console.log("Google OAuth callback - user:", user); // Debug log
-
     if (!user) {
-      console.error("Google OAuth - req.user is undefined");
       return res.status(401).json({
         success: false,
         message: "OAuth authentication failed",
       });
     }
-
-    console.log("Creating session for user:", user.id); // Debug log
-
     // Generate tokens
     const accessToken = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
@@ -775,6 +767,10 @@ export const googleOAuthCallback = async (req, res) => {
       maxAge: REFRESH_TOKEN_TTL,
     });
 
+    const hasPassword = !!(
+      user.hashedPassword && user.hashedPassword.length > 0
+    );
+
     // Redirect to frontend with tokens in URL (will be removed after storing)
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
     const redirectUrl = `${frontendUrl}/auth/callback?accessToken=${accessToken}&user=${encodeURIComponent(
@@ -784,6 +780,7 @@ export const googleOAuthCallback = async (req, res) => {
         fullName: user.fullName,
         role: user.role,
         isVerified: user.isVerified,
+        hasPassword: hasPassword,
       })
     )}`;
 

@@ -14,9 +14,11 @@ const ProtectedRoute = ({ allowedRoles }) => {
     return <Navigate to="/auth/signin" state={{ from: location }} replace />;
   }
 
+  const currentRole =
+    activeRole === "guest" && user.role ? user.role : activeRole;
   // 2. Check if the CURRENT ACTIVE ROLE is allowed
   // If allowedRoles is not provided, we assume any logged-in user is allowed
-  if (allowedRoles && !allowedRoles.includes(activeRole)) {
+  if (allowedRoles && !allowedRoles.includes(currentRole)) {
     // If a Seller is "viewing as Bidder", they shouldn't see Seller pages
     return <Navigate to="/" replace />;
   }

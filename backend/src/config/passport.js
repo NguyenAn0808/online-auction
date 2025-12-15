@@ -43,6 +43,10 @@ if (config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET) {
               await User.updateSocialId(user.id, "google", googleId);
               user.googleId = googleId;
             }
+            if (!user.isVerified) {
+              await User.updateVerificationStatus(user.id, true);
+              user.isVerified = true;
+            }
             return done(null, user);
           }
 

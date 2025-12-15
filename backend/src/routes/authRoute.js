@@ -117,7 +117,7 @@ router.post("/signout", signOut);
 /**
  * @openapi
  * /api/auth/change-password:
- *   patch:
+ *   post:
  *     summary: Change password in user profile
  *     tags: [Authentication]
  *     security:
@@ -160,7 +160,7 @@ router.post("/signout", signOut);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.patch("/change-password", authenticate, changePassword);
+router.post("/change-password", authenticate, changePassword);
 
 /**
  * @openapi
