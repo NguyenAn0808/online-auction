@@ -1,4 +1,5 @@
 import { StarIcon } from "@heroicons/react/20/solid";
+import { useState } from "react";
 import {
   COLORS,
   TYPOGRAPHY,
@@ -8,6 +9,8 @@ import {
 } from "../constants/designSystem";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
+import api from "../services/api";
+import WriteReviewModal from "./WriteReviewModal";
 const reviews = {
   average: 4,
   totalCount: 1624,
@@ -190,14 +193,32 @@ export default function SellerFeedback() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
   const handleWriteReview = (e) => {
     e.preventDefault();
-    if (!user) {
-      navigate("/auth/signin", { state: { from: location } });
-      return;
+    // if (!user) {
+    //   navigate("/auth/signin", { state: { from: location } });
+    //   return;
+    // }
+    setReviewOpen(true);
+  };
+
+  const handleSubmitReview = async ({ rating, content }) => {
+    setSubmitting(true);
+    try {
+      const product = window.__CURRENT_PRODUCT || null;
+      const payload = { rating, content };
+      if (product?.id) payload.productId = product.id;
+      // console.log("Review submitted");
+    } catch (err) {
+      console.error("Failed to submit review", err);
+      throw err;
+    } finally {
+      setSubmitting(false);
+      setReviewOpen(false);
     }
-    // Logic to open review form goes here
-    console.log("Open review form...");
   };
   return (
     <>
@@ -479,6 +500,11 @@ export default function SellerFeedback() {
           </div>
         </div>
       </div>
+      <WriteReviewModal
+        open={reviewOpen}
+        onClose={() => setReviewOpen(false)}
+        onSubmit={handleSubmitReview}
+      />
     </>
   );
 }
