@@ -7,8 +7,6 @@ import ProductCard from "../components/ProductCard";
 import Pagination from "../components/Pagination";
 import { productService } from "../services/productService";
 import { categoryService } from "../services/categoryService";
-import productsWithBidsMock from "../data/productsWithBids.json";
-import categoriesMock from "../data/categories.json";
 
 const ProductListingPage = () => {
   const location = useLocation();
@@ -19,7 +17,6 @@ const ProductListingPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const useMock = true; // toggle mock usage
   const searchParams = new URLSearchParams(location.search);
   const searchTerm = searchParams.get("search") || null;
   const categoryId = searchParams.get("category_id") || null;
@@ -39,156 +36,59 @@ const ProductListingPage = () => {
     (cat) => (cat.id || cat._id) === categoryId
   );
 
-  // Fetch categories for sidebar and title mapping (mock fallback)
+  // Fetch categories for sidebar and title mapping
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        if (useMock) {
-          setCategories(categoriesMock);
-          return;
-        }
-        const data = await categoryService.getCategories();
-        setCategories(data || []);
+        const response = await categoryService.getCategories();
+        setCategories(response.data || []);
       } catch (error) {
         console.error("Error fetching categories:", error);
-        setCategories(useMock ? categoriesMock : []);
+        setCategories([]);
       }
     };
     fetchCategories();
-  }, [useMock]);
+  }, []);
 
-  // Fetch products (API or mock with local filtering/sorting)
+  // Fetch products from backend API
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        if (useMock) {
-          let list = [...productsWithBidsMock];
 
-          // Category (parent expands children)
-          if (categoryId) {
-            const cat = categories.find((c) => (c.id || c._id) === categoryId);
-            if (cat && !cat.parent_id) {
-              const childIds = categories
-                .filter((c) => c.parent_id === categoryId)
-                .map((c) => c.id || c._id);
-              if (childIds.length > 0) {
-                list = list.filter((p) => childIds.includes(p.category_id));
-              } else {
-                list = list.filter((p) => p.category_id === categoryId);
-              }
-            } else {
-              list = list.filter((p) => p.category_id === categoryId);
-            }
-          }
+        // Build query params from URL search params
+        const params = {
+          page: currentPage,
+          limit: 5,
+        };
 
-          // Search
-          if (searchTerm) {
-            const lower = searchTerm.toLowerCase();
-            list = list.filter((p) => p.name.toLowerCase().includes(lower));
-          }
+        if (categoryId) params.category_id = categoryId;
+        if (searchTerm) params.search = searchTerm;
 
-          // Price filter
-          if (priceType === "start") {
-            if (minStartPrice)
-              list = list.filter((p) => p.start_price >= Number(minStartPrice));
-            if (maxStartPrice)
-              list = list.filter((p) => p.start_price <= Number(maxStartPrice));
-          } else if (priceType === "current") {
-            if (minCurrentPrice)
-              list = list.filter(
-                (p) => p.current_price >= Number(minCurrentPrice)
-              );
-            if (maxCurrentPrice)
-              list = list.filter(
-                (p) => p.current_price <= Number(maxCurrentPrice)
-              );
-          }
+        // Map frontend sort params to backend sort values
+        if (sortPriceAsc) params.sort = "price_asc";
+        else if (sortPriceDesc) params.sort = "price_desc";
+        else if (sortEndTimeDesc) params.sort = "end_time_desc";
+        else params.sort = "newest";
 
-          // Sort
-          if (sortPriceAsc) list.sort((a, b) => a.start_price - b.start_price);
-          else if (sortPriceDesc)
-            list.sort((a, b) => b.start_price - a.start_price);
-          else if (sortBidAsc)
-            list.sort((a, b) => a.current_price - b.current_price);
-          else if (sortBidDesc)
-            list.sort((a, b) => b.current_price - a.current_price);
-          else if (sortEndTimeDesc)
-            list.sort((a, b) => new Date(b.end_time) - new Date(a.end_time));
+        // Note: Backend doesn't support price range filtering yet
+        // These params are ignored for now
+        // if (priceType === "start") {
+        //   if (minStartPrice) params.min_start_price = minStartPrice;
+        //   if (maxStartPrice) params.max_start_price = maxStartPrice;
+        // }
 
-          setProducts(list);
-          setTotalPages(Math.ceil(list.length / 5) || 1);
+        const response = await productService.getProducts(params);
 
-          // Inject demo Zip Tote product into listing under Fashion category
-          try {
-            const demo = productService.getProduct();
-            const demoId = "1";
-            const already = list.find((p) => p.id === demoId);
-            if (!already) {
-              const demoEntry = {
-                id: demoId,
-                seller_id: demo.seller?.id || "s-demo",
-                category_id: "22222222-2222-2222-2222-222222222221", // Fashion parent category
-                name: demo.name || "Zip Tote Basket",
-                description: demo.description || "",
-                start_price: demo.price || 0,
-                step_price: demo.minIncrement || 0,
-                current_price: demo.highestBid || demo.price || 0,
-                buy_now_price: demo.buyNowPrice || null,
-                start_time: demo.postedAt || new Date().toISOString(),
-                end_time:
-                  demo.dueTime || demo.postedAt || new Date().toISOString(),
-                status: "ACTIVE",
-                allow_unrated_bidder: !!demo.seller?.allowUnratedBuyers,
-                auto_extend: false,
-                bid_count: (demo.bids && demo.bids.length) || 0,
-                highest_bidder_id: demo.highestBidder?.name || "",
-                posted_date: demo.postedAt || new Date().toISOString(),
-                images: (demo.images || []).map((img, idx) => ({
-                  id: `img-demo-${idx}`,
-                  product_id: demoId,
-                  is_thumbnail: idx === 0,
-                  image_url: img.src || img.url || img.imageSrc || "",
-                  position: idx + 1,
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                })),
-              };
+        setProducts(response.items || []);
 
-              // put demo at the front so it's visible
-              list.unshift(demoEntry);
-              setProducts(list);
-              setTotalPages(Math.ceil(list.length / 5) || 1);
-            }
-          } catch (e) {
-            console.warn("Failed to inject demo product:", e);
-          }
+        // Calculate total pages from backend pagination data
+        if (response.pagination) {
+          const totalItems = response.pagination.total || 0;
+          const itemsPerPage = response.pagination.limit || 5;
+          setTotalPages(Math.ceil(totalItems / itemsPerPage) || 1);
         } else {
-          const params = {};
-          if (categoryId) params.category_id = categoryId;
-          if (searchTerm) params.search = searchTerm;
-          if (priceType === "start") {
-            if (minStartPrice) params.min_start_price = minStartPrice;
-            if (maxStartPrice) params.max_start_price = maxStartPrice;
-          } else if (priceType === "current") {
-            if (minCurrentPrice) params.min_current_price = minCurrentPrice;
-            if (maxCurrentPrice) params.max_current_price = maxCurrentPrice;
-          }
-          if (sortPriceAsc) params.price_asc = 1;
-          if (sortPriceDesc) params.price_desc = 1;
-          if (sortEndTimeDesc) params.end_time_desc = 1;
-          if (sortBidAsc) params.bid_amount_asc = 1;
-          if (sortBidDesc) params.bid_amount_desc = 1;
-
-          const data = await productService.getProducts(params);
-          const items = data.items || data;
-          setProducts(Array.isArray(items) ? items : []);
-          setTotalPages(
-            data.totalPages ||
-              data.total_pages ||
-              Math.ceil((items?.length || 0) / 5) ||
-              1
-          );
+          setTotalPages(1);
         }
       } catch (error) {
         console.error("Error fetching products list:", error);
@@ -198,23 +98,15 @@ const ProductListingPage = () => {
         setLoading(false);
       }
     };
+
     fetchProducts();
-    setCurrentPage(1); // reset pagination when filters change
   }, [
     categoryId,
     searchTerm,
-    priceType,
-    minStartPrice,
-    maxStartPrice,
-    minCurrentPrice,
-    maxCurrentPrice,
     sortPriceAsc,
     sortPriceDesc,
     sortEndTimeDesc,
-    sortBidAsc,
-    sortBidDesc,
-    categories,
-    useMock,
+    currentPage,
   ]);
 
   // Get category name for display
@@ -255,20 +147,6 @@ const ProductListingPage = () => {
               <div className="space-y-4">
                 {currentProducts.map((product) => {
                   const handleClick = () => {
-                    // If this is the demo Zip Tote, mark the current user as the highest bidder for demo
-                    if (product.id === "prod-1") {
-                      try {
-                        const demo = productService.getProduct();
-                        const bidderName =
-                          demo.highestBidder?.name ||
-                          product.highest_bidder_id ||
-                          demo.highestBidder?.name ||
-                          "You";
-                        localStorage.setItem("userName", bidderName);
-                      } catch {
-                        // ignore
-                      }
-                    }
                     navigate(`/products/${product.id}`);
                   };
 

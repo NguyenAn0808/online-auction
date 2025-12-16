@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { categoryService } from "../services/categoryService";
-import categoriesMock from "../data/categories.json";
-
 const CategorySidebar = () => {
   const [categories, setCategories] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
-  const useMock = true; // toggle mock usage if needed
 
   // Get current category_id from query params
   const searchParams = new URLSearchParams(location.search);
@@ -16,19 +13,17 @@ const CategorySidebar = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        if (useMock) {
-          setCategories(categoriesMock);
-          return;
-        }
         const response = await categoryService.getCategories();
-        if (response && Array.isArray(response)) {
-          setCategories(response);
+        // Backend returns { success: true, data: Category[], count: number }
+        if (response && response.success && Array.isArray(response.data)) {
+          setCategories(response.data);
         } else {
-          setCategories(categoriesMock);
+          console.warn("Unexpected response format:", response);
+          setCategories([]);
         }
       } catch (error) {
         console.error("Error fetching categories:", error);
-        setCategories(categoriesMock);
+        setCategories([]);
       }
     };
     fetchCategories();

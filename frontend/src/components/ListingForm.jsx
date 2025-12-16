@@ -4,7 +4,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { categoryService } from "../services/categoryService";
 import { productService } from "../services/productService";
-import categoriesMock from "../data/categories.json";
 
 // Schema with conditional buy now validation
 const schema = z
@@ -81,10 +80,15 @@ const ListingForm = () => {
     const fetchCategories = async () => {
       try {
         const data = await categoryService.getCategories();
-        setCategories(data || []);
+        // Backend returns { success: true, data: Category[], count: number }
+        if (data && data.success && Array.isArray(data.data)) {
+          setCategories(data.data);
+        } else {
+          setCategories([]);
+        }
       } catch (error) {
-        console.warn("Error fetching categories, using mock data:", error);
-        setCategories(categoriesMock);
+        console.error("Error fetching categories:", error);
+        setCategories([]);
       }
     };
     fetchCategories();

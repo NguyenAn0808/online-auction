@@ -2,33 +2,26 @@ import React, { useState, useEffect } from "react";
 import ParentCategoryCard from "./ParentCategoryCard";
 import ChildCategoryCard from "./ChildCategoryCard";
 import { categoryService } from "../services/categoryService";
-import categoriesMock from "../data/categories.json";
 
 const CategorySection = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedParentId, setSelectedParentId] = useState(null);
 
-  // Toggle to force using mock data (e.g. when backend not ready)
-  const useMock = false;
-
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         setLoading(true);
-        if (useMock) {
-          setCategories(categoriesMock);
+        const response = await categoryService.getCategories();
+        if (response && response.success && Array.isArray(response.data)) {
+          setCategories(response.data);
         } else {
-          const response = await categoryService.getCategories();
-          if (response && Array.isArray(response)) {
-            setCategories(response);
-          } else {
-            setCategories(categoriesMock);
-          }
+          console.warn("Unexpected response format:", response);
+          setCategories([]);
         }
       } catch (error) {
         console.error("Error fetching categories:", error);
-        setCategories(categoriesMock);
+        setCategories([]);
       } finally {
         setLoading(false);
       }

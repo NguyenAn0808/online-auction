@@ -16,9 +16,9 @@ const HomePage = () => {
       try {
         setLoading(true);
         const [ending, bid, price] = await Promise.all([
-          productService.getTopEndingProducts(),
-          productService.getTopBidProducts(),
-          productService.getTopPriceProducts(),
+          productService.getTopEndingProducts(5),
+          productService.getTopBidProducts(5),
+          productService.getTopPriceProducts(5),
         ]);
 
         setTopEndingProducts(ending);
@@ -26,6 +26,10 @@ const HomePage = () => {
         setTopPriceProducts(price);
       } catch (error) {
         console.error("Error fetching homepage data:", error);
+        // Set empty arrays on error to prevent UI breaking
+        setTopEndingProducts([]);
+        setTopBidProducts([]);
+        setTopPriceProducts([]);
       } finally {
         setLoading(false);
       }

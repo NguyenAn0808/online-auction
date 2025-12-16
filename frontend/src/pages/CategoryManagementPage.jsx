@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { categoryService } from "../services/categoryService";
-import categoriesMock from "../data/categories.json";
 import Pagination from "../components/Pagination";
 
 const CategoryManagementPage = () => {
@@ -13,20 +12,17 @@ const CategoryManagementPage = () => {
     try {
       setLoading(true);
       // Call API
-      const data = await categoryService.getCategories();
+      const response = await categoryService.getCategories();
 
       // Handle response structure
-      if (data.data) {
-        setCategories(data.data);
-      } else if (Array.isArray(data)) {
-        setCategories(data);
+      if (response && response.success && Array.isArray(response.data)) {
+        setCategories(response.data);
       } else {
         setCategories([]);
       }
     } catch (error) {
-      console.warn("API call failed, using mock data:", error);
-      // Fallback to mock data on error
-      setCategories(categoriesMock);
+      console.error("API call failed:", error);
+      setCategories([]);
     } finally {
       setLoading(false);
     }

@@ -8,8 +8,6 @@ import EditProductModal from "../components/EditProductModal";
 import { formatCurrency, formatTimeLeft } from "../utils/formatters";
 import { productService } from "../services/productService";
 import { categoryService } from "../services/categoryService";
-import productsWithBidsMock from "../data/productsWithBids.json";
-import categoriesMock from "../data/categories.json";
 
 const ProductManagementPage = () => {
   const location = useLocation();
@@ -59,11 +57,15 @@ const ProductManagementPage = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const data = await categoryService.getCategories();
-        setCategories(data || []);
+        const response = await categoryService.getCategories();
+        if (response && response.success && Array.isArray(response.data)) {
+          setCategories(response.data);
+        } else {
+          setCategories([]);
+        }
       } catch (error) {
-        console.warn("Error fetching categories, using mock data:", error);
-        setCategories(categoriesMock);
+        console.error("Error fetching categories:", error);
+        setCategories([]);
       }
     };
     fetchCategories();
@@ -109,28 +111,19 @@ const ProductManagementPage = () => {
         if (filterBy === "active") params.status = "active";
         else if (filterBy === "ended") params.status = "ended";
 
-        try {
-          // Call API
-          const response = await productService.getProducts(params);
-          const items = response.data || response.items || response;
-          setProducts(Array.isArray(items) ? items : []);
+        // Call API
+        const response = await productService.getProducts(params);
+        const items = response.data || response.items || response;
+        setProducts(Array.isArray(items) ? items : []);
 
-          if (response.pagination) {
-            setTotalPages(response.pagination.totalPages || 1);
-          } else {
-            setTotalPages(
-              response.totalPages ||
-                response.total_pages ||
-                Math.ceil((items?.length || 0) / productsPerPage) ||
-                1
-            );
-          }
-        } catch (apiError) {
-          // Fallback to mock data if API fails
-          console.warn("API call failed, using mock data:", apiError);
-          setProducts(productsWithBidsMock);
+        if (response.pagination) {
+          setTotalPages(response.pagination.totalPages || 1);
+        } else {
           setTotalPages(
-            Math.ceil(productsWithBidsMock.length / productsPerPage) || 1
+            response.totalPages ||
+              response.total_pages ||
+              Math.ceil((items?.length || 0) / productsPerPage) ||
+              1
           );
         }
       } catch (error) {

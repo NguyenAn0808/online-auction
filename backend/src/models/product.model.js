@@ -64,9 +64,11 @@ class ProductModel {
         p.auto_extend,
         p.created_at,
         p.updated_at,
-        c.name as category_name
+        c.name as category_name,
+        pi.image_url as thumbnail
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_thumbnail = true
       WHERE p.status = 'active'
     `;
 
@@ -192,9 +194,11 @@ class ProductModel {
         p.created_at,
         p.updated_at,
         c.name as category_name,
-        p.current_price AS current_price
+        p.current_price AS current_price,
+        pi.image_url as thumbnail
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_thumbnail = true
       WHERE p.id = $1
     `;
 

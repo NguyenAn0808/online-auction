@@ -305,15 +305,8 @@ export function reset() {
 }
 
 export const productService = {
-  getProduct,
-  getBidEligibility,
-  suggestNextBid,
-  addQuestion,
-  getBidHistory,
-  getQuestions,
-  getSimilarProducts,
-  placeBid,
-  reset,
+  ...productAPI,
+  ...productHelpers,
 };
 
 export default productService;

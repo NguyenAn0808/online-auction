@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { categoryService } from "../services/categoryService";
-import categoriesMock from "../data/categories.json";
 
 // Menu dropdown with parent & child category tables
 const Menu = () => {
@@ -11,26 +10,20 @@ const Menu = () => {
   const [hoverParentId, setHoverParentId] = useState(null);
   const [dropdownLeft, setDropdownLeft] = useState(0); // dynamic left position so parent panel stays fixed
   const navigate = useNavigate();
-  // Only treat the Menu button itself as the protected area.
   const menuButtonRef = useRef(null);
   const navRef = useRef(null);
-  const useMock = true; // toggle mock usage if needed
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        if (useMock) {
-          setCategories(categoriesMock);
-          return;
-        }
         const response = await categoryService.getCategories();
-        if (response && Array.isArray(response)) {
-          setCategories(response);
+        if (response && response.success && Array.isArray(response.data)) {
+          setCategories(response.data);
         } else {
-          setCategories(categoriesMock);
+          setCategories([]);
         }
       } catch (e) {
-        setCategories(categoriesMock);
+        setCategories([]);
       }
     };
     fetchCategories();
