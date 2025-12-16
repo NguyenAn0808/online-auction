@@ -7,8 +7,35 @@ import {
   SHADOWS,
 } from "../constants/designSystem";
 
-export default function TransactionSummary({ transaction }) {
-  if (!transaction) return null;
+export default function TransactionSummary({ transaction, product }) {
+  // 1. SAFEGUARD: If neither Transaction nor Product exists, show nothing (or loading)
+  if (!transaction && !product) return null;
+  // 2. HELPER: Merge Data.
+  // If we are on Step 1, use 'product'. If on Step 2+, use 'transaction'.
+  const displayData = {
+    id: transaction?.id || product?.id || "New",
+    name: transaction?.productName || product?.name || "Product Name",
+    image: transaction?.productImage || product?.image || null,
+    price: transaction?.winningBid || product?.current_price || 0,
+    status: transaction?.status || "PENDING",
+    buyer: transaction?.buyerName || transaction?.buyerId || "Me",
+    seller: transaction?.sellerName || transaction?.sellerId || "Seller",
+    // Safely get shipping price
+    shippingPriceStr: transaction?.deliveryAddress?.deliveryMethod?.price,
+  };
+
+  // 3. SAFE CALCULATION: Handle shipping price safely
+  let shippingCost = 0;
+  if (displayData.shippingPriceStr) {
+    // Only run .replace if the string actually exists!
+    shippingCost =
+      parseFloat(displayData.shippingPriceStr.replace("$", "")) || 0;
+  }
+
+  const total =
+    (typeof displayData.price === "number"
+      ? displayData.price
+      : parseFloat(displayData.price)) + shippingCost;
 
   return (
     <div
@@ -17,21 +44,23 @@ export default function TransactionSummary({ transaction }) {
         borderRadius: BORDER_RADIUS.MEDIUM,
         boxShadow: SHADOWS.CARD,
         overflow: "hidden",
+        position: "sticky", // Added nice sticky behavior
+        top: "20px",
       }}
     >
       {/* Product Section */}
-      {transaction.productImage && (
-        <div
-          style={{
-            display: "flex",
-            gap: SPACING.M,
-            padding: SPACING.M,
-            borderBottom: `1px solid ${COLORS.MORNING_MIST}`,
-          }}
-        >
+      <div
+        style={{
+          display: "flex",
+          gap: SPACING.M,
+          padding: SPACING.M,
+          borderBottom: `1px solid ${COLORS.MORNING_MIST}`,
+        }}
+      >
+        {displayData.image && (
           <img
-            src={transaction.productImage}
-            alt={transaction.productName || "Product"}
+            src={displayData.image}
+            alt={displayData.name}
             style={{
               width: "80px",
               height: "80px",
@@ -39,31 +68,33 @@ export default function TransactionSummary({ transaction }) {
               borderRadius: BORDER_RADIUS.MEDIUM,
             }}
           />
-          <div style={{ flex: 1 }}>
-            <h4
-              style={{
-                fontSize: TYPOGRAPHY.SIZE_BODY,
-                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                color: COLORS.MIDNIGHT_ASH,
-                marginBottom: SPACING.S,
-              }}
-            >
-              {transaction.productName || `Product #${transaction.productId}`}
-            </h4>
-            {transaction.winningBid && (
-              <p
-                style={{
-                  fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
-                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                  color: COLORS.MIDNIGHT_ASH,
-                }}
-              >
-                ${transaction.winningBid.toFixed(2)}
-              </p>
-            )}
-          </div>
+        )}
+        <div style={{ flex: 1 }}>
+          <h4
+            style={{
+              fontSize: TYPOGRAPHY.SIZE_BODY,
+              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+              color: COLORS.MIDNIGHT_ASH,
+              marginBottom: SPACING.S,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {displayData.name}
+          </h4>
+          <p
+            style={{
+              fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
+              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+              color: COLORS.MIDNIGHT_ASH,
+            }}
+          >
+            ${Number(displayData.price).toFixed(2)}
+          </p>
         </div>
-      )}
+      </div>
 
       {/* Transaction Details */}
       <div style={{ padding: SPACING.M }}>
@@ -76,37 +107,7 @@ export default function TransactionSummary({ transaction }) {
           }}
         >
           <span
-            style={{
-              fontSize: TYPOGRAPHY.SIZE_LABEL,
-              color: COLORS.PEBBLE,
-            }}
-          >
-            Transaction ID
-          </span>
-          <span
-            style={{
-              fontSize: TYPOGRAPHY.SIZE_LABEL,
-              fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-              color: COLORS.MIDNIGHT_ASH,
-            }}
-          >
-            #{transaction.id}
-          </span>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: SPACING.M,
-          }}
-        >
-          <span
-            style={{
-              fontSize: TYPOGRAPHY.SIZE_LABEL,
-              color: COLORS.PEBBLE,
-            }}
+            style={{ fontSize: TYPOGRAPHY.SIZE_LABEL, color: COLORS.PEBBLE }}
           >
             Status
           </span>
@@ -115,34 +116,28 @@ export default function TransactionSummary({ transaction }) {
               fontSize: TYPOGRAPHY.SIZE_LABEL,
               fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
               color:
-                transaction.status === "COMPLETED"
+                displayData.status === "COMPLETED"
                   ? "#16A34A"
-                  : transaction.status === "CANCELLED" ||
-                    transaction.status === "PAYMENT_REJECTED"
-                  ? "#DC2626"
                   : COLORS.MIDNIGHT_ASH,
               backgroundColor:
-                transaction.status === "COMPLETED"
+                displayData.status === "COMPLETED"
                   ? "#F0FDF4"
-                  : transaction.status === "CANCELLED" ||
-                    transaction.status === "PAYMENT_REJECTED"
-                  ? "#FEF2F2"
                   : COLORS.SOFT_CLOUD,
               padding: `${SPACING.S} ${SPACING.M}`,
               borderRadius: BORDER_RADIUS.FULL,
+              textTransform: "capitalize",
             }}
           >
-            {transaction.status.replace(/_/g, " ")}
+            {/* SAFE REPLACE: Only replace if status exists */}
+            {displayData.status.toLowerCase().replace(/_/g, " ")}
           </span>
         </div>
 
-        {/* Parties */}
+        {/* Order Summary Math */}
         <div
           style={{
-            backgroundColor: COLORS.SOFT_CLOUD,
-            padding: SPACING.M,
-            borderRadius: BORDER_RADIUS.MEDIUM,
-            marginBottom: SPACING.M,
+            borderTop: `1px solid ${COLORS.MORNING_MIST}`,
+            paddingTop: SPACING.M,
           }}
         >
           <div
@@ -153,12 +148,9 @@ export default function TransactionSummary({ transaction }) {
             }}
           >
             <span
-              style={{
-                fontSize: TYPOGRAPHY.SIZE_LABEL,
-                color: COLORS.PEBBLE,
-              }}
+              style={{ fontSize: TYPOGRAPHY.SIZE_LABEL, color: COLORS.PEBBLE }}
             >
-              Buyer
+              Subtotal
             </span>
             <span
               style={{
@@ -167,22 +159,21 @@ export default function TransactionSummary({ transaction }) {
                 color: COLORS.MIDNIGHT_ASH,
               }}
             >
-              {transaction.buyerName || transaction.buyerId}
+              ${Number(displayData.price).toFixed(2)}
             </span>
           </div>
+
           <div
             style={{
               display: "flex",
               justifyContent: "space-between",
+              marginBottom: SPACING.S,
             }}
           >
             <span
-              style={{
-                fontSize: TYPOGRAPHY.SIZE_LABEL,
-                color: COLORS.PEBBLE,
-              }}
+              style={{ fontSize: TYPOGRAPHY.SIZE_LABEL, color: COLORS.PEBBLE }}
             >
-              Seller
+              Shipping
             </span>
             <span
               style={{
@@ -191,109 +182,39 @@ export default function TransactionSummary({ transaction }) {
                 color: COLORS.MIDNIGHT_ASH,
               }}
             >
-              {transaction.sellerName || transaction.sellerId}
+              {shippingCost > 0 ? `$${shippingCost.toFixed(2)}` : "TBD"}
+            </span>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              paddingTop: SPACING.S,
+              borderTop: `1px solid ${COLORS.MORNING_MIST}`,
+              marginTop: SPACING.S,
+            }}
+          >
+            <span
+              style={{
+                fontSize: TYPOGRAPHY.SIZE_BODY,
+                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                color: COLORS.MIDNIGHT_ASH,
+              }}
+            >
+              Total
+            </span>
+            <span
+              style={{
+                fontSize: TYPOGRAPHY.SIZE_BODY,
+                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                color: COLORS.MIDNIGHT_ASH,
+              }}
+            >
+              ${total.toFixed(2)}
             </span>
           </div>
         </div>
-
-        {/* Order Summary */}
-        {transaction.winningBid && (
-          <div
-            style={{
-              borderTop: `1px solid ${COLORS.MORNING_MIST}`,
-              paddingTop: SPACING.M,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: SPACING.S,
-              }}
-            >
-              <span
-                style={{
-                  fontSize: TYPOGRAPHY.SIZE_LABEL,
-                  color: COLORS.PEBBLE,
-                }}
-              >
-                Winning Bid
-              </span>
-              <span
-                style={{
-                  fontSize: TYPOGRAPHY.SIZE_LABEL,
-                  fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                  color: COLORS.MIDNIGHT_ASH,
-                }}
-              >
-                ${transaction.winningBid.toFixed(2)}
-              </span>
-            </div>
-            {transaction.deliveryAddress?.deliveryMethod && (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: SPACING.S,
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: TYPOGRAPHY.SIZE_LABEL,
-                    color: COLORS.PEBBLE,
-                  }}
-                >
-                  Shipping
-                </span>
-                <span
-                  style={{
-                    fontSize: TYPOGRAPHY.SIZE_LABEL,
-                    fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                    color: COLORS.MIDNIGHT_ASH,
-                  }}
-                >
-                  {transaction.deliveryAddress.deliveryMethod.price}
-                </span>
-              </div>
-            )}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                paddingTop: SPACING.S,
-                borderTop: `1px solid ${COLORS.MORNING_MIST}`,
-              }}
-            >
-              <span
-                style={{
-                  fontSize: TYPOGRAPHY.SIZE_BODY,
-                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                  color: COLORS.MIDNIGHT_ASH,
-                }}
-              >
-                Total
-              </span>
-              <span
-                style={{
-                  fontSize: TYPOGRAPHY.SIZE_BODY,
-                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                  color: COLORS.MIDNIGHT_ASH,
-                }}
-              >
-                $
-                {(
-                  transaction.winningBid +
-                  (parseFloat(
-                    transaction.deliveryAddress?.deliveryMethod?.price?.replace(
-                      "$",
-                      ""
-                    )
-                  ) || 0)
-                ).toFixed(2)}
-              </span>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

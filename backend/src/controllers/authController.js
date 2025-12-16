@@ -8,7 +8,7 @@ import config from "../config/settings.js";
 import { sendOTPEmail } from "../services/emailService.js";
 import { verifyRecaptcha } from "../utils/recaptcha.js";
 
-const ACCESS_TOKEN_TTL = "15m";
+const ACCESS_TOKEN_TTL = "30m";
 const REFRESH_TOKEN_TTL = 7 * 24 * 3600 * 1000; // 7 days
 const OTP_EXPIRY_MINUTES = 10;
 const MAX_OTP_ATTEMPTS = 5;

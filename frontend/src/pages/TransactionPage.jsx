@@ -1,20 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../components/Header";
 import TransactionStepper from "../components/TransactionStepper";
 import TransactionSummary from "../components/TransactionSummary";
-import PaymentInvoiceForm from "../components/PaymentInvoiceForm";
 import ShippingInvoiceForm from "../components/ShippingInvoiceForm";
 import { Radio, RadioGroup } from "@headlessui/react";
 import { HandThumbUpIcon, HandThumbDownIcon } from "@heroicons/react/24/solid";
 import { CheckCircleIcon } from "@heroicons/react/20/solid";
 import { ChevronDownIcon } from "@heroicons/react/16/solid";
-import {
-  getTransaction,
-  updateTransaction,
-  listTransactions,
-  STATUS,
-} from "../services/transactionService";
 import {
   COLORS,
   TYPOGRAPHY,
@@ -22,8 +15,11 @@ import {
   BORDER_RADIUS,
   SHADOWS,
 } from "../constants/designSystem";
-
-const deliveryMethods = [
+import { useAuth } from "../context/AuthContext";
+import * as TransactionService from "../services/transactionService"; // The real service file
+import { STATUS } from "../services/transactionService";
+import CancelOrderModal from "../components/CancelOrderModal";
+const DELIVERY_METHODS = [
   {
     id: 1,
     title: "Standard",
@@ -32,11 +28,14 @@ const deliveryMethods = [
   },
   { id: 2, title: "Express", turnaround: "2–5 business days", price: "$16.00" },
 ];
-
-const paymentMethods = [
-  { id: "bank", title: "Bank Transfer", description: "Direct bank transfer" },
-  { id: "paypal", title: "PayPal", description: "Pay with PayPal account" },
-  { id: "card", title: "Credit Card", description: "Visa, Mastercard, etc." },
+const deliveryMethods = [
+  {
+    id: 1,
+    title: "Standard",
+    turnaround: "4–10 business days",
+    price: "$5.00",
+  },
+  { id: 2, title: "Express", turnaround: "2–5 business days", price: "$16.00" },
 ];
 
 // Mock auth hook - replace with real auth later
@@ -51,220 +50,345 @@ function useMockAuth() {
 }
 
 export default function TransactionPage() {
-  const { transactionId } = useParams();
-  const auth = useMockAuth();
-  const [tx, setTx] = useState(null);
-  const [toast, setToast] = useState(null);
+  const { transactionId } = useParams(); // The Order ID (if exists)
+  const [searchParams] = useSearchParams();
+  const productIdParam = searchParams.get("productId"); // If creating new order
+  const [ratingComment, setRatingComment] = useState("");
+  const [selectedRating, setSelectedRating] = useState(null);
+  const [isRatingSubmitted, setIsRatingSubmitted] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // Step 1 Form State (Checkout-style)
+  // --- STATE ---
+  const [tx, setTx] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
+  const [isCancelModalOpen, setCancelModalOpen] = useState(false);
+  const [notification, setNotification] = useState(null);
+  // Step 1 Form State (Buyer Creating Order)
   const [formData, setFormData] = useState({
-    email: "",
     firstName: "",
     lastName: "",
-    company: "",
     address: "",
-    apartment: "",
     city: "",
-    country: "United States",
+    phone: "",
     region: "",
     postalCode: "",
-    phone: "",
+    company: "",
+    country: "United States",
   });
   const [selectedDeliveryMethod, setSelectedDeliveryMethod] = useState(
-    deliveryMethods[0]
-  );
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(
-    paymentMethods[0]
+    DELIVERY_METHODS[0]
   );
   const [paymentReference, setPaymentReference] = useState("");
   const [paymentProofFile, setPaymentProofFile] = useState(null);
-
-  // Step 4: Rating state
-  const [ratingComment, setRatingComment] = useState("");
-  const [selectedRating, setSelectedRating] = useState(null); // 1 or -1
 
   function handleInputChange(e) {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   }
 
-  const isFormValid =
-    formData.firstName &&
-    formData.lastName &&
-    formData.address &&
-    formData.city &&
-    formData.phone;
+  const handleCancelSubmit = async (reason) => {
+    try {
+      // The service calls API: POST /orders/:id/cancel
+      await TransactionService.cancelOrder(transactionId, reason);
+
+      setCancelModalOpen(false);
+
+      // Hiển thị thông báo thành công màu xanh
+      setNotification({
+        type: "success",
+        message: "Order has been cancelled & Buyer rated -1 successfully!",
+      });
+
+      // Đợi 2 giây cho người dùng đọc thông báo rồi mới tải lại trang
+      setTimeout(() => {
+        window.location.reload();
+      }, 5000);
+
+      // Refresh page to show the new 'Cancelled' status
+      window.location.reload();
+    } catch (error) {
+      console.error("Cancellation failed:", error);
+      setNotification({
+        type: "error",
+        message:
+          error.response?.data?.message ||
+          "Failed to cancel order. Please try again.",
+      });
+      setTimeout(() => setNotification(null), 3000);
+    }
+  };
 
   // Load transaction
   useEffect(() => {
-    if (transactionId) {
-      const t = getTransaction(transactionId);
-      if (t) {
-        setTx(t);
+    async function loadData() {
+      // If no ID, we are likely creating a new order (Step 1)
+      if (!transactionId) {
+        setLoading(false);
+        navigate("/", { replace: true });
         return;
       }
+
+      try {
+        setLoading(true);
+        const apiResponse = await TransactionService.getTransaction(
+          transactionId
+        );
+        if (apiResponse) {
+          setTx(apiResponse);
+        } else {
+          // Handle case where API returns success but no data (rare)
+          throw new Error("Order not found");
+        }
+      } catch (err) {
+        console.error("Failed to load transaction", err);
+        // Security Redirect
+        if (
+          err.response &&
+          (err.response.status === 403 || err.response.status === 404)
+        ) {
+          alert(
+            "You do not have permission to view this transaction or it does not exist."
+          );
+          navigate("/");
+        }
+      } finally {
+        setLoading(false);
+      }
     }
-    // Fallback: find existing transaction for user
-    const existing = listTransactions(
-      (t) => t.buyerId === auth.userId || t.sellerId === auth.userId
-    )[0];
-    if (existing) setTx(existing);
-  }, [transactionId, auth.userId]);
+    loadData();
+  }, [transactionId, navigate]);
 
   function showToast(message) {
     setToast(message);
     setTimeout(() => setToast(null), 3000);
   }
 
-  // Step 1: Buyer submits payment + address
-  function handleSubmitPaymentAndAddress() {
-    if (!tx || !isFormValid) return;
+  const isBuyer = !tx || (user && user.id === tx.buyer_id);
+  const isSeller = tx && user && user.id === tx.seller_id;
+  const userRole = isSeller ? "seller" : "buyer";
+  const isCompleted = tx?.status === STATUS.COMPLETED;
+  const isCancelled = tx?.status === STATUS.CANCELLED;
 
-    const deliveryAddress = {
-      ...formData,
-      deliveryMethod: selectedDeliveryMethod,
-    };
+  const isFormValid =
+    formData.firstName && formData.address && formData.city && formData.phone;
+  // STEP 1: CREATE ORDER (Buyer)
+  async function handleCreateOrder() {
+    if (!paymentProofFile)
+      return showToast("Please upload payment proof image.");
 
-    const paymentInvoice = {
-      method: selectedPaymentMethod.title,
-      reference: paymentReference,
-      proofFile: paymentProofFile?.name || null,
-      submittedAt: new Date().toISOString(),
-    };
+    // Simple validation
+    if (!formData.address || !formData.city || !formData.phone) {
+      return showToast("Please fill in Address, City and Phone.");
+    }
 
-    updateTransaction(tx.id, {
-      deliveryAddress,
-      paymentInvoice,
-      status: STATUS.WAITING_SELLER_CONFIRMATION,
-    });
-    setTx(getTransaction(tx.id));
-    showToast("Payment & address submitted — waiting for seller confirmation");
+    try {
+      const data = new FormData();
+      // Logic: If tx exists, use its product_id. If not, use URL param.
+      const pid = tx?.product_id || productIdParam || transactionId;
+      if (!pid) return showToast("Product ID missing.");
+
+      data.append("productId", pid);
+
+      // Combine address into single string for Backend
+      const fullAddress = `${formData.address}, ${formData.city}, ${formData.region}, ${formData.country}. Phone: ${formData.phone}`;
+      data.append("shippingAddress", fullAddress);
+
+      // Append Image (Backend expects 'image' or 'file' depending on middleware)
+      data.append("image", paymentProofFile);
+
+      // Create Order
+      const res = await TransactionService.createOrder(data);
+      // Update State & URL
+      if (res.success && res.data) {
+        setTx(res.data);
+        showToast("Order submitted! Waiting for seller confirmation.");
+        // Optional: Navigate to the new URL so refresh works
+        navigate(`/transactions/${res.data.id}`, { replace: true });
+      }
+    } catch (err) {
+      console.error(err);
+      showToast(err.response?.data?.message || "Failed to create order");
+    }
   }
 
-  // Step 2: Seller confirms payment and sends shipping
-  function handleSellerConfirm(shippingData) {
+  // STEP 2: CONFIRM SHIPPING (Seller)
+  async function handleSellerConfirm(shippingData) {
+    // shippingData comes from ShippingInvoiceForm ({ shippingCode, file })
     if (!tx) return;
-    updateTransaction(tx.id, {
-      shippingInvoice: shippingData,
-      status: STATUS.IN_TRANSIT,
-    });
-    setTx(getTransaction(tx.id));
-    showToast("Shipping invoice sent — transaction is now IN_TRANSIT");
+    if (!tx.payment_proof_image) {
+      return showToast(
+        "Cannot ship: Buyer has not uploaded payment proof yet."
+      );
+    }
+    try {
+      const res = await TransactionService.confirmShipping(
+        tx.id,
+        shippingData.shippingCode,
+        shippingData.file
+      );
+
+      if (res) {
+        // Service returns the data directly or success flag
+        setTx(res);
+        showToast("Shipping confirmed! Order is now IN TRANSIT.");
+      }
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to confirm shipping");
+    }
   }
 
-  function handleSellerReject(reason) {
+  // STEP 2 (Alt): REJECT / CANCEL (Seller)
+  async function handleSellerCancel() {
     if (!tx) return;
-    updateTransaction(tx.id, {
-      status: STATUS.PAYMENT_REJECTED,
-      rejectionReason: reason || "Payment rejected by seller",
-    });
-    setTx(getTransaction(tx.id));
-    showToast("Payment rejected — buyer notified");
+    const reason = prompt("Enter reason for cancellation:");
+    if (!reason) return;
+
+    try {
+      const res = await TransactionService.cancelOrder(tx.id, reason);
+      if (res.success) {
+        setTx(res.data);
+        showToast("Order cancelled.");
+      }
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to cancel order");
+    }
   }
 
-  // Seller cancel transaction (applies -1 rating)
-  function handleSellerCancel() {
+  // STEP 3: CONFIRM RECEIPT (Buyer)
+  async function handleBuyerConfirmReceipt() {
     if (!tx) return;
-    const confirmed = window.confirm(
-      "Are you sure you want to cancel this transaction? This will apply a -1 rating to the buyer."
-    );
-    if (!confirmed) return;
-
-    updateTransaction(tx.id, {
-      status: STATUS.COMPLETED,
-      cancelledBy: "seller",
-      ratings: {
-        ...tx.ratings,
-        seller: { score: -1, comment: "Transaction cancelled by seller" },
-      },
-    });
-    setTx(getTransaction(tx.id));
-    showToast("Transaction cancelled — -1 rating applied");
+    try {
+      const res = await TransactionService.confirmReceipt(tx.id);
+      if (res.success) {
+        setTx(res.data);
+        showToast("Receipt confirmed! Please rate the seller.");
+      }
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to confirm receipt");
+    }
   }
 
-  // Step 3: Buyer confirms receipt
-  function handleBuyerConfirmReceipt() {
-    if (!tx) return;
-    updateTransaction(tx.id, { status: STATUS.COMPLETED_AWAITING_RATING });
-    setTx(getTransaction(tx.id));
-    showToast("Confirmed receipt — please leave a rating");
+  // STEP 4: SUBMIT RATING
+  async function handleRatingSubmit() {
+    if (!tx || !selectedRating) return;
+    try {
+      await TransactionService.rateTransaction(
+        tx.id,
+        selectedRating,
+        ratingComment
+      );
+      setIsRatingSubmitted(true);
+      showToast("Rating submitted successfully! Transaction finalizing.");
+      // Refresh data to show "You rated" UI
+      // navigate("/transactions");
+    } catch (err) {
+      showToast(err.response?.data?.message || "Failed to submit rating");
+    }
   }
 
-  // Step 4: Rating submission
-  function handleRatingSubmit(side, payload) {
-    if (!tx) return;
-    const ratings = { ...(tx.ratings || {}), [side]: payload };
-    const completed = ratings.buyer && ratings.seller;
-    updateTransaction(tx.id, {
-      ratings,
-      status: completed ? STATUS.COMPLETED : tx.status,
-    });
-    setTx(getTransaction(tx.id));
-    showToast("Rating submitted");
-  }
-
-  // Determine current step based on status
   const currentStep = useMemo(() => {
-    if (!tx) return 1;
+    if (!tx) return 1; // Step 1: Creating Order
+
     switch (tx.status) {
-      case STATUS.PENDING_BUYER:
-        return 1;
+      case "pending_verification":
       case STATUS.WAITING_SELLER_CONFIRMATION:
-        return auth.role === "buyer" ? 1 : 2;
+        return 2;
+
       case STATUS.PAYMENT_REJECTED:
-        return 1;
+        return 1; // Send back to Step 1 to retry
+
       case STATUS.IN_TRANSIT:
+      case "delivering": // Handle raw DB string
         return 3;
+
+      case "await_rating": // <--- NEW STATUS FOR STEP 4
       case STATUS.COMPLETED_AWAITING_RATING:
-        return 4; // Both buyer and seller go to step 4
-      case STATUS.COMPLETED:
         return 4;
+
+      case STATUS.COMPLETED:
+        return 5;
+
       default:
         return 1;
     }
-  }, [tx, auth.role]);
+  }, [tx]);
 
-  const isCompleted = tx?.status === STATUS.COMPLETED;
-  const isCancelled = tx?.cancelledBy === "seller";
+  const hasUserRated = tx?.ratings?.[userRole];
 
+  const shouldShowFinalReceipt = useMemo(() => {
+    // Case 1: The transaction status is globally final (Step 5)
+    if (currentStep === 5) return true;
+
+    // Case 2: The user just submitted their rating in this session (Step 4)
+    if (currentStep === 4 && isRatingSubmitted) return true;
+
+    // Case 3: The user returns later, and their rating is present (but not yet Step 5)
+    // This handles page refresh if the rating wasn't yet finalized by the backend.
+    if (currentStep === 4 && hasUserRated) return true;
+
+    return false;
+  }, [currentStep, isRatingSubmitted, hasUserRated]);
+
+  if (loading)
+    return <div className="p-10 text-center">Loading transaction...</div>;
   return (
     <div style={{ minHeight: "100vh", backgroundColor: COLORS.SOFT_CLOUD }}>
-      {/* CSS Keyframes for smooth transitions */}
       <style>
         {`
           @keyframes fadeSlideIn {
-            from {
-              opacity: 0;
-              transform: translateY(20px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-          @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
           }
         `}
       </style>
       <Header />
-
+      {notification && (
+        <div
+          className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-[60] px-6 py-3 rounded-lg shadow-xl flex items-center gap-3 transition-all duration-500 animate-fade-in-down ${
+            notification.type === "success"
+              ? "bg-green-100 border border-green-200 text-green-800"
+              : "bg-red-100 border border-red-200 text-red-800"
+          }`}
+        >
+          {notification.type === "success" ? (
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          ) : (
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          )}
+          <span className="font-medium text-sm">{notification.message}</span>
+        </div>
+      )}
       <div style={{ display: "flex", height: "calc(100vh - 64px)" }}>
         {/* LEFT: Main Wizard Content */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: "auto",
-            padding: SPACING.L,
-          }}
-        >
+        <div style={{ flex: 1, overflowY: "auto", padding: SPACING.L }}>
           <div style={{ maxWidth: "896px", margin: "0 auto" }}>
-            {/* Header with Product Info and Cancel Button */}
+            {/* Header */}
             <div
               style={{
                 display: "flex",
@@ -284,7 +408,7 @@ export default function TransactionPage() {
                 {tx?.productImage && (
                   <img
                     src={tx.productImage}
-                    alt={tx.productName || "Product"}
+                    alt="Product"
                     style={{
                       width: "64px",
                       height: "64px",
@@ -303,7 +427,8 @@ export default function TransactionPage() {
                       marginBottom: SPACING.S,
                     }}
                   >
-                    {tx?.productName || `Transaction #${tx?.id || "..."}`}
+                    {tx?.productName ||
+                      `Transaction #${tx?.id ? tx.id.slice(0, 8) : "..."}`}
                   </h1>
                   <p
                     style={{
@@ -311,39 +436,44 @@ export default function TransactionPage() {
                       color: COLORS.PEBBLE,
                     }}
                   >
-                    Transaction #{tx?.id} • Viewing as{" "}
+                    Viewing as{" "}
                     <span
                       style={{
                         fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
                         color: COLORS.MIDNIGHT_ASH,
                       }}
                     >
-                      {auth.role === "buyer" ? "Buyer" : "Seller"}
+                      {userRole === "buyer" ? "Bidder" : "Seller"}
                     </span>
                   </p>
                 </div>
               </div>
 
-              {/* Global Seller Cancel Button */}
-              {auth.role === "seller" && !isCompleted && !isCancelled && (
+              {/* Seller Cancel Button */}
+              {isSeller && !isCompleted && !isCancelled && (
                 <button
-                  onClick={handleSellerCancel}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "#DC2626",
-                    textDecoration: "underline",
-                    fontSize: TYPOGRAPHY.SIZE_LABEL,
-                    fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                    cursor: "pointer",
-                  }}
+                  onClick={() => setCancelModalOpen(true)}
+                  className="bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-md text-sm font-medium hover:bg-red-100 transition-colors flex items-center gap-2"
                 >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
                   Cancel Transaction & Rate -1
                 </button>
               )}
             </div>
 
-            {/* Progress Stepper */}
+            {/* Stepper */}
             <div
               style={{
                 backgroundColor: COLORS.WHITE,
@@ -353,7 +483,7 @@ export default function TransactionPage() {
                 marginBottom: SPACING.L,
               }}
             >
-              <TransactionStepper current={currentStep} />
+              <TransactionStepper current={isCancelled ? -1 : currentStep} />
             </div>
 
             {/* Step Content */}
@@ -364,254 +494,37 @@ export default function TransactionPage() {
                 borderRadius: BORDER_RADIUS.MEDIUM,
                 boxShadow: SHADOWS.SUBTLE,
                 transition: "all 0.4s ease-in-out",
-                opacity: tx ? 1 : 0.7,
-                transform: tx ? "translateY(0)" : "translateY(10px)",
+                opacity: tx ? 1 : 0.95,
               }}
             >
-              {/* STEP 1: Buyer provides payment & address */}
-              {currentStep === 1 && auth.role === "buyer" && (
-                <div
-                  style={{
-                    animation: "fadeSlideIn 0.4s ease-out",
-                  }}
-                >
-                  {/* After submission - Show Order Summary */}
+              {/* STEP 1: CREATE (Buyer View) */}
+              {currentStep === 1 && isBuyer && (
+                <div style={{ animation: "fadeSlideIn 0.4s ease-out" }}>
                   {tx?.status === STATUS.WAITING_SELLER_CONFIRMATION ? (
+                    /* Waiting State */
                     <div
                       style={{
-                        animation: "fadeSlideIn 0.4s ease-out",
+                        backgroundColor: "#F0FDF4",
+                        padding: SPACING.L,
+                        borderRadius: BORDER_RADIUS.MEDIUM,
+                        border: `1px solid #BBF7D0`,
                       }}
                     >
-                      {/* Success Header */}
-                      <div
+                      <h3
                         style={{
-                          backgroundColor: "#F0FDF4",
-                          padding: SPACING.L,
-                          borderRadius: BORDER_RADIUS.MEDIUM,
-                          marginBottom: SPACING.L,
-                          border: `1px solid #BBF7D0`,
+                          fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
+                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                          color: "#16A34A",
                         }}
                       >
-                        <h3
-                          style={{
-                            fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
-                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                            color: "#16A34A",
-                            marginBottom: SPACING.S,
-                          }}
-                        >
-                          ✓ Payment & Address Submitted
-                        </h3>
-                        <p
-                          style={{
-                            fontSize: TYPOGRAPHY.SIZE_BODY,
-                            color: "#16A34A",
-                          }}
-                        >
-                          Your payment details and delivery address have been
-                          sent to the seller. Waiting for confirmation.
-                        </p>
-                      </div>
-
-                      {/* Order Summary */}
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr 1fr",
-                          gap: SPACING.L,
-                        }}
-                      >
-                        {/* Shipping Address */}
-                        <div
-                          style={{
-                            backgroundColor: COLORS.SOFT_CLOUD,
-                            padding: SPACING.L,
-                            borderRadius: BORDER_RADIUS.MEDIUM,
-                          }}
-                        >
-                          <h4
-                            style={{
-                              fontSize: TYPOGRAPHY.SIZE_BODY,
-                              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                              color: COLORS.MIDNIGHT_ASH,
-                              marginBottom: SPACING.M,
-                            }}
-                          >
-                            Shipping Address
-                          </h4>
-                          <div
-                            style={{
-                              fontSize: TYPOGRAPHY.SIZE_BODY,
-                              color: COLORS.MIDNIGHT_ASH,
-                              lineHeight: 1.6,
-                            }}
-                          >
-                            <p
-                              style={{
-                                margin: 0,
-                                fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                              }}
-                            >
-                              {tx.deliveryAddress?.firstName}{" "}
-                              {tx.deliveryAddress?.lastName}
-                            </p>
-                            {tx.deliveryAddress?.company && (
-                              <p style={{ margin: 0 }}>
-                                {tx.deliveryAddress.company}
-                              </p>
-                            )}
-                            <p style={{ margin: 0 }}>
-                              {tx.deliveryAddress?.address}
-                            </p>
-                            {tx.deliveryAddress?.apartment && (
-                              <p style={{ margin: 0 }}>
-                                {tx.deliveryAddress.apartment}
-                              </p>
-                            )}
-                            <p style={{ margin: 0 }}>
-                              {tx.deliveryAddress?.city},{" "}
-                              {tx.deliveryAddress?.region}{" "}
-                              {tx.deliveryAddress?.postalCode}
-                            </p>
-                            <p style={{ margin: 0 }}>
-                              {tx.deliveryAddress?.country}
-                            </p>
-                            <p style={{ margin: 0, marginTop: SPACING.S }}>
-                              📞 {tx.deliveryAddress?.phone}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Payment Details */}
-                        <div
-                          style={{
-                            backgroundColor: COLORS.SOFT_CLOUD,
-                            padding: SPACING.L,
-                            borderRadius: BORDER_RADIUS.MEDIUM,
-                          }}
-                        >
-                          <h4
-                            style={{
-                              fontSize: TYPOGRAPHY.SIZE_BODY,
-                              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                              color: COLORS.MIDNIGHT_ASH,
-                              marginBottom: SPACING.M,
-                            }}
-                          >
-                            Payment Method
-                          </h4>
-                          <div
-                            style={{
-                              fontSize: TYPOGRAPHY.SIZE_BODY,
-                              color: COLORS.MIDNIGHT_ASH,
-                              lineHeight: 1.6,
-                            }}
-                          >
-                            <p
-                              style={{
-                                margin: 0,
-                                fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                              }}
-                            >
-                              {tx.paymentInvoice?.method}
-                            </p>
-                            {tx.paymentInvoice?.reference && (
-                              <p
-                                style={{
-                                  margin: 0,
-                                  fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                  color: COLORS.PEBBLE,
-                                }}
-                              >
-                                Ref: {tx.paymentInvoice.reference}
-                              </p>
-                            )}
-                            {tx.paymentInvoice?.proofFile && (
-                              <p
-                                style={{
-                                  margin: 0,
-                                  fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                  color: COLORS.PEBBLE,
-                                }}
-                              >
-                                📎 {tx.paymentInvoice.proofFile}
-                              </p>
-                            )}
-                          </div>
-
-                          <h4
-                            style={{
-                              fontSize: TYPOGRAPHY.SIZE_BODY,
-                              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                              color: COLORS.MIDNIGHT_ASH,
-                              marginTop: SPACING.L,
-                              marginBottom: SPACING.M,
-                            }}
-                          >
-                            Delivery Method
-                          </h4>
-                          <div
-                            style={{
-                              fontSize: TYPOGRAPHY.SIZE_BODY,
-                              color: COLORS.MIDNIGHT_ASH,
-                            }}
-                          >
-                            <p
-                              style={{
-                                margin: 0,
-                                fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                              }}
-                            >
-                              {tx.deliveryAddress?.deliveryMethod?.title}
-                            </p>
-                            <p
-                              style={{
-                                margin: 0,
-                                fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                color: COLORS.PEBBLE,
-                              }}
-                            >
-                              {tx.deliveryAddress?.deliveryMethod?.turnaround}
-                            </p>
-                            <p
-                              style={{
-                                margin: 0,
-                                fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                                marginTop: SPACING.S,
-                              }}
-                            >
-                              {tx.deliveryAddress?.deliveryMethod?.price}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Waiting indicator */}
-                      <div
-                        style={{
-                          marginTop: SPACING.L,
-                          textAlign: "center",
-                          padding: SPACING.L,
-                          backgroundColor: "#FEF3C7",
-                          borderRadius: BORDER_RADIUS.MEDIUM,
-                          border: `1px solid #FDE68A`,
-                        }}
-                      >
-                        <p
-                          style={{
-                            fontSize: TYPOGRAPHY.SIZE_BODY,
-                            color: "#D97706",
-                            fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                            margin: 0,
-                          }}
-                        >
-                          ⏳ Waiting for seller to confirm payment and send
-                          shipping invoice...
-                        </p>
-                      </div>
+                        ✓ Order Submitted
+                      </h3>
+                      <p style={{ color: "#16A34A" }}>
+                        Waiting for seller to confirm payment.
+                      </p>
                     </div>
                   ) : (
-                    /* Before submission - Show Form */
+                    /* Form State */
                     <div>
                       <h3
                         style={{
@@ -623,18 +536,8 @@ export default function TransactionPage() {
                       >
                         Step 1 — Provide Payment & Delivery Address
                       </h3>
-                      <p
-                        style={{
-                          fontSize: TYPOGRAPHY.SIZE_BODY,
-                          color: COLORS.PEBBLE,
-                          marginBottom: SPACING.L,
-                        }}
-                      >
-                        Complete your payment details and shipping information
-                        below.
-                      </p>
 
-                      {/* Contact Information */}
+                      {/* Form Inputs */}
                       <div
                         style={{
                           backgroundColor: COLORS.SOFT_CLOUD,
@@ -643,69 +546,6 @@ export default function TransactionPage() {
                           marginBottom: SPACING.L,
                         }}
                       >
-                        <h4
-                          style={{
-                            fontSize: TYPOGRAPHY.SIZE_BODY,
-                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                            color: COLORS.MIDNIGHT_ASH,
-                            marginBottom: SPACING.M,
-                          }}
-                        >
-                          Contact information
-                        </h4>
-                        <div>
-                          <label
-                            htmlFor="email"
-                            style={{
-                              display: "block",
-                              fontSize: TYPOGRAPHY.SIZE_LABEL,
-                              fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                              color: COLORS.MIDNIGHT_ASH,
-                              marginBottom: SPACING.S,
-                            }}
-                          >
-                            Email address
-                          </label>
-                          <input
-                            id="email"
-                            name="email"
-                            type="email"
-                            value={formData.email}
-                            onChange={handleInputChange}
-                            autoComplete="email"
-                            style={{
-                              width: "100%",
-                              padding: SPACING.M,
-                              fontSize: TYPOGRAPHY.SIZE_BODY,
-                              borderRadius: BORDER_RADIUS.MEDIUM,
-                              border: `1px solid rgba(200,200,200,0.33)`,
-                              outline: "none",
-                              boxSizing: "border-box",
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Shipping Information */}
-                      <div
-                        style={{
-                          backgroundColor: COLORS.SOFT_CLOUD,
-                          padding: SPACING.L,
-                          borderRadius: BORDER_RADIUS.MEDIUM,
-                          marginBottom: SPACING.L,
-                        }}
-                      >
-                        <h4
-                          style={{
-                            fontSize: TYPOGRAPHY.SIZE_BODY,
-                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                            color: COLORS.MIDNIGHT_ASH,
-                            marginBottom: SPACING.M,
-                          }}
-                        >
-                          Shipping information
-                        </h4>
-
                         <div
                           style={{
                             display: "grid",
@@ -713,1647 +553,488 @@ export default function TransactionPage() {
                             gap: SPACING.M,
                           }}
                         >
-                          {/* First Name */}
-                          <div>
-                            <label
-                              htmlFor="firstName"
-                              style={{
-                                display: "block",
-                                fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                                color: COLORS.MIDNIGHT_ASH,
-                                marginBottom: SPACING.S,
-                              }}
-                            >
-                              First name
-                            </label>
-                            <input
-                              id="firstName"
-                              name="firstName"
-                              type="text"
-                              value={formData.firstName}
-                              onChange={handleInputChange}
-                              autoComplete="given-name"
-                              style={{
-                                width: "100%",
-                                padding: SPACING.M,
-                                fontSize: TYPOGRAPHY.SIZE_BODY,
-                                borderRadius: BORDER_RADIUS.MEDIUM,
-                                border: `1px solid rgba(200,200,200,0.33)`,
-                                outline: "none",
-                                boxSizing: "border-box",
-                              }}
-                            />
-                          </div>
-
-                          {/* Last Name */}
-                          <div>
-                            <label
-                              htmlFor="lastName"
-                              style={{
-                                display: "block",
-                                fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                                color: COLORS.MIDNIGHT_ASH,
-                                marginBottom: SPACING.S,
-                              }}
-                            >
-                              Last name
-                            </label>
-                            <input
-                              id="lastName"
-                              name="lastName"
-                              type="text"
-                              value={formData.lastName}
-                              onChange={handleInputChange}
-                              autoComplete="family-name"
-                              style={{
-                                width: "100%",
-                                padding: SPACING.M,
-                                fontSize: TYPOGRAPHY.SIZE_BODY,
-                                borderRadius: BORDER_RADIUS.MEDIUM,
-                                border: `1px solid rgba(200,200,200,0.33)`,
-                                outline: "none",
-                                boxSizing: "border-box",
-                              }}
-                            />
-                          </div>
-
-                          {/* Company (full width) */}
-                          <div style={{ gridColumn: "1 / -1" }}>
-                            <label
-                              htmlFor="company"
-                              style={{
-                                display: "block",
-                                fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                                color: COLORS.MIDNIGHT_ASH,
-                                marginBottom: SPACING.S,
-                              }}
-                            >
-                              Company (optional)
-                            </label>
-                            <input
-                              id="company"
-                              name="company"
-                              type="text"
-                              value={formData.company}
-                              onChange={handleInputChange}
-                              autoComplete="organization"
-                              style={{
-                                width: "100%",
-                                padding: SPACING.M,
-                                fontSize: TYPOGRAPHY.SIZE_BODY,
-                                borderRadius: BORDER_RADIUS.MEDIUM,
-                                border: `1px solid rgba(200,200,200,0.33)`,
-                                outline: "none",
-                                boxSizing: "border-box",
-                              }}
-                            />
-                          </div>
-
-                          {/* Address (full width) */}
-                          <div style={{ gridColumn: "1 / -1" }}>
-                            <label
-                              htmlFor="address"
-                              style={{
-                                display: "block",
-                                fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                                color: COLORS.MIDNIGHT_ASH,
-                                marginBottom: SPACING.S,
-                              }}
-                            >
-                              Address
-                            </label>
-                            <input
-                              id="address"
-                              name="address"
-                              type="text"
-                              value={formData.address}
-                              onChange={handleInputChange}
-                              autoComplete="street-address"
-                              style={{
-                                width: "100%",
-                                padding: SPACING.M,
-                                fontSize: TYPOGRAPHY.SIZE_BODY,
-                                borderRadius: BORDER_RADIUS.MEDIUM,
-                                border: `1px solid rgba(200,200,200,0.33)`,
-                                outline: "none",
-                                boxSizing: "border-box",
-                              }}
-                            />
-                          </div>
-
-                          {/* Apartment (full width) */}
-                          <div style={{ gridColumn: "1 / -1" }}>
-                            <label
-                              htmlFor="apartment"
-                              style={{
-                                display: "block",
-                                fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                                color: COLORS.MIDNIGHT_ASH,
-                                marginBottom: SPACING.S,
-                              }}
-                            >
-                              Apartment, suite, etc. (optional)
-                            </label>
-                            <input
-                              id="apartment"
-                              name="apartment"
-                              type="text"
-                              value={formData.apartment}
-                              onChange={handleInputChange}
-                              style={{
-                                width: "100%",
-                                padding: SPACING.M,
-                                fontSize: TYPOGRAPHY.SIZE_BODY,
-                                borderRadius: BORDER_RADIUS.MEDIUM,
-                                border: `1px solid rgba(200,200,200,0.33)`,
-                                outline: "none",
-                                boxSizing: "border-box",
-                              }}
-                            />
-                          </div>
-
-                          {/* City */}
-                          <div>
-                            <label
-                              htmlFor="city"
-                              style={{
-                                display: "block",
-                                fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                                color: COLORS.MIDNIGHT_ASH,
-                                marginBottom: SPACING.S,
-                              }}
-                            >
-                              City
-                            </label>
-                            <input
-                              id="city"
-                              name="city"
-                              type="text"
-                              value={formData.city}
-                              onChange={handleInputChange}
-                              autoComplete="address-level2"
-                              style={{
-                                width: "100%",
-                                padding: SPACING.M,
-                                fontSize: TYPOGRAPHY.SIZE_BODY,
-                                borderRadius: BORDER_RADIUS.MEDIUM,
-                                border: `1px solid rgba(200,200,200,0.33)`,
-                                outline: "none",
-                                boxSizing: "border-box",
-                              }}
-                            />
-                          </div>
-
-                          {/* Country */}
-                          <div>
-                            <label
-                              htmlFor="country"
-                              style={{
-                                display: "block",
-                                fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                                color: COLORS.MIDNIGHT_ASH,
-                                marginBottom: SPACING.S,
-                              }}
-                            >
-                              Country
-                            </label>
-                            <div style={{ position: "relative" }}>
-                              <select
-                                id="country"
-                                name="country"
-                                value={formData.country}
-                                onChange={handleInputChange}
-                                autoComplete="country-name"
-                                style={{
-                                  width: "100%",
-                                  padding: SPACING.M,
-                                  paddingRight: SPACING.XL,
-                                  fontSize: TYPOGRAPHY.SIZE_BODY,
-                                  borderRadius: BORDER_RADIUS.MEDIUM,
-                                  border: `1px solid rgba(200,200,200,0.33)`,
-                                  outline: "none",
-                                  appearance: "none",
-                                  backgroundColor: COLORS.WHITE,
-                                  boxSizing: "border-box",
-                                }}
-                              >
-                                <option>United States</option>
-                                <option>Canada</option>
-                                <option>United Kingdom</option>
-                                <option>Australia</option>
-                                <option>Germany</option>
-                                <option>France</option>
-                              </select>
-                              <ChevronDownIcon
-                                style={{
-                                  position: "absolute",
-                                  right: SPACING.M,
-                                  top: "50%",
-                                  transform: "translateY(-50%)",
-                                  width: "16px",
-                                  height: "16px",
-                                  color: COLORS.PEBBLE,
-                                  pointerEvents: "none",
-                                }}
-                              />
-                            </div>
-                          </div>
-
-                          {/* Region/State */}
-                          <div>
-                            <label
-                              htmlFor="region"
-                              style={{
-                                display: "block",
-                                fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                                color: COLORS.MIDNIGHT_ASH,
-                                marginBottom: SPACING.S,
-                              }}
-                            >
-                              State / Province
-                            </label>
-                            <input
-                              id="region"
-                              name="region"
-                              type="text"
-                              value={formData.region}
-                              onChange={handleInputChange}
-                              autoComplete="address-level1"
-                              style={{
-                                width: "100%",
-                                padding: SPACING.M,
-                                fontSize: TYPOGRAPHY.SIZE_BODY,
-                                borderRadius: BORDER_RADIUS.MEDIUM,
-                                border: `1px solid rgba(200,200,200,0.33)`,
-                                outline: "none",
-                                boxSizing: "border-box",
-                              }}
-                            />
-                          </div>
-
-                          {/* Postal Code */}
-                          <div>
-                            <label
-                              htmlFor="postalCode"
-                              style={{
-                                display: "block",
-                                fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                                color: COLORS.MIDNIGHT_ASH,
-                                marginBottom: SPACING.S,
-                              }}
-                            >
-                              Postal code
-                            </label>
-                            <input
-                              id="postalCode"
-                              name="postalCode"
-                              type="text"
-                              value={formData.postalCode}
-                              onChange={handleInputChange}
-                              autoComplete="postal-code"
-                              style={{
-                                width: "100%",
-                                padding: SPACING.M,
-                                fontSize: TYPOGRAPHY.SIZE_BODY,
-                                borderRadius: BORDER_RADIUS.MEDIUM,
-                                border: `1px solid rgba(200,200,200,0.33)`,
-                                outline: "none",
-                                boxSizing: "border-box",
-                              }}
-                            />
-                          </div>
-
-                          {/* Phone (full width) */}
-                          <div style={{ gridColumn: "1 / -1" }}>
-                            <label
-                              htmlFor="phone"
-                              style={{
-                                display: "block",
-                                fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                                color: COLORS.MIDNIGHT_ASH,
-                                marginBottom: SPACING.S,
-                              }}
-                            >
-                              Phone
-                            </label>
-                            <input
-                              id="phone"
-                              name="phone"
-                              type="tel"
-                              value={formData.phone}
-                              onChange={handleInputChange}
-                              autoComplete="tel"
-                              style={{
-                                width: "100%",
-                                padding: SPACING.M,
-                                fontSize: TYPOGRAPHY.SIZE_BODY,
-                                borderRadius: BORDER_RADIUS.MEDIUM,
-                                border: `1px solid rgba(200,200,200,0.33)`,
-                                outline: "none",
-                                boxSizing: "border-box",
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Delivery Method */}
-                      <div
-                        style={{
-                          backgroundColor: COLORS.SOFT_CLOUD,
-                          padding: SPACING.L,
-                          borderRadius: BORDER_RADIUS.MEDIUM,
-                          marginBottom: SPACING.L,
-                        }}
-                      >
-                        <h4
-                          style={{
-                            fontSize: TYPOGRAPHY.SIZE_BODY,
-                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                            color: COLORS.MIDNIGHT_ASH,
-                            marginBottom: SPACING.M,
-                          }}
-                        >
-                          Delivery method
-                        </h4>
-                        <RadioGroup
-                          value={selectedDeliveryMethod}
-                          onChange={setSelectedDeliveryMethod}
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr",
-                            gap: SPACING.M,
-                          }}
-                        >
-                          {deliveryMethods.map((method) => (
-                            <Radio
-                              key={method.id}
-                              value={method}
-                              style={{
-                                position: "relative",
-                                display: "flex",
-                                alignItems: "center",
-                                padding: SPACING.M,
-                                borderRadius: BORDER_RADIUS.MEDIUM,
-                                border:
-                                  selectedDeliveryMethod.id === method.id
-                                    ? `2px solid ${COLORS.MIDNIGHT_ASH}`
-                                    : `1px solid rgba(200,200,200,0.33)`,
-                                backgroundColor: COLORS.WHITE,
-                                cursor: "pointer",
-                              }}
-                            >
-                              <span style={{ flex: 1 }}>
-                                <span
-                                  style={{
-                                    display: "block",
-                                    fontSize: TYPOGRAPHY.SIZE_BODY,
-                                    fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                                    color: COLORS.MIDNIGHT_ASH,
-                                  }}
-                                >
-                                  {method.title}
-                                </span>
-                                <span
-                                  style={{
-                                    display: "block",
-                                    fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                    color: COLORS.PEBBLE,
-                                  }}
-                                >
-                                  {method.turnaround}
-                                </span>
-                                <span
-                                  style={{
-                                    display: "block",
-                                    fontSize: TYPOGRAPHY.SIZE_BODY,
-                                    fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                                    color: COLORS.MIDNIGHT_ASH,
-                                    marginTop: SPACING.S,
-                                  }}
-                                >
-                                  {method.price}
-                                </span>
-                              </span>
-                              {selectedDeliveryMethod.id === method.id && (
-                                <CheckCircleIcon
-                                  style={{
-                                    width: "20px",
-                                    height: "20px",
-                                    color: COLORS.MIDNIGHT_ASH,
-                                  }}
-                                />
-                              )}
-                            </Radio>
-                          ))}
-                        </RadioGroup>
-                      </div>
-
-                      {/* Payment Method */}
-                      <div
-                        style={{
-                          backgroundColor: COLORS.SOFT_CLOUD,
-                          padding: SPACING.L,
-                          borderRadius: BORDER_RADIUS.MEDIUM,
-                          marginBottom: SPACING.L,
-                        }}
-                      >
-                        <h4
-                          style={{
-                            fontSize: TYPOGRAPHY.SIZE_BODY,
-                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                            color: COLORS.MIDNIGHT_ASH,
-                            marginBottom: SPACING.M,
-                          }}
-                        >
-                          Payment method
-                        </h4>
-                        <RadioGroup
-                          value={selectedPaymentMethod}
-                          onChange={setSelectedPaymentMethod}
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: SPACING.S,
-                          }}
-                        >
-                          {paymentMethods.map((method) => (
-                            <Radio
-                              key={method.id}
-                              value={method}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                padding: SPACING.M,
-                                borderRadius: BORDER_RADIUS.MEDIUM,
-                                border:
-                                  selectedPaymentMethod.id === method.id
-                                    ? `2px solid ${COLORS.MIDNIGHT_ASH}`
-                                    : `1px solid rgba(200,200,200,0.33)`,
-                                backgroundColor: COLORS.WHITE,
-                                cursor: "pointer",
-                              }}
-                            >
-                              <span style={{ flex: 1 }}>
-                                <span
-                                  style={{
-                                    display: "block",
-                                    fontSize: TYPOGRAPHY.SIZE_BODY,
-                                    fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                                    color: COLORS.MIDNIGHT_ASH,
-                                  }}
-                                >
-                                  {method.title}
-                                </span>
-                                <span
-                                  style={{
-                                    fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                    color: COLORS.PEBBLE,
-                                  }}
-                                >
-                                  {method.description}
-                                </span>
-                              </span>
-                              {selectedPaymentMethod.id === method.id && (
-                                <CheckCircleIcon
-                                  style={{
-                                    width: "20px",
-                                    height: "20px",
-                                    color: COLORS.MIDNIGHT_ASH,
-                                  }}
-                                />
-                              )}
-                            </Radio>
-                          ))}
-                        </RadioGroup>
-
-                        {/* Payment Reference */}
-                        <div style={{ marginTop: SPACING.M }}>
-                          <label
-                            htmlFor="paymentReference"
-                            style={{
-                              display: "block",
-                              fontSize: TYPOGRAPHY.SIZE_LABEL,
-                              fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                              color: COLORS.MIDNIGHT_ASH,
-                              marginBottom: SPACING.S,
-                            }}
-                          >
-                            Payment reference / Transaction ID
-                          </label>
                           <input
-                            id="paymentReference"
-                            type="text"
-                            value={paymentReference}
-                            onChange={(e) =>
-                              setPaymentReference(e.target.value)
-                            }
-                            placeholder="e.g., TXN-123456789"
+                            name="firstName"
+                            placeholder="First Name"
+                            onChange={handleInputChange}
                             style={{
-                              width: "100%",
                               padding: SPACING.M,
-                              fontSize: TYPOGRAPHY.SIZE_BODY,
+                              border: "1px solid #ddd",
                               borderRadius: BORDER_RADIUS.MEDIUM,
-                              border: `1px solid rgba(200,200,200,0.33)`,
-                              outline: "none",
-                              boxSizing: "border-box",
+                            }}
+                          />
+                          <input
+                            name="lastName"
+                            placeholder="Last Name"
+                            onChange={handleInputChange}
+                            style={{
+                              padding: SPACING.M,
+                              border: "1px solid #ddd",
+                              borderRadius: BORDER_RADIUS.MEDIUM,
+                            }}
+                          />
+                          <input
+                            name="address"
+                            placeholder="Address"
+                            onChange={handleInputChange}
+                            style={{
+                              padding: SPACING.M,
+                              border: "1px solid #ddd",
+                              borderRadius: BORDER_RADIUS.MEDIUM,
+                              gridColumn: "1 / -1",
+                            }}
+                          />
+                          <input
+                            name="city"
+                            placeholder="City"
+                            onChange={handleInputChange}
+                            style={{
+                              padding: SPACING.M,
+                              border: "1px solid #ddd",
+                              borderRadius: BORDER_RADIUS.MEDIUM,
+                            }}
+                          />
+                          <input
+                            name="phone"
+                            placeholder="Phone"
+                            onChange={handleInputChange}
+                            style={{
+                              padding: SPACING.M,
+                              border: "1px solid #ddd",
+                              borderRadius: BORDER_RADIUS.MEDIUM,
                             }}
                           />
                         </div>
+                      </div>
 
-                        {/* Payment Proof Upload */}
-                        <div style={{ marginTop: SPACING.M }}>
-                          <label
-                            htmlFor="paymentProof"
-                            style={{
-                              display: "block",
-                              fontSize: TYPOGRAPHY.SIZE_LABEL,
-                              fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                              color: COLORS.MIDNIGHT_ASH,
-                              marginBottom: SPACING.S,
-                            }}
-                          >
-                            Upload payment proof (optional)
-                          </label>
-                          <div
-                            style={{
-                              padding: SPACING.L,
-                              border: `2px dashed rgba(200,200,200,0.5)`,
-                              borderRadius: BORDER_RADIUS.MEDIUM,
-                              backgroundColor: COLORS.WHITE,
-                              textAlign: "center",
-                            }}
-                          >
-                            <input
-                              id="paymentProof"
-                              type="file"
-                              accept="image/*,.pdf"
-                              onChange={(e) =>
-                                setPaymentProofFile(e.target.files?.[0] || null)
-                              }
-                              style={{ display: "none" }}
-                            />
-                            <label
-                              htmlFor="paymentProof"
-                              style={{
-                                cursor: "pointer",
-                                color: COLORS.MIDNIGHT_ASH,
-                                fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                                fontSize: TYPOGRAPHY.SIZE_BODY,
-                              }}
-                            >
-                              {paymentProofFile
-                                ? paymentProofFile.name
-                                : "Click to upload or drag and drop"}
-                            </label>
-                            <p
-                              style={{
-                                fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                color: COLORS.PEBBLE,
-                                marginTop: SPACING.S,
-                              }}
-                            >
-                              PNG, JPG, PDF up to 10MB
-                            </p>
-                          </div>
+                      {/* Payment Proof */}
+                      <div style={{ marginBottom: SPACING.L }}>
+                        <label
+                          style={{
+                            display: "block",
+                            marginBottom: SPACING.S,
+                            fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
+                          }}
+                        >
+                          Upload Payment Proof
+                        </label>
+                        <div
+                          style={{
+                            padding: SPACING.L,
+                            border: "2px dashed #ccc",
+                            borderRadius: BORDER_RADIUS.MEDIUM,
+                            textAlign: "center",
+                          }}
+                        >
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) =>
+                              setPaymentProofFile(e.target.files?.[0])
+                            }
+                          />
                         </div>
                       </div>
 
-                      {/* Submit Button */}
-                      <div style={{ marginTop: SPACING.L }}>
-                        <button
-                          onClick={handleSubmitPaymentAndAddress}
-                          disabled={!isFormValid}
-                          style={{
-                            width: "100%",
-                            backgroundColor: isFormValid
-                              ? COLORS.MIDNIGHT_ASH
-                              : COLORS.PEBBLE,
-                            color: COLORS.WHITE,
-                            padding: `${SPACING.M} ${SPACING.XL}`,
-                            borderRadius: BORDER_RADIUS.MEDIUM,
-                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                            fontSize: TYPOGRAPHY.SIZE_BODY,
-                            border: "none",
-                            cursor: isFormValid ? "pointer" : "not-allowed",
-                          }}
-                        >
-                          Submit Payment & Address
-                        </button>
-                        {!isFormValid && (
-                          <p
-                            style={{
-                              fontSize: TYPOGRAPHY.SIZE_LABEL,
-                              color: COLORS.PEBBLE,
-                              textAlign: "center",
-                              marginTop: SPACING.S,
-                            }}
-                          >
-                            Please fill in all required fields (name, address,
-                            city, phone)
-                          </p>
-                        )}
-                      </div>
+                      <button
+                        onClick={handleCreateOrder}
+                        disabled={!isFormValid}
+                        style={{
+                          width: "100%",
+                          backgroundColor: isFormValid
+                            ? COLORS.MIDNIGHT_ASH
+                            : COLORS.PEBBLE,
+                          color: COLORS.WHITE,
+                          padding: SPACING.M,
+                          borderRadius: BORDER_RADIUS.MEDIUM,
+                          border: "none",
+                          cursor: isFormValid ? "pointer" : "not-allowed",
+                        }}
+                      >
+                        Submit Payment & Address
+                      </button>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* STEP 1: Seller waiting state */}
-              {currentStep === 1 && auth.role === "seller" && (
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: `${SPACING.XXL} ${SPACING.L}`,
-                    animation: "fadeSlideIn 0.4s ease-out",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      width: "64px",
-                      height: "64px",
-                      borderRadius: "50%",
-                      backgroundColor: "#FEF3C7",
-                      marginBottom: SPACING.M,
-                    }}
-                  >
-                    <svg
-                      style={{
-                        width: "32px",
-                        height: "32px",
-                        color: "#D97706",
-                      }}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
+              {/* STEP 1: SELLER WAITING */}
+              {currentStep === 1 && isSeller && (
+                <div style={{ textAlign: "center", padding: SPACING.XXL }}>
+                  <div style={{ fontSize: "40px", marginBottom: SPACING.M }}>
+                    ⏳
                   </div>
-                  <h3
-                    style={{
-                      fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
-                      fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                      color: COLORS.MIDNIGHT_ASH,
-                      marginBottom: SPACING.S,
-                    }}
-                  >
+                  <h3 style={{ fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD }}>
                     Waiting for Buyer
                   </h3>
-                  <p
-                    style={{
-                      fontSize: TYPOGRAPHY.SIZE_BODY,
-                      color: COLORS.PEBBLE,
-                    }}
-                  >
-                    The buyer is preparing their payment invoice and delivery
-                    address.
-                  </p>
-                  <p
-                    style={{
-                      fontSize: TYPOGRAPHY.SIZE_LABEL,
-                      color: COLORS.PEBBLE,
-                      opacity: 0.7,
-                      marginTop: SPACING.S,
-                    }}
-                  >
-                    You will be notified when they submit.
+                  <p style={{ color: COLORS.PEBBLE }}>
+                    The buyer is creating the order.
                   </p>
                 </div>
               )}
 
-              {/* STEP 2: Seller confirms payment & sends shipping */}
-              {currentStep === 2 &&
-                auth.role === "seller" &&
-                tx?.status === STATUS.WAITING_SELLER_CONFIRMATION && (
-                  <div style={{ animation: "fadeSlideIn 0.4s ease-out" }}>
-                    <h3
-                      style={{
-                        fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
-                        fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                        color: COLORS.MIDNIGHT_ASH,
-                        marginBottom: SPACING.S,
-                      }}
-                    >
-                      Step 2 — Confirm Payment & Send Shipping Invoice
-                    </h3>
-                    <p
-                      style={{
-                        fontSize: TYPOGRAPHY.SIZE_BODY,
-                        color: COLORS.PEBBLE,
-                        marginBottom: SPACING.L,
-                      }}
-                    >
-                      Review the buyer's payment invoice, then confirm or
-                      reject.
-                    </p>
-
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: SPACING.L,
-                      }}
-                    >
-                      {/* Read-only Buyer Info */}
-                      <div>
-                        <h4
-                          style={{
-                            fontSize: TYPOGRAPHY.SIZE_LABEL,
-                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                            color: COLORS.MIDNIGHT_ASH,
-                            marginBottom: SPACING.M,
-                          }}
-                        >
-                          Buyer Payment Invoice
-                        </h4>
-                        <div
-                          style={{
-                            backgroundColor: COLORS.SOFT_CLOUD,
-                            padding: SPACING.M,
-                            borderRadius: BORDER_RADIUS.MEDIUM,
-                            border: `1px solid rgba(200,200,200,0.33)`,
-                          }}
-                        >
-                          <pre
-                            style={{
-                              fontSize: TYPOGRAPHY.SIZE_LABEL,
-                              color: COLORS.MIDNIGHT_ASH,
-                              whiteSpace: "pre-wrap",
-                              margin: 0,
-                            }}
-                          >
-                            {JSON.stringify(tx.paymentInvoice, null, 2)}
-                          </pre>
-                        </div>
-
-                        <h4
-                          style={{
-                            fontSize: TYPOGRAPHY.SIZE_LABEL,
-                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                            color: COLORS.MIDNIGHT_ASH,
-                            marginTop: SPACING.M,
-                            marginBottom: SPACING.M,
-                          }}
-                        >
-                          Delivery Address
-                        </h4>
-                        <div
-                          style={{
-                            backgroundColor: COLORS.SOFT_CLOUD,
-                            padding: SPACING.M,
-                            borderRadius: BORDER_RADIUS.MEDIUM,
-                            border: `1px solid rgba(200,200,200,0.33)`,
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "grid",
-                              gridTemplateColumns: "1fr 1fr",
-                              gap: SPACING.S,
-                              fontSize: TYPOGRAPHY.SIZE_BODY,
-                              color: COLORS.MIDNIGHT_ASH,
-                            }}
-                          >
-                            <p style={{ margin: 0 }}>
-                              <strong>Name:</strong>{" "}
-                              {tx.deliveryAddress?.firstName}{" "}
-                              {tx.deliveryAddress?.lastName}
-                            </p>
-                            <p style={{ margin: 0 }}>
-                              <strong>Phone:</strong>{" "}
-                              {tx.deliveryAddress?.phone}
-                            </p>
-                            <p style={{ margin: 0, gridColumn: "1 / -1" }}>
-                              <strong>Address:</strong>{" "}
-                              {tx.deliveryAddress?.address}
-                              {tx.deliveryAddress?.apartment &&
-                                `, ${tx.deliveryAddress.apartment}`}
-                            </p>
-                            <p style={{ margin: 0 }}>
-                              <strong>City:</strong> {tx.deliveryAddress?.city}
-                            </p>
-                            <p style={{ margin: 0 }}>
-                              <strong>Region:</strong>{" "}
-                              {tx.deliveryAddress?.region}
-                            </p>
-                            <p style={{ margin: 0 }}>
-                              <strong>Country:</strong>{" "}
-                              {tx.deliveryAddress?.country}
-                            </p>
-                            <p style={{ margin: 0 }}>
-                              <strong>Postal:</strong>{" "}
-                              {tx.deliveryAddress?.postalCode}
-                            </p>
-                            {tx.deliveryAddress?.deliveryMethod && (
-                              <p
-                                style={{
-                                  margin: 0,
-                                  gridColumn: "1 / -1",
-                                  marginTop: SPACING.S,
-                                }}
-                              >
-                                <strong>Delivery:</strong>{" "}
-                                {tx.deliveryAddress.deliveryMethod.title} (
-                                {tx.deliveryAddress.deliveryMethod.price})
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        <div
-                          style={{
-                            marginTop: SPACING.M,
-                            display: "flex",
-                            gap: SPACING.M,
-                          }}
-                        >
-                          <button
-                            onClick={() => handleSellerReject()}
-                            style={{
-                              padding: `${SPACING.S} ${SPACING.M}`,
-                              borderRadius: BORDER_RADIUS.MEDIUM,
-                              border: `1px solid #DC2626`,
-                              backgroundColor: "transparent",
-                              color: "#DC2626",
-                              fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                              fontSize: TYPOGRAPHY.SIZE_BODY,
-                              cursor: "pointer",
-                            }}
-                          >
-                            Reject Payment
-                          </button>
-                          <button
-                            onClick={() => {}}
-                            style={{
-                              padding: `${SPACING.S} ${SPACING.M}`,
-                              borderRadius: BORDER_RADIUS.MEDIUM,
-                              border: `1px solid #16A34A`,
-                              backgroundColor: "#F0FDF4",
-                              color: "#16A34A",
-                              fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                              fontSize: TYPOGRAPHY.SIZE_BODY,
-                              cursor: "pointer",
-                            }}
-                          >
-                            ✓ Payment Received
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Shipping Invoice Form */}
-                      <div>
-                        <h4
-                          style={{
-                            fontSize: TYPOGRAPHY.SIZE_LABEL,
-                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                            color: COLORS.MIDNIGHT_ASH,
-                            marginBottom: SPACING.M,
-                          }}
-                        >
-                          Send Shipping Invoice
-                        </h4>
-                        <ShippingInvoiceForm onSubmit={handleSellerConfirm} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-              {/* STEP 2: Buyer waiting for seller */}
-              {currentStep === 2 && auth.role === "buyer" && (
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: `${SPACING.XXL} ${SPACING.L}`,
-                    animation: "fadeSlideIn 0.4s ease-out",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      width: "64px",
-                      height: "64px",
-                      borderRadius: "50%",
-                      backgroundColor: "#DBEAFE",
-                      marginBottom: SPACING.M,
-                    }}
-                  >
-                    <svg
-                      style={{
-                        width: "32px",
-                        height: "32px",
-                        color: "#2563EB",
-                      }}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-                      />
-                    </svg>
-                  </div>
-                  <h3
-                    style={{
-                      fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
-                      fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                      color: COLORS.MIDNIGHT_ASH,
-                      marginBottom: SPACING.S,
-                    }}
-                  >
-                    Waiting for Seller to Ship
-                  </h3>
-                  <p
-                    style={{
-                      fontSize: TYPOGRAPHY.SIZE_BODY,
-                      color: COLORS.PEBBLE,
-                    }}
-                  >
-                    The seller is reviewing your payment and preparing the
-                    shipment.
-                  </p>
-                </div>
-              )}
-
-              {/* STEP 3: Buyer confirms receipt */}
-              {currentStep === 3 &&
-                auth.role === "buyer" &&
-                tx?.status === STATUS.IN_TRANSIT && (
-                  <div style={{ animation: "fadeSlideIn 0.4s ease-out" }}>
-                    <h3
-                      style={{
-                        fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
-                        fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                        color: COLORS.MIDNIGHT_ASH,
-                        marginBottom: SPACING.S,
-                      }}
-                    >
-                      Step 3 — Confirm Receipt of Goods
-                    </h3>
-                    <p
-                      style={{
-                        fontSize: TYPOGRAPHY.SIZE_BODY,
-                        color: COLORS.PEBBLE,
-                        marginBottom: SPACING.L,
-                      }}
-                    >
-                      Review the shipping information and confirm when you
-                      receive the item.
-                    </p>
-
-                    <div
-                      style={{
-                        backgroundColor: COLORS.SOFT_CLOUD,
-                        padding: SPACING.L,
-                        borderRadius: BORDER_RADIUS.MEDIUM,
-                        border: `1px solid rgba(200,200,200,0.33)`,
-                        marginBottom: SPACING.L,
-                      }}
-                    >
-                      <h4
-                        style={{
-                          fontSize: TYPOGRAPHY.SIZE_LABEL,
-                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                          color: COLORS.MIDNIGHT_ASH,
-                          marginBottom: SPACING.M,
-                        }}
-                      >
-                        Shipping Invoice & Tracking
-                      </h4>
-                      <pre
-                        style={{
-                          fontSize: TYPOGRAPHY.SIZE_BODY,
-                          color: COLORS.MIDNIGHT_ASH,
-                          whiteSpace: "pre-wrap",
-                          margin: 0,
-                        }}
-                      >
-                        {JSON.stringify(tx.shippingInvoice, null, 2)}
-                      </pre>
-                    </div>
-
-                    <div style={{ display: "flex", gap: SPACING.M }}>
-                      <button
-                        onClick={handleBuyerConfirmReceipt}
-                        style={{
-                          backgroundColor: COLORS.MIDNIGHT_ASH,
-                          color: COLORS.WHITE,
-                          padding: `${SPACING.M} ${SPACING.XL}`,
-                          borderRadius: BORDER_RADIUS.MEDIUM,
-                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                          fontSize: TYPOGRAPHY.SIZE_BODY,
-                          border: "none",
-                          cursor: "pointer",
-                        }}
-                      >
-                        ✓ I Have Received the Product
-                      </button>
-                      <button
-                        onClick={() =>
-                          showToast("Problem reported — seller notified")
-                        }
-                        style={{
-                          padding: `${SPACING.M} ${SPACING.L}`,
-                          borderRadius: BORDER_RADIUS.MEDIUM,
-                          border: `1px solid rgba(200,200,200,0.5)`,
-                          backgroundColor: "transparent",
-                          color: COLORS.MIDNIGHT_ASH,
-                          fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                          fontSize: TYPOGRAPHY.SIZE_BODY,
-                          cursor: "pointer",
-                        }}
-                      >
-                        Report a Problem
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-              {/* STEP 3: Seller waiting for buyer confirmation */}
-              {currentStep === 3 && auth.role === "seller" && (
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: `${SPACING.XXL} ${SPACING.L}`,
-                    animation: "fadeSlideIn 0.4s ease-out",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      width: "64px",
-                      height: "64px",
-                      borderRadius: "50%",
-                      backgroundColor: "#DCFCE7",
-                      marginBottom: SPACING.M,
-                    }}
-                  >
-                    <svg
-                      style={{
-                        width: "32px",
-                        height: "32px",
-                        color: "#16A34A",
-                      }}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
-                      />
-                    </svg>
-                  </div>
-                  <h3
-                    style={{
-                      fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
-                      fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                      color: COLORS.MIDNIGHT_ASH,
-                      marginBottom: SPACING.S,
-                    }}
-                  >
-                    Package In Transit
-                  </h3>
-                  <p
-                    style={{
-                      fontSize: TYPOGRAPHY.SIZE_BODY,
-                      color: COLORS.PEBBLE,
-                    }}
-                  >
-                    Waiting for buyer to confirm receipt of the package.
-                  </p>
-                </div>
-              )}
-
-              {/* STEP 4: Ratings */}
-              {currentStep === 4 && (
+              {/* STEP 2: SELLER SHIP */}
+              {currentStep === 2 && isSeller && (
                 <div style={{ animation: "fadeSlideIn 0.4s ease-out" }}>
                   <h3
                     style={{
-                      fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
                       fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                      color: COLORS.MIDNIGHT_ASH,
-                      marginBottom: SPACING.S,
-                    }}
-                  >
-                    Step 4 — Rate Your Experience
-                  </h3>
-                  <p
-                    style={{
-                      fontSize: TYPOGRAPHY.SIZE_BODY,
-                      color: COLORS.PEBBLE,
                       marginBottom: SPACING.L,
                     }}
                   >
-                    Leave a rating and comment for the other party.
-                  </p>
+                    Step 2 — Verify Payment & Ship
+                  </h3>
 
+                  {/* Proof Display */}
                   <div
                     style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: SPACING.L,
+                      backgroundColor: COLORS.SOFT_CLOUD,
+                      padding: SPACING.M,
+                      borderRadius: BORDER_RADIUS.MEDIUM,
+                      marginBottom: SPACING.L,
                     }}
                   >
-                    {/* Your Rating */}
-                    <div>
-                      <h4
+                    <p>
+                      <strong>Ship To:</strong> {tx.shipping_address}
+                    </p>
+                    <p>
+                      <strong>Payment Proof:</strong>
+                    </p>
+                    {tx.payment_proof_image ? (
+                      <a
+                        href={tx.payment_proof_image}
+                        target="_blank"
+                        rel="noreferrer"
                         style={{
-                          fontSize: TYPOGRAPHY.SIZE_LABEL,
-                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                          color: COLORS.MIDNIGHT_ASH,
-                          marginBottom: SPACING.M,
+                          color: "#2563EB",
+                          textDecoration: "underline",
                         }}
                       >
-                        Your Rating
-                      </h4>
-                      {tx?.ratings?.[auth.role] ? (
-                        <div
-                          style={{
-                            backgroundColor:
-                              tx.ratings[auth.role].score > 0
-                                ? "#F0FDF4"
-                                : "#FEF2F2",
-                            padding: SPACING.L,
-                            borderRadius: BORDER_RADIUS.MEDIUM,
-                            border: `1px solid ${
-                              tx.ratings[auth.role].score > 0
-                                ? "#BBF7D0"
-                                : "#FECACA"
-                            }`,
-                            textAlign: "center",
-                            transition: "all 0.3s ease",
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontSize: "48px",
-                              marginBottom: SPACING.S,
-                            }}
-                          >
-                            {tx.ratings[auth.role].score > 0 ? "👍" : "👎"}
-                          </div>
-                          <p
-                            style={{
-                              color:
-                                tx.ratings[auth.role].score > 0
-                                  ? "#16A34A"
-                                  : "#DC2626",
-                              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                              fontSize: TYPOGRAPHY.SIZE_BODY,
-                            }}
-                          >
-                            You rated:{" "}
-                            {tx.ratings[auth.role].score > 0 ? "+1" : "-1"}
-                          </p>
-                          {tx.ratings[auth.role].comment && (
-                            <p
-                              style={{
-                                marginTop: SPACING.M,
-                                fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                color: COLORS.PEBBLE,
-                                fontStyle: "italic",
-                              }}
-                            >
-                              "{tx.ratings[auth.role].comment}"
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <div>
-                          {/* Thumbs Selection */}
-                          <div
-                            style={{
-                              display: "flex",
-                              gap: SPACING.M,
-                              justifyContent: "center",
-                              marginBottom: SPACING.L,
-                            }}
-                          >
-                            <button
-                              onClick={() => setSelectedRating(1)}
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                gap: SPACING.S,
-                                padding: SPACING.L,
-                                backgroundColor:
-                                  selectedRating === 1
-                                    ? "#F0FDF4"
-                                    : COLORS.SOFT_CLOUD,
-                                border:
-                                  selectedRating === 1
-                                    ? `2px solid #16A34A`
-                                    : `2px solid transparent`,
-                                borderRadius: BORDER_RADIUS.MEDIUM,
-                                cursor: "pointer",
-                                transition: "all 0.3s ease",
-                                minWidth: "100px",
-                                transform:
-                                  selectedRating === 1
-                                    ? "scale(1.05)"
-                                    : "scale(1)",
-                              }}
-                            >
-                              <HandThumbUpIcon
-                                style={{
-                                  width: "40px",
-                                  height: "40px",
-                                  color: "#16A34A",
-                                }}
-                              />
-                              <span
-                                style={{
-                                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                                  color: "#16A34A",
-                                  fontSize: TYPOGRAPHY.SIZE_BODY,
-                                }}
-                              >
-                                +1
-                              </span>
-                            </button>
-                            <button
-                              onClick={() => setSelectedRating(-1)}
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                gap: SPACING.S,
-                                padding: SPACING.L,
-                                backgroundColor:
-                                  selectedRating === -1
-                                    ? "#FEF2F2"
-                                    : COLORS.SOFT_CLOUD,
-                                border:
-                                  selectedRating === -1
-                                    ? `2px solid #DC2626`
-                                    : `2px solid transparent`,
-                                borderRadius: BORDER_RADIUS.MEDIUM,
-                                cursor: "pointer",
-                                transition: "all 0.3s ease",
-                                minWidth: "100px",
-                                transform:
-                                  selectedRating === -1
-                                    ? "scale(1.05)"
-                                    : "scale(1)",
-                              }}
-                            >
-                              <HandThumbDownIcon
-                                style={{
-                                  width: "40px",
-                                  height: "40px",
-                                  color: "#DC2626",
-                                }}
-                              />
-                              <span
-                                style={{
-                                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                                  color: "#DC2626",
-                                  fontSize: TYPOGRAPHY.SIZE_BODY,
-                                }}
-                              >
-                                -1
-                              </span>
-                            </button>
-                          </div>
-
-                          {/* Comment Box */}
-                          <div style={{ marginBottom: SPACING.M }}>
-                            <label
-                              htmlFor="ratingComment"
-                              style={{
-                                display: "block",
-                                fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                                color: COLORS.MIDNIGHT_ASH,
-                                marginBottom: SPACING.S,
-                              }}
-                            >
-                              Describe your experience (optional)
-                            </label>
-                            <textarea
-                              id="ratingComment"
-                              value={ratingComment}
-                              onChange={(e) => setRatingComment(e.target.value)}
-                              placeholder="Share your experience with this transaction..."
-                              rows={3}
-                              style={{
-                                width: "100%",
-                                padding: SPACING.M,
-                                fontSize: TYPOGRAPHY.SIZE_BODY,
-                                borderRadius: BORDER_RADIUS.MEDIUM,
-                                border: `1px solid rgba(200,200,200,0.33)`,
-                                outline: "none",
-                                boxSizing: "border-box",
-                                resize: "vertical",
-                                fontFamily: "inherit",
-                              }}
-                            />
-                          </div>
-
-                          {/* Submit Button */}
-                          <button
-                            onClick={() => {
-                              if (selectedRating) {
-                                handleRatingSubmit(auth.role, {
-                                  score: selectedRating,
-                                  comment:
-                                    ratingComment ||
-                                    (selectedRating > 0
-                                      ? "Positive experience"
-                                      : "Negative experience"),
-                                });
-                                setSelectedRating(null);
-                                setRatingComment("");
-                              }
-                            }}
-                            disabled={!selectedRating}
-                            style={{
-                              width: "100%",
-                              padding: `${SPACING.M} ${SPACING.L}`,
-                              backgroundColor: selectedRating
-                                ? COLORS.MIDNIGHT_ASH
-                                : COLORS.PEBBLE,
-                              color: COLORS.WHITE,
-                              border: "none",
-                              borderRadius: BORDER_RADIUS.MEDIUM,
-                              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                              fontSize: TYPOGRAPHY.SIZE_BODY,
-                              cursor: selectedRating
-                                ? "pointer"
-                                : "not-allowed",
-                              transition: "all 0.3s ease",
-                            }}
-                          >
-                            Submit Rating
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Other Party Rating */}
-                    <div>
-                      <h4
-                        style={{
-                          fontSize: TYPOGRAPHY.SIZE_LABEL,
-                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                          color: COLORS.MIDNIGHT_ASH,
-                          marginBottom: SPACING.M,
-                        }}
-                      >
-                        Other Party's Rating
-                      </h4>
-                      {tx?.ratings?.[
-                        auth.role === "buyer" ? "seller" : "buyer"
-                      ] ? (
-                        <div
-                          style={{
-                            backgroundColor:
-                              tx.ratings[
-                                auth.role === "buyer" ? "seller" : "buyer"
-                              ].score > 0
-                                ? "#F0FDF4"
-                                : "#FEF2F2",
-                            padding: SPACING.L,
-                            borderRadius: BORDER_RADIUS.MEDIUM,
-                            border: `1px solid ${
-                              tx.ratings[
-                                auth.role === "buyer" ? "seller" : "buyer"
-                              ].score > 0
-                                ? "#BBF7D0"
-                                : "#FECACA"
-                            }`,
-                            textAlign: "center",
-                            transition: "all 0.3s ease",
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontSize: "48px",
-                              marginBottom: SPACING.S,
-                            }}
-                          >
-                            {tx.ratings[
-                              auth.role === "buyer" ? "seller" : "buyer"
-                            ].score > 0
-                              ? "👍"
-                              : "👎"}
-                          </div>
-                          <p
-                            style={{
-                              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                              color:
-                                tx.ratings[
-                                  auth.role === "buyer" ? "seller" : "buyer"
-                                ].score > 0
-                                  ? "#16A34A"
-                                  : "#DC2626",
-                              fontSize: TYPOGRAPHY.SIZE_BODY,
-                            }}
-                          >
-                            They rated:{" "}
-                            {tx.ratings[
-                              auth.role === "buyer" ? "seller" : "buyer"
-                            ].score > 0
-                              ? "+1"
-                              : "-1"}
-                          </p>
-                          {tx.ratings[
-                            auth.role === "buyer" ? "seller" : "buyer"
-                          ].comment && (
-                            <p
-                              style={{
-                                marginTop: SPACING.M,
-                                fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                color: COLORS.PEBBLE,
-                                fontStyle: "italic",
-                              }}
-                            >
-                              "
-                              {
-                                tx.ratings[
-                                  auth.role === "buyer" ? "seller" : "buyer"
-                                ].comment
-                              }
-                              "
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <div
-                          style={{
-                            backgroundColor: COLORS.SOFT_CLOUD,
-                            padding: SPACING.L,
-                            borderRadius: BORDER_RADIUS.MEDIUM,
-                            border: `1px solid rgba(200,200,200,0.33)`,
-                            color: COLORS.PEBBLE,
-                            fontSize: TYPOGRAPHY.SIZE_BODY,
-                            textAlign: "center",
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontSize: "32px",
-                              marginBottom: SPACING.S,
-                              opacity: 0.5,
-                            }}
-                          >
-                            ⏳
-                          </div>
-                          Waiting for other party to submit their rating...
-                        </div>
-                      )}
-                    </div>
+                        View Proof Image
+                      </a>
+                    ) : (
+                      <span style={{ color: "#DC2626", fontWeight: "bold" }}>
+                        Not Uploaded
+                      </span>
+                    )}
                   </div>
 
-                  {isCompleted && (
+                  <ShippingInvoiceForm onSubmit={handleSellerConfirm} />
+                </div>
+              )}
+
+              {/* STEP 2: BUYER WAITING */}
+              {currentStep === 2 && isBuyer && (
+                <div style={{ textAlign: "center", padding: SPACING.XXL }}>
+                  <div style={{ fontSize: "40px", marginBottom: SPACING.M }}>
+                    📦
+                  </div>
+                  <h3 style={{ fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD }}>
+                    Processing
+                  </h3>
+                  <p style={{ color: COLORS.PEBBLE }}>
+                    Seller is verifying your payment.
+                  </p>
+                </div>
+              )}
+
+              {/* STEP 3: BUYER CONFIRM RECEIPT */}
+              {currentStep === 3 && isBuyer && (
+                <div style={{ animation: "fadeSlideIn 0.4s ease-out" }}>
+                  <h3
+                    style={{
+                      fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                      marginBottom: SPACING.L,
+                    }}
+                  >
+                    Step 3 — Confirm Receipt
+                  </h3>
+                  <div
+                    style={{
+                      backgroundColor: COLORS.SOFT_CLOUD,
+                      padding: SPACING.M,
+                      borderRadius: BORDER_RADIUS.MEDIUM,
+                      marginBottom: SPACING.L,
+                    }}
+                  >
+                    <p>
+                      <strong>Tracking Code:</strong> {tx.shipping_code}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleBuyerConfirmReceipt}
+                    style={{
+                      width: "100%",
+                      backgroundColor: COLORS.MIDNIGHT_ASH,
+                      color: COLORS.WHITE,
+                      padding: SPACING.M,
+                      borderRadius: BORDER_RADIUS.MEDIUM,
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    I Have Received the Product
+                  </button>
+                </div>
+              )}
+
+              {/* STEP 3: SELLER WAITING */}
+              {currentStep === 3 && isSeller && (
+                <div style={{ textAlign: "center", padding: SPACING.XXL }}>
+                  <div style={{ fontSize: "40px", marginBottom: SPACING.M }}>
+                    🚚
+                  </div>
+                  <h3 style={{ fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD }}>
+                    In Transit
+                  </h3>
+                  <p style={{ color: COLORS.PEBBLE }}>
+                    Waiting for buyer to receive package.
+                  </p>
+                </div>
+              )}
+
+              {(currentStep === 4 || currentStep === 5) && (
+                <div
+                  style={{
+                    animation: "fadeSlideIn 0.4s ease-out",
+                    textAlign: "center",
+                  }}
+                >
+                  <h3
+                    style={{
+                      fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                      marginBottom: SPACING.L,
+                    }}
+                  >
+                    Step {currentStep} —{" "}
+                    {currentStep === 4 ? "Rate Experience" : "Finalized"}
+                  </h3>
+
+                  {shouldShowFinalReceipt ? (
+                    /* CONDITION 1: FINAL RECEIPT (Triggers if Step 5 OR if rating was just submitted/exists) */
                     <div
                       style={{
-                        marginTop: SPACING.L,
-                        padding: SPACING.M,
-                        backgroundColor: "#F0FDF4",
+                        padding: SPACING.XXL,
+                        backgroundColor: "#E0F2F1", // Light Cyan/Teal
                         borderRadius: BORDER_RADIUS.MEDIUM,
-                        border: `1px solid #BBF7D0`,
+                        border: "1px solid #2DD4BF", // Teal border
+                        color: "#0D9488", // Dark Teal text
                       }}
                     >
-                      <p
+                      <CheckCircleIcon
                         style={{
-                          color: "#16A34A",
+                          width: "40px",
+                          margin: "0 auto",
+                          marginBottom: SPACING.M,
+                        }}
+                      />
+                      <h4
+                        style={{
+                          fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+                          fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
+                        }}
+                      >
+                        Transaction Complete!
+                      </h4>
+                      <p style={{ marginTop: SPACING.S }}>
+                        Thank you for using eBid. All steps are finalized.
+                        {currentStep === 4 &&
+                          " (Waiting for counterparty rating to move to Step 5)"}{" "}
+                        {/* Helpful message */}
+                      </p>
+                    </div>
+                  ) : (
+                    /* CONDITION 2: ACTIVE RATING FORM */
+                    <div>
+                      {/* Your active Rating Buttons, Textarea, and Submit Button JSX go here */}
+                      {/* ... (Copy the full rating form block from your Step 4 logic) ... */}
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "center",
+                          gap: SPACING.L,
+                          marginBottom: SPACING.L,
+                        }}
+                      >
+                        {/* ... Thumb Up/Down Buttons ... */}
+                        <button
+                          onClick={() => setSelectedRating(1)}
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: SPACING.S,
+                            padding: SPACING.L,
+                            backgroundColor:
+                              selectedRating === 1
+                                ? "#F0FDF4"
+                                : COLORS.SOFT_CLOUD,
+                            border:
+                              selectedRating === 1
+                                ? `2px solid #16A34A`
+                                : `2px solid transparent`,
+                            borderRadius: BORDER_RADIUS.MEDIUM,
+                            cursor: "pointer",
+                            transition: "all 0.3s ease",
+                            minWidth: "100px",
+                            transform:
+                              selectedRating === 1 ? "scale(1.05)" : "scale(1)",
+                          }}
+                        >
+                          <HandThumbUpIcon
+                            style={{ width: "30px", color: "#16A34A" }}
+                          />{" "}
+                          +1
+                        </button>
+                        <button
+                          onClick={() => setSelectedRating(-1)}
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: SPACING.S,
+                            padding: SPACING.L,
+                            backgroundColor:
+                              selectedRating === -1
+                                ? "#FEF2F2"
+                                : COLORS.SOFT_CLOUD,
+                            border:
+                              selectedRating === -1
+                                ? `2px solid #DC2626`
+                                : `2px solid transparent`,
+                            borderRadius: BORDER_RADIUS.MEDIUM,
+                            cursor: "pointer",
+                            transition: "all 0.3s ease",
+                            minWidth: "100px",
+                            transform:
+                              selectedRating === -1
+                                ? "scale(1.05)"
+                                : "scale(1)",
+                          }}
+                        >
+                          <HandThumbDownIcon
+                            style={{ width: "30px", color: "#DC2626" }}
+                          />{" "}
+                          -1
+                        </button>
+                      </div>
+                      <textarea
+                        value={ratingComment}
+                        onChange={(e) => setRatingComment(e.target.value)}
+                        placeholder="Comment..."
+                        style={{
+                          width: "100%",
+                          padding: SPACING.M,
+                          border: "1px solid #ccc",
+                          borderRadius: BORDER_RADIUS.MEDIUM,
+                          marginBottom: SPACING.M,
+                        }}
+                      />
+                      <button
+                        onClick={handleRatingSubmit}
+                        disabled={!selectedRating}
+                        style={{
+                          width: "100%",
+                          padding: `${SPACING.M} ${SPACING.L}`,
+                          backgroundColor: selectedRating
+                            ? COLORS.MIDNIGHT_ASH
+                            : COLORS.PEBBLE,
+                          color: COLORS.WHITE,
+                          border: "none",
+                          borderRadius: BORDER_RADIUS.MEDIUM,
                           fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
                           fontSize: TYPOGRAPHY.SIZE_BODY,
+                          cursor: selectedRating ? "pointer" : "not-allowed",
+                          transition: "all 0.3s ease",
                         }}
                       >
-                        ✓ Transaction Complete
-                      </p>
-                      <p
-                        style={{
-                          fontSize: TYPOGRAPHY.SIZE_LABEL,
-                          color: "#16A34A",
-                          marginTop: SPACING.S,
-                        }}
-                      >
-                        Both parties have submitted their ratings. This
-                        transaction is now closed.
-                      </p>
+                        Submit Rating
+                      </button>
                     </div>
                   )}
                 </div>
               )}
-            </div>
+              {currentStep === 5 && (
+                <button
+                  onClick={() => navigate("/transactions")} // Navigate to the history list
+                  style={{
+                    backgroundColor: COLORS.MIDNIGHT_ASH,
+                    color: COLORS.WHITE,
+                    padding: `${SPACING.S} ${SPACING.M}`,
+                    borderRadius: BORDER_RADIUS.MEDIUM,
+                    border: "none",
+                    fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
 
-            {/* Transaction Summary (Mobile) */}
-            <div style={{ marginTop: SPACING.L, display: "none" }}>
-              <TransactionSummary transaction={tx} />
+                    cursor: "pointer",
+                    marginTop: SPACING.M, // Give it some space
+                    transition: "background-color 0.2s",
+                    // Adding hover effect (Requires styling solution to handle :hover)
+                    // ':hover': { backgroundColor: '#334155' }
+                  }}
+                >
+                  View Transaction History
+                </button>
+              )}
+              {isCancelled && (
+                <div
+                  style={{
+                    textAlign: "center",
+                    color: "#DC2626",
+                    fontWeight: "bold",
+                    padding: SPACING.L,
+                  }}
+                >
+                  Transaction Cancelled
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Role Switcher (Dev Only) */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: SPACING.L,
-          left: SPACING.L,
-          backgroundColor: COLORS.WHITE,
-          padding: SPACING.M,
-          borderRadius: BORDER_RADIUS.MEDIUM,
-          boxShadow: SHADOWS.CARD,
-          border: `1px solid rgba(200,200,200,0.33)`,
-        }}
-      >
-        <p
-          style={{
-            fontSize: TYPOGRAPHY.SIZE_LABEL,
-            color: COLORS.PEBBLE,
-            marginBottom: SPACING.S,
-          }}
-        >
-          Dev: Switch Role
-        </p>
-        <div style={{ display: "flex", gap: SPACING.S }}>
-          <button
-            onClick={() => auth.setRole("buyer")}
-            style={{
-              padding: `${SPACING.S} ${SPACING.M}`,
-              fontSize: TYPOGRAPHY.SIZE_LABEL,
-              borderRadius: BORDER_RADIUS.MEDIUM,
-              border: "none",
-              cursor: "pointer",
-              backgroundColor:
-                auth.role === "buyer" ? COLORS.MIDNIGHT_ASH : COLORS.SOFT_CLOUD,
-              color: auth.role === "buyer" ? COLORS.WHITE : COLORS.MIDNIGHT_ASH,
-            }}
-          >
-            Buyer
-          </button>
-          <button
-            onClick={() => auth.setRole("seller")}
-            style={{
-              padding: `${SPACING.S} ${SPACING.M}`,
-              fontSize: TYPOGRAPHY.SIZE_LABEL,
-              borderRadius: BORDER_RADIUS.MEDIUM,
-              border: "none",
-              cursor: "pointer",
-              backgroundColor:
-                auth.role === "seller"
-                  ? COLORS.MIDNIGHT_ASH
-                  : COLORS.SOFT_CLOUD,
-              color:
-                auth.role === "seller" ? COLORS.WHITE : COLORS.MIDNIGHT_ASH,
-            }}
-          >
-            Seller
-          </button>
-        </div>
-      </div>
-
-      {/* Toast Notification */}
       {toast && (
         <div
           style={{
             position: "fixed",
-            bottom: SPACING.L,
-            right: SPACING.L,
-            backgroundColor: COLORS.MIDNIGHT_ASH,
-            color: COLORS.WHITE,
-            padding: `${SPACING.M} ${SPACING.L}`,
-            borderRadius: BORDER_RADIUS.MEDIUM,
-            boxShadow: SHADOWS.CARD,
-            fontSize: TYPOGRAPHY.SIZE_BODY,
+            top: "24px", // Move to TOP
+            left: "50%", // Center horizontally
+            transform: "translateX(-50%)",
+            zIndex: 9999, // Ensure it is above everything
+            backgroundColor: "#1F2937", // Dark Gray (Tailwind gray-800)
+            color: "#FFFFFF",
+            padding: "12px 24px",
+            borderRadius: "9999px", // Capsule shape
+            boxShadow:
+              "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            minWidth: "300px",
+            justifyContent: "center",
+            animation: "slideDown 0.3s ease-out forwards", // Add animation
           }}
         >
-          {toast}
+          {/* Optional Icon based on success/error */}
+          <span style={{ fontSize: "18px" }}>🔔</span>
+
+          <span style={{ fontWeight: 500, fontSize: "14px" }}>{toast}</span>
         </div>
       )}
+
+      {/* Add this Animation Style tag just before the closing div if you don't have it in CSS */}
+      <style>
+        {`
+          @keyframes slideDown {
+            from { transform: translate(-50%, -20px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+          }
+        `}
+      </style>
+      <CancelOrderModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setCancelModalOpen(false)}
+        onSubmit={handleCancelSubmit}
+      />
     </div>
   );
 }

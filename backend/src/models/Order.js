@@ -14,7 +14,7 @@ class Order {
         shipping_proof_image TEXT, -- URL to the image (nullable until seller confirms shipping)
         shipping_code TEXT,
         cancel_reason TEXT,
-        status VARCHAR(20) DEFAULT 'pending_verification' CHECK (status IN ('pending_verification', 'delivering', 'completed', 'cancelled')),
+        status VARCHAR(20) DEFAULT 'pending_verification' CHECK (status IN ('pending_verification', 'delivering', 'await_rating', 'completed', 'cancelled')),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(product_id) -- One order per product
@@ -56,6 +56,66 @@ class Order {
     return result.rows[0];
   }
 
+  static async getAllByUser(userId, role = null) {
+    let query;
+    const params = [userId];
+
+    // Base query parts to ensure we get the product image and names
+    const selectFields = `
+      o.*,
+      p.name as "productName",
+      (
+        SELECT image_url 
+        FROM product_images 
+        WHERE product_id = p.id 
+        ORDER BY is_thumbnail DESC, position ASC 
+        LIMIT 1
+      ) as "productImage",
+      u_buyer.full_name as "buyerName",
+      u_seller.full_name as "sellerName"
+    `;
+
+    const joins = `
+      FROM orders o
+      JOIN products p ON o.product_id = p.id
+      JOIN users u_buyer ON o.buyer_id = u_buyer.id
+      JOIN users u_seller ON o.seller_id = u_seller.id
+    `;
+
+    if (role === "seller") {
+      // Strict filter: Only show orders where I am the seller
+      query = `
+        SELECT ${selectFields}
+        ${joins}
+        WHERE o.seller_id = $1
+        ORDER BY o.created_at DESC
+      `;
+    } else {
+      // Default: Show everything (where I am Buyer OR Seller)
+      query = `
+        SELECT ${selectFields}
+        ${joins}
+        WHERE o.buyer_id = $1 OR o.seller_id = $1
+        ORDER BY o.created_at DESC
+      `;
+    }
+
+    const result = await pool.query(query, params);
+    return result.rows;
+  }
+
+  static async getOrdersByWinner(buyerId) {
+    const query = `
+      SELECT o.*, p.name as product_name, p.end_time 
+      FROM orders o
+      JOIN products p ON o.product_id = p.id
+      WHERE o.buyer_id = $1
+      ORDER BY o.created_at DESC
+    `;
+    const result = await pool.query(query, [buyerId]);
+    return result.rows;
+  }
+
   static async findByProduct(productId) {
     const query = `SELECT * FROM orders WHERE product_id = $1`;
     const result = await pool.query(query, [productId]);
@@ -63,7 +123,27 @@ class Order {
   }
 
   static async findById(orderId) {
-    const query = `SELECT * FROM orders WHERE id = $1`;
+    const query = `
+      SELECT 
+        o.*,
+        p.name as productName,
+        (
+          SELECT image_url 
+          FROM product_images 
+          WHERE product_id = p.id 
+          ORDER BY is_thumbnail DESC, position ASC 
+          LIMIT 1
+        ) as product_image,
+        b.full_name as buyerName,
+        b.email as buyer_email,
+        s.full_name as seller_name,
+        s.email as seller_email
+      FROM orders o
+      JOIN products p ON o.product_id = p.id
+      JOIN users b ON o.buyer_id = b.id
+      JOIN users s ON o.seller_id = s.id
+      WHERE o.id = $1
+    `;
     const result = await pool.query(query, [orderId]);
     return result.rows[0];
   }
@@ -99,6 +179,18 @@ class Order {
     return result.rows[0];
   }
 
+  static async markAsAwaitRating(orderId) {
+    const query = `
+      UPDATE orders 
+      SET 
+        status = 'await_rating', 
+        updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `;
+    const result = await pool.query(query, [orderId]);
+    return result.rows[0];
+  }
   static async markAsCompleted(orderId) {
     const query = `
       UPDATE orders 

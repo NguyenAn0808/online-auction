@@ -7,9 +7,16 @@ import pool from "../config/database.js";
 
 export const createOrder = async (req, res) => {
   try {
-    const winnerId = req.user?.id;
     const { productId, shippingAddress } = req.body;
+    const winnerBidder = await Bid.getHighest(productId);
 
+    if (!winnerBidder) {
+      return res.status(400).json({
+        success: false,
+        message: "No bids found. Cannot create order.",
+      });
+    }
+    const winnerId = winnerBidder ? winnerBidder.bidder_id : req.user.id;
     // Validate input
     if (!productId || !shippingAddress || !req.file) {
       return res.status(400).json({
@@ -35,40 +42,20 @@ export const createOrder = async (req, res) => {
     const proofImage = uploadResult.url;
 
     // Check if product exists
-    const product = await ProductModel.findById(productId);
-    if (!product || product.status !== "ended") {
-      return res.status(404).json({
-        success: false,
-        message: "Product is not found or does not exist",
-      });
-    }
+    // const product = await ProductModel.findById(productId);
+    // if (!product || product.status !== "ended") {
+    //   return res.status(404).json({
+    //     success: false,
+    //     message: "Product is not found or does not exist",
+    //   });
+    // }
 
-    // Verify winner
-    const winnerBidder = await Bid.getHighest(productId);
-
-    if (!winnerBidder || winnerBidder.bidder_id !== winnerId) {
-      return res.status(403).json({
-        success: false,
-        message: "You are not the winner of this product",
-      });
-    }
-
-    const existingOrder = await Order.findByProduct(productId);
-
-    if (existingOrder) {
-      return res.status(400).json({
-        success: false,
-        message: "Order for this product already exists",
-      });
-    }
-
-    // Create order
     const order = await Order.create({
       productId,
       buyerId: winnerId,
-      sellerId: product.seller_id,
+      sellerId: (await ProductModel.findById(productId)).seller_id,
       finalPrice: winnerBidder.amount,
-      proofImage,
+      proofImage: uploadResult.url,
       address: shippingAddress,
     });
 
@@ -190,11 +177,11 @@ export const confirmReceipt = async (req, res) => {
       });
     }
 
-    const updatedOrder = await Order.markAsCompleted(orderId);
+    const updatedOrder = await Order.markAsAwaitRating(orderId);
 
     return res.status(200).json({
       success: true,
-      message: "Order status updated to completed",
+      message: "Order status updated to await_rating",
       data: updatedOrder,
     });
   } catch (error) {
@@ -230,7 +217,7 @@ export const rateTransaction = async (req, res) => {
       });
     }
 
-    if (order.status !== "completed") {
+    if (order.status !== "await_rating" && order.status !== "completed") {
       return res.status(400).json({
         success: false,
         message: "Cannot rate transaction for incomplete orders",
@@ -252,7 +239,6 @@ export const rateTransaction = async (req, res) => {
     }
 
     // Ratings are checked in the Rating.add method via unique constraint
-
     try {
       await Rating.add({
         product_id: order.product_id,
@@ -270,6 +256,11 @@ export const rateTransaction = async (req, res) => {
         });
       }
       throw err;
+    }
+    const totalRatings = await Rating.getRatingCountByOrder(orderId);
+    if (totalRatings === 2) {
+      // FINAL STATUS UPDATE
+      await Order.markAsCompleted(orderId);
     }
 
     return res.status(201).json({
@@ -328,6 +319,23 @@ export const cancelOrder = async (req, res) => {
 
     const updatedOrder = await Order.cancel(orderId, reason);
 
+    try {
+      await Rating.add({
+        product_id: order.product_id,
+        reviewer_id: sellerId, // Seller rates
+        target_user_id: order.buyer_id, // Buyer gets rated
+        score: -1,
+        comment: `Order Cancelled: ${reason || "Người thắng không thanh toán"}`,
+      });
+      console.log(`Auto-rated buyer ${order.buyer_id} with -1`);
+    } catch (ratingError) {
+      // If they already rated, just ignore the error so we don't break the cancellation
+      if (ratingError.code !== "23505") {
+        // 23505 = Unique constraint violation
+        console.error("Failed to auto-rate:", ratingError);
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: "Order cancelled successfully",
@@ -335,6 +343,65 @@ export const cancelOrder = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in cancel order:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+export const getOrderById = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const userId = req.user.id; // From authMiddleware
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Only allow if user is the Buyer OR the Seller
+    const isBuyer = order.buyer_id === userId;
+    const isSeller = order.seller_id === userId;
+
+    if (!isBuyer && !isSeller) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. You are not a party to this transaction.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: order,
+    });
+  } catch (error) {
+    console.error("Error fetching order:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+export const getMyOrders = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { role } = req.query; // Optional: 'seller'
+
+    // Call the new method in the Model
+    const orders = await Order.getAllByUser(userId, role);
+
+    return res.status(200).json({
+      success: true,
+      data: orders,
+    });
+  } catch (error) {
+    console.error("Error fetching orders:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",

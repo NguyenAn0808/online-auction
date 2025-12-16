@@ -36,7 +36,7 @@ import { BidderProfilePage } from "./pages/BidderProfilePage";
 import Ratings from "./pages/Ratings";
 
 // Pages - Transactions
-import TransactionWizard from "./pages/TransactionWizard";
+import TransactionHistory from "./pages/TransactionHistory";
 import TransactionPage from "./pages/TransactionPage";
 import SellerTransactions from "./pages/SellerTransactions";
 
@@ -97,14 +97,14 @@ const router = createBrowserRouter(
           <Route path="ratings/:userId" element={<Ratings />} />
           {/* Transactions */}
           {/* Note: Kept all variations found in source to ensure coverage */}
-          <Route path="transactions" element={<TransactionWizard />} />
+          <Route path="transactions" element={<TransactionHistory />} />
           <Route
             path="transactions/:transactionId"
             element={<TransactionPage />}
           />
           <Route
             path="transactions-old/:transactionId"
-            element={<TransactionWizard />}
+            element={<TransactionHistory />}
           />
         </Route>
 

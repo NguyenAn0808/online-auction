@@ -1,3 +1,5 @@
+import axios from "axios";
+
 // Simple in-memory product service for UI/demo purposes.
 let _product = null;
 let _bids = [];
@@ -203,6 +205,29 @@ createDemo();
 export function getProduct() {
   // ignoring id for demo; return a shallow clone
   return { ..._product };
+}
+
+export async function getProductById(id) {
+  try {
+    // 1. Try to fetch REAL data from your Backend
+    // Adjust the port (8000) if your backend runs elsewhere
+    const response = await axios.get(
+      `http://localhost:8000/api/products/${id}`
+    );
+
+    // console.log("Backend Response:", response.data);
+    // 2. Return the real data
+    const productData = response.data.data || response.data;
+    return productData;
+  } catch (error) {
+    console.error("API CALL FAILED DETAILS:", error.response || error.message);
+    console.warn(
+      `Failed to fetch product ${id} from API, falling back to mock data.`
+    );
+
+    // 3. Fallback: If API fails, return the Mock Zip Tote Basket
+    return getProduct();
+  }
 }
 
 export function getBidEligibility(name) {

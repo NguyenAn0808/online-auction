@@ -1,41 +1,41 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
-import {
-  listTransactions,
-  getTransaction,
-  updateTransaction,
-  STATUS,
-} from "../services/transactionService";
+import { listTransactions, STATUS } from "../services/transactionService";
 
 export default function SellerTransactions() {
   const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
-
+  const navigate = useNavigate();
   useEffect(() => {
-    setTransactions(
-      listTransactions((t) => t.status === STATUS.WAITING_SELLER_CONFIRMATION)
-    );
+    async function load() {
+      try {
+        // Fetch real orders from API
+        const data = await listTransactions("seller");
+
+        // Optional: Filter for only "Waiting" items if this page is just for pending tasks
+        // Or keep all and let the UI sort them.
+        const pending = data.filter(
+          (t) => t.status === STATUS.WAITING_SELLER_CONFIRMATION
+        );
+        setTransactions(pending);
+      } catch (err) {
+        console.error("Failed to load seller transactions", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
   }, []);
 
-  function refresh() {
-    setTransactions(
-      listTransactions((t) => t.status === STATUS.WAITING_SELLER_CONFIRMATION)
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-500">Loading dashboard...</p>
+      </div>
     );
-    if (selected) setSelected(getTransaction(selected.id));
-  }
-
-  function handleConfirm(id, shipping) {
-    updateTransaction(id, {
-      shippingInvoice: shipping,
-      status: STATUS.IN_TRANSIT,
-    });
-    refresh();
-  }
-
-  function handleReject(id) {
-    updateTransaction(id, { status: STATUS.PAYMENT_REJECTED });
-    refresh();
   }
 
   return (
@@ -49,12 +49,12 @@ export default function SellerTransactions() {
 
           <main className="col-span-12 lg:col-span-9">
             <h2 className="text-lg font-semibold mb-4">
-              Transactions waiting for your confirmation
+              Orders waiting for your confirmation
             </h2>
             <div className="space-y-4">
               {transactions.length === 0 && (
                 <div className="text-sm text-gray-500">
-                  No transactions waiting.
+                  No pending orders. Great job!
                 </div>
               )}
               {transactions.map((t) => (

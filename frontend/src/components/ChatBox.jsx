@@ -38,9 +38,9 @@ export default function ChatBox({ open, onClose, openForTx, contextProduct }) {
   const containerRef = useRef(null);
   const [productContext, setProductContext] = useState(contextProduct || null);
 
-  useEffect(() => {
-    setTransactions(listTransactions((t) => true));
-  }, [open]);
+  // useEffect(() => {
+  //   setTransactions(listTransactions((t) => true));
+  // }, [open]);
 
   useEffect(() => {
     // filter transactions when search changes

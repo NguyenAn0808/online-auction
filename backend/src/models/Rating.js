@@ -101,6 +101,27 @@ class Rating {
     ]);
     return result.rows[0];
   }
+
+  static async getRatingCountByOrder(orderId) {
+    try {
+      const query = `
+          SELECT COUNT(r.id)
+          FROM ratings r
+          JOIN orders o ON r.product_id = o.product_id
+          WHERE o.id = $1
+          AND r.reviewer_id IN (o.buyer_id, o.seller_id)
+          AND r.score IS NOT NULL;
+      `;
+
+      const result = await pool.query(query, [orderId]);
+      // COUNT(*) returns the count as a string, so parse it to an integer
+      return parseInt(result.rows[0].count, 10);
+    } catch (error) {
+      console.error("Error in Rating.getRatingCountByOrder:", error);
+      // Re-throw the error so the controller can catch the 500
+      throw error;
+    }
+  }
 }
 
 export default Rating;

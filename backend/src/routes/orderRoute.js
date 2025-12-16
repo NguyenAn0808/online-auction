@@ -4,6 +4,8 @@ import {
   confirmReceipt,
   confirmShipping,
   createOrder,
+  getMyOrders,
+  getOrderById,
   rateTransaction,
 } from "../controllers/orderController.js";
 import { authenticate, authorize } from "../middleware/authMiddleware.js";
@@ -276,4 +278,19 @@ router.post("/:orderId/rate", authenticate, rateTransaction);
  */
 router.post("/:orderId/cancel", authenticate, authorize("seller"), cancelOrder);
 
+/**
+ * @openapi
+ * /api/orders:
+ *  get:
+ *    summary: List all orders for the logged-in user
+ *    tags: [Orders]
+ *    security:
+ *    - bearerAuth: []
+ *    responses:
+ *      200:
+ *        description: List of orders
+ */
+router.get("/", authenticate, getMyOrders);
+
+router.get("/:orderId", authenticate, getOrderById);
 export default router;

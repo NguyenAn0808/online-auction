@@ -191,7 +191,8 @@ class ProductModel {
         p.auto_extend,
         p.created_at,
         p.updated_at,
-        c.name as category_name
+        c.name as category_name,
+        p.current_price AS current_price
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       WHERE p.id = $1
