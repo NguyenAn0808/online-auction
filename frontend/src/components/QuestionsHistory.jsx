@@ -10,17 +10,30 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 
-export default function QuestionsHistory() {
+export default function QuestionsHistory({ productId = null }) {
   const [qa, setQa] = useState([]);
   const [questionText, setQuestionText] = useState("");
   const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    setQa(productService.getQuestions());
-  }, []);
+    const fetchQuestions = async () => {
+      try {
+        setLoading(true);
+        const result = await productService.getQuestions(productId);
+        setQa(Array.isArray(result) ? result : []);
+      } catch (error) {
+        console.error("Error fetching questions:", error);
+        setQa([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchQuestions();
+  }, [productId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,22 +47,30 @@ export default function QuestionsHistory() {
     const currentUser = localStorage.getItem("userName") || "Anonymous";
     // Todo Q&A integrate service
     // Add to demo store immediately
-    const added = productService.addQuestion({
-      question: questionText.trim(),
-      questionBy: currentUser,
-    });
-    setQa(productService.getQuestions());
+    try {
+      await productService.addQuestion({
+        question: questionText.trim(),
+        questionBy: currentUser,
+      });
+      const updatedQa = await productService.getQuestions();
+      setQa(Array.isArray(updatedQa) ? updatedQa : []);
+    } catch (err) {
+      console.warn("Failed to add question:", err);
+    }
     try {
       // Try to notify backend (email to seller) - best-effort
-      await fetch(`/api/questions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productId: productService.getProduct().id,
-          question: questionText.trim(),
-          user: currentUser,
-        }),
-      });
+      const product = productService.getProduct();
+      if (product?.id) {
+        await fetch(`/api/questions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            productId: product.id,
+            question: questionText.trim(),
+            user: currentUser,
+          }),
+        });
+      }
       // backend should send email to seller with link to product details
     } catch (err) {
       // backend may not exist in demo — that's okay

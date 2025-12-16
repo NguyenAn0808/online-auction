@@ -24,11 +24,15 @@ const products = [
       "This durable and portable insulated tumbler will keep your beverage at the perfect temperature during your next adventure.",
     href: "#",
     price: "35.00",
+    current_price: 35.0, // Added for BiddingQuickView compatibility
+    thumbnail:
+      "https://tailwindui.com/plus-assets/img/ecommerce-images/confirmation-page-03-product-01.jpg", // Added compatibility
     imageSrc:
       "https://tailwindui.com/plus-assets/img/ecommerce-images/confirmation-page-03-product-01.jpg",
     imageAlt: "Insulated bottle with white base and black snap lid.",
     // demo auction due time: 2 days from now
-    dueTime: new Date(Date.now()).toISOString(),
+    dueTime: new Date(Date.now() + 2 * 24 * 3600 * 1000).toISOString(),
+    end_time: new Date(Date.now() + 2 * 24 * 3600 * 1000).toISOString(), // Added compatibility
   },
 ];
 
@@ -509,6 +513,7 @@ export default function BidProduct() {
               <BiddingQuickView
                 open={showQuickView}
                 onClose={() => setShowQuickView(false)}
+                product={product}
               />
             </div>
           </div>

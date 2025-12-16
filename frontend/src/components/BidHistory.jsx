@@ -58,18 +58,32 @@ const bidderRatings = {
   "Lisa Wong": 4.8,
 };
 
-function useBids() {
+function useBids(productId) {
   const [bids, setBids] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    // seed from productService; add defaults for status & bidder_id fallback
-    const initial = productService.getBidHistory().map((bid) => ({
-      ...bid,
-      bidder_id: bid.bidder_id || bid.name || bid.id,
-      status: bid.status || "pending",
-    }));
-    setBids(initial);
-  }, []);
-  return [bids, setBids];
+    const fetchBids = async () => {
+      try {
+        setLoading(true);
+        const result = await productService.getBidHistory(productId);
+        const initial = (Array.isArray(result) ? result : []).map((bid) => ({
+          ...bid,
+          bidder_id: bid.bidder_id || bid.name || bid.id,
+          status: bid.status || "pending",
+        }));
+        setBids(initial);
+      } catch (error) {
+        console.error("Error fetching bid history:", error);
+        setBids([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBids();
+  }, [productId]);
+
+  return [bids, setBids, loading];
 }
 
 function maskName(fullName, userId) {
@@ -87,7 +101,7 @@ function maskName(fullName, userId) {
 
 export default function BidHistory({ isSeller = true, productId = null }) {
   const { user } = useAuth();
-  const [localBids, setLocalBids] = useBids();
+  const [localBids, setLocalBids, loading] = useBids(productId);
   const [blocklist, setBlocklist] = useState([]);
   const [showBlocklist, setShowBlocklist] = useState(false);
   const [isProcessing, setIsProcessing] = useState({});

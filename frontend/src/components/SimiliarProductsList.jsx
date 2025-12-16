@@ -10,19 +10,51 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 
-export default function SimiliarProductsList() {
+export default function SimiliarProductsList({
+  categoryId = null,
+  currentProductId = null,
+}) {
   const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
   useEffect(() => {
-    setProducts(productService.getSimilarProducts());
-  }, []);
+    const fetchSimilarProducts = async () => {
+      if (!categoryId) {
+        setProducts([]);
+        setLoading(false);
+        return;
+      }
+      try {
+        setLoading(true);
+        const result = await productService.getSimilarProducts(categoryId);
+        // Filter out current product
+        const filtered = (Array.isArray(result) ? result : []).filter(
+          (p) => p.id !== currentProductId
+        );
+        setProducts(filtered);
+      } catch (error) {
+        console.error("Error fetching similar products:", error);
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSimilarProducts();
+  }, [categoryId, currentProductId]);
 
   const handleCardClick = (productId) => {
     navigate(`/products/${productId}`);
     window.scrollTo(0, 0);
   };
+
+  // Don't render if no products or still loading
+  if (loading || !products || products.length === 0) {
+    return null;
+  }
+
   return (
     <>
       <h2

@@ -227,6 +227,7 @@ const ProductCard = ({ product }) => {
       <BiddingQuickView
         open={showBidQuickView}
         onClose={() => setShowBidQuickView(false)}
+        product={product}
       />
     </div>
   );

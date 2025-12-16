@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Header from "../components/Header";
 import SimpleProductList from "../components/SimpleProductList";
 import Footer from "../components/Footer";
@@ -10,13 +10,32 @@ import BidHistory from "../components/BidHistory";
 import QuestionsHistory from "../components/QuestionsHistory";
 import { COLORS, SPACING } from "../constants/designSystem";
 import { useAuth } from "../context/AuthContext";
-import { useEffect } from "react";
+import { useParams } from "react-router-dom";
+import { productService } from "../services/productService";
 
 const ProductDetails = () => {
   const { user } = useAuth();
+  const { productId } = useParams();
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch product data to get category_id for similar products
   useEffect(() => {
+    const fetchProduct = async () => {
+      if (!productId) return;
+      try {
+        setLoading(true);
+        const data = await productService.getProductById(productId);
+        setProduct(data);
+      } catch (error) {
+        console.error("Error fetching product:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProduct();
     document.title = "Product Details — eBid";
-  }, []);
+  }, [productId]);
 
   return (
     <>
@@ -33,7 +52,7 @@ const ProductDetails = () => {
         >
           {/* Product Overview Section */}
           <div>
-            <ProductOverview />
+            <ProductOverview productId={productId} />
           </div>
 
           {/* Product Features Section */}
@@ -55,7 +74,10 @@ const ProductDetails = () => {
               borderTop: `1px solid ${COLORS.MORNING_MIST}20`,
             }}
           >
-            <SimiliarProductsList />
+            <SimiliarProductsList
+              categoryId={product?.category_id}
+              currentProductId={productId}
+            />
           </div>
 
           {/* Seller Feedback Section */}
@@ -78,7 +100,7 @@ const ProductDetails = () => {
                 borderTop: `1px solid ${COLORS.MORNING_MIST}20`,
               }}
             >
-              <BidHistory />
+              <BidHistory productId={productId} />
             </div>
           )}
 
@@ -90,7 +112,7 @@ const ProductDetails = () => {
               borderTop: `1px solid ${COLORS.MORNING_MIST}20`,
             }}
           >
-            <QuestionsHistory />
+            <QuestionsHistory productId={productId} />
           </div>
         </div>
       </div>
