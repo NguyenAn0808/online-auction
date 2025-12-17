@@ -62,7 +62,7 @@ const router = createBrowserRouter(
   createRoutesFromElements(
     <>
       {/* Authentication */}
-      <Route path="/auth/*" element={<MainLayout />}>
+      <Route path="/api/auth/*" element={<MainLayout />}>
         <Route path="signin" element={<Login />} />
         <Route path="signup" element={<Signup />} />
         <Route path="forgot-password" element={<ForgotPassword />} />

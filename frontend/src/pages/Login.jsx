@@ -47,13 +47,13 @@ export default function Login() {
 
   // OAuth redirect helper - explicit mappings
   const oauth = (provider) => {
-    const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"; // Fallback to local API port if needed
+    const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"; // Fallback to local API port if needed
     const map = {
       google: "google",
       facebook: "facebook",
     };
     const p = map[provider] || provider;
-    window.location.href = `${base}/auth/${p}`;
+    window.location.href = `${base}/api/auth/${p}`;
   };
 
   return (

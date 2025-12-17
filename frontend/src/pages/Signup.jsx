@@ -11,6 +11,9 @@ export default function Signup() {
   const [address, setAddress] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [phone, setPhone] = useState("");
+  const [birthdate, setBirthdate] = useState("");
 
   // UI state
   const [loading, setLoading] = useState(false);
@@ -19,16 +22,21 @@ export default function Signup() {
   const [otp, setOtp] = useState("");
   const [recaptchaToken, setRecaptchaToken] = useState(null);
 
-  const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+  const siteKey =
+    import.meta.env.VITE_RECAPTCHA_SITE_KEY ||
+    "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"; // test key
 
   const verifyOtp = async (email, otp) => {
-    return api.post("/auth/verify-otp", { email, otp });
+    return api.post("/api/auth/verify-otp", { email, otp });
   };
   useEffect(() => {
     setError("");
   }, [stage, fullName, email, password, otp]);
 
   const validateForm = () => {
+    if (!username) return "Username is required";
+    if (!phone) return "Phone number is required";
+    if (!birthdate) return "Birthdate is required";
     if (!fullName) return "Full name is required";
     if (!email) return "Email is required";
     const re = /^\S+@\S+\.\S+$/;
@@ -51,19 +59,26 @@ export default function Signup() {
     try {
       // Send registration to backend (backend should hash password)
       const payload = {
-        fullName: fullName,
-        address,
-        email,
+        username,
         password,
+        email,
+        fullName,
+        phone,
+        address,
+        birthdate,
         recaptchaToken,
       };
       console.log("Signup payload (debug):", {
-        fullName,
+        username,
+        password,
         email,
+        fullName,
+        phone,
         address,
-        recaptchaToken: !!recaptchaToken,
+        birthdate,
+        recaptchaToken,
       });
-      await api.post("/auth/signup", payload);
+      await api.post("/api/auth/signup", payload);
       // server should send OTP to email — enter OTP stage
       setStage("otp");
     } catch (err) {
@@ -87,7 +102,7 @@ export default function Signup() {
       setStage("done");
       // small delay to let user read message, then navigate to login
       setTimeout(() => {
-        navigate("/auth/signin");
+        navigate("/api/auth/signin");
       }, 900);
     } catch (err) {
       const msg =
@@ -121,6 +136,29 @@ export default function Signup() {
                 <form onSubmit={onSubmit} className="space-y-6">
                   <div>
                     <label
+                      htmlFor="username"
+                      className="block text-sm font-medium text-gray-900"
+                    >
+                      User name
+                    </label>
+                    <div className="mt-2">
+                      <input
+                        id="username"
+                        name="username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        autoComplete="username"
+                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base
+                        border border-gray-300
+                        placeholder:text-gray-400
+                        focus:border-midnight-ash focus:ring-1 focus:ring-midnight-ash
+                        sm:text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
                       htmlFor="fullName"
                       className="block text-sm font-medium text-gray-900"
                     >
@@ -132,7 +170,36 @@ export default function Signup() {
                         name="fullName"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-midnight-ash outline-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:outline-midnight-ash sm:text-sm"
+                        autoComplete="name"
+                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base
+                        border border-gray-300
+                        placeholder:text-gray-400
+                        focus:border-midnight-ash focus:ring-1 focus:ring-midnight-ash
+                        sm:text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="phone"
+                      className="block text-sm font-medium text-gray-900"
+                    >
+                      Phone number
+                    </label>
+                    <div className="mt-2">
+                      <input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        autoComplete="tel"
+                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base
+                        border border-gray-300
+                        placeholder:text-gray-400
+                        focus:border-midnight-ash focus:ring-1 focus:ring-midnight-ash
+                        sm:text-sm"
                       />
                     </div>
                   </div>
@@ -150,7 +217,36 @@ export default function Signup() {
                         name="address"
                         value={address}
                         onChange={(e) => setAddress(e.target.value)}
-                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-midnight-ash outline-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:outline-midnight-ash sm:text-sm"
+                        autoComplete="address-line1"
+                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base
+                        border border-gray-300
+                        placeholder:text-gray-400
+                        focus:border-midnight-ash focus:ring-1 focus:ring-midnight-ash
+                        sm:text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="birthdate"
+                      className="block text-sm font-medium text-gray-900"
+                    >
+                      Birthdate
+                    </label>
+                    <div className="mt-2">
+                      <input
+                        id="birthdate"
+                        name="birthdate"
+                        type="date"
+                        value={birthdate}
+                        onChange={(e) => setBirthdate(e.target.value)}
+                        autoComplete="bday"
+                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base
+                        border border-gray-300
+                        placeholder:text-gray-400
+                        focus:border-midnight-ash focus:ring-1 focus:ring-midnight-ash
+                        sm:text-sm"
                       />
                     </div>
                   </div>
@@ -170,7 +266,11 @@ export default function Signup() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         autoComplete="email"
-                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-midnight-ash outline-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:outline-midnight-ash sm:text-sm"
+                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base
+                        border border-gray-300
+                        placeholder:text-gray-400
+                        focus:border-midnight-ash focus:ring-1 focus:ring-midnight-ash
+                        sm:text-sm"
                       />
                     </div>
                   </div>
@@ -190,7 +290,11 @@ export default function Signup() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         autoComplete="new-password"
-                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-midnight-ash outline-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:outline-midnight-ash sm:text-sm"
+                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base
+                        border border-gray-300
+                        placeholder:text-gray-400
+                        focus:border-midnight-ash focus:ring-1 focus:ring-midnight-ash
+                        sm:text-sm"
                       />
                     </div>
                   </div>
@@ -219,40 +323,93 @@ export default function Signup() {
               )}
 
               {stage === "otp" && (
-                <div className="space-y-4">
-                  <p className="text-sm text-gray-700">
-                    An OTP was sent to <strong>{email}</strong>. Enter it below
-                    to confirm your account.
-                  </p>
-                  <input
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    placeholder="123456"
-                    className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-midnight-ash outline-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:outline-midnight-ash sm:text-sm"
-                  />
-                  {error && <div className="text-red-600 text-sm">{error}</div>}
-                  <div className="flex gap-2">
+                <div className="flex flex-col items-center space-y-6 text-center">
+                  <div className="rounded-full bg-green-100 p-3">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="h-6 w-6 text-green-600"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"
+                      />
+                    </svg>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900">
+                      Verify your email
+                    </h3>
+                    <p className="mt-2 text-sm text-gray-500 max-w-xs mx-auto">
+                      We've sent a 6-digit code to <br />
+                      <span className="font-semibold text-gray-900">
+                        {email}
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="w-full">
+                    <input
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      placeholder="000000"
+                      maxLength={6}
+                      className="block w-full text-center text-3xl font-bold tracking-[0.5em] rounded-md border-gray-300 py-3 text-gray-900 shadow-sm placeholder:text-gray-300 focus:border-midnight-ash focus:ring-midnight-ash sm:text-2xl"
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="w-full rounded-md bg-red-50 p-2 text-sm text-red-600">
+                      {error}
+                    </div>
+                  )}
+
+                  <div className="w-full space-y-3">
                     <button
                       onClick={onVerifyOtp}
                       disabled={loading}
-                      className="flex-1 rounded-md btn-primary px-3 py-1.5 text-white"
+                      className="flex w-full justify-center rounded-md btn-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
                     >
-                      {loading ? "Verifying..." : "Verify OTP"}
+                      {loading ? "Verifying..." : "Confirm & Create Account"}
                     </button>
+
                     <button
                       onClick={() => setStage("form")}
-                      className="flex-1 rounded-md border px-3 py-1.5"
+                      className="w-full text-sm text-gray-500 hover:text-gray-900"
                     >
-                      Back
+                      Wrong email? Go back
                     </button>
                   </div>
                 </div>
               )}
 
               {stage === "done" && (
-                <div className="text-center">
-                  <p className="text-green-700">
-                    Account created — redirecting to login...
+                <div className="flex flex-col items-center justify-center space-y-4 py-8">
+                  <div className="rounded-full bg-green-100 p-3">
+                    <svg
+                      className="h-8 w-8 text-green-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-lg font-medium text-gray-900">
+                    Account verified!
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Redirecting to login...
                   </p>
                 </div>
               )}

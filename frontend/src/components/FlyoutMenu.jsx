@@ -28,51 +28,48 @@ export default function FlyoutMenu({ alignRight = false }) {
   const resources = [
     {
       name: "Summary",
-      description: "Get all of your questions answered",
+      description: "Go to your profile summary",
       href: userId ? `/summary/${userId}` : "/auth/signin",
       icon: LifebuoyIcon,
     },
     {
       name: "Ratings",
-      description: "Learn how to maximize our platform",
+      description: "Performance reviews and ratings",
       href: userId ? `/ratings/${userId}` : "/auth/signin",
       icon: BookmarkSquareIcon,
     },
     {
       name: "Watchlist",
-      description: "See meet-ups and other events near you",
+      description: "See your watchlist and other saved items",
       href: userId ? `/watchlists/${userId}` : "/auth/signin",
       icon: CalendarDaysIcon,
     },
     {
-      name: "Purchase History",
-      description: "See meet-ups and other events near you",
+      name: "Bids & Offers",
+      description: "Track your bids and offers",
       href: userId ? `/products/${userId}/bidding` : "/auth/signin",
       icon: CalendarDaysIcon,
     },
   ];
-  const recentMessages = [
+  // Temporary placeholder recent transactions (top 3)
+  const recentTransactions = [
     {
-      id: 1,
-      title: "Boost your conversion rate",
-      href: "#",
-      date: "Mar 5, 2023",
-      datetime: "2023-03-05",
+      id: "tx_1",
+      title: "Won: Waxed Canvas Backpack",
+      date: "Nov 15",
+      datetime: "2025-11-15",
     },
     {
-      id: 2,
-      title:
-        "How to use search engine optimization to drive traffic to your site",
-      href: "#",
-      date: "Feb 25, 2023",
-      datetime: "2023-02-25",
+      id: "tx_2",
+      title: "Purchased: Zip Tote Basket",
+      date: "Oct 30",
+      datetime: "2025-10-30",
     },
     {
-      id: 3,
-      title: "Improve your customer experience",
-      href: "#",
-      date: "Feb 21, 2023",
-      datetime: "2023-02-21",
+      id: "tx_3",
+      title: "Refunded: Classic Leather Satchel",
+      date: "Sep 8",
+      datetime: "2025-09-08",
     },
   ];
   // alignRight: when true, position the panel to the right of its container (for profile button)
@@ -209,10 +206,14 @@ export default function FlyoutMenu({ alignRight = false }) {
                 color: COLORS.PEBBLE,
               }}
             >
-              Recent posts
+              Recent Transactions
             </h3>
-            <a
-              href="#"
+            <Link
+              to={
+                userId
+                  ? `/products/${userId}/bidding`
+                  : "/products/:userId/bidding"
+              }
               style={{
                 fontSize: TYPOGRAPHY.SIZE_LABEL_LARGE,
                 lineHeight: TYPOGRAPHY.LINE_HEIGHT_NORMAL,
@@ -222,7 +223,7 @@ export default function FlyoutMenu({ alignRight = false }) {
               }}
             >
               See all <span aria-hidden="true">&rarr;</span>
-            </a>
+            </Link>
           </div>
           <ul
             role="list"
@@ -236,10 +237,10 @@ export default function FlyoutMenu({ alignRight = false }) {
               listStyle: "none",
             }}
           >
-            {recentMessages.map((message) => (
-              <li key={message.id} style={{ position: "relative" }}>
+            {recentTransactions.map((tx) => (
+              <li key={tx.id} style={{ position: "relative" }}>
                 <time
-                  dateTime={message.datetime}
+                  dateTime={tx.datetime}
                   style={{
                     display: "block",
                     fontSize: TYPOGRAPHY.SIZE_LABEL,
@@ -247,10 +248,10 @@ export default function FlyoutMenu({ alignRight = false }) {
                     color: COLORS.PEBBLE,
                   }}
                 >
-                  {message.date}
+                  {tx.date}
                 </time>
-                <a
-                  href={message.href}
+                <Link
+                  to={`/transactions/${tx.id}`}
                   style={{
                     display: "block",
                     overflow: "hidden",
@@ -265,14 +266,14 @@ export default function FlyoutMenu({ alignRight = false }) {
                   }}
                   className="hover:opacity-75"
                 >
-                  {message.title}
+                  {tx.title}
                   <span
                     style={{
                       position: "absolute",
                       inset: 0,
                     }}
                   />
-                </a>
+                </Link>
               </li>
             ))}
           </ul>

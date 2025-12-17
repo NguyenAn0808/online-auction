@@ -47,7 +47,7 @@ export const AuthProvider = ({ children }) => {
   const signin = async (login, password) => {
     try {
       console.log("Attempting signin with:", { login, password: "***" });
-      const response = await api.post("/auth/signin", { login, password });
+      const response = await api.post("/api/auth/signin", { login, password });
       console.log("Signin response:", response.data);
 
       const { accessToken, user: userData } = response.data.data;
@@ -76,7 +76,7 @@ export const AuthProvider = ({ children }) => {
 
   const signup = async (userData) => {
     try {
-      const response = await api.post("/auth/register", userData);
+      const response = await api.post("/api/auth/register", userData);
       return { success: true, data: response.data };
     } catch (error) {
       return {
@@ -87,7 +87,7 @@ export const AuthProvider = ({ children }) => {
   };
   const signout = async () => {
     try {
-      await api.post("/auth/signout");
+      await api.post("/api/auth/signout");
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
@@ -95,7 +95,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem("user");
       setUser(null);
       setActiveRole("guest");
-      window.location.href = "/auth/signin";
+      window.location.href = "/api/auth/signin";
     }
   };
 
