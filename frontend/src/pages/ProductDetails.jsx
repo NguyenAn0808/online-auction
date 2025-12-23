@@ -112,7 +112,7 @@ const ProductDetails = () => {
               borderTop: `1px solid ${COLORS.MORNING_MIST}20`,
             }}
           >
-            <QuestionsHistory productId={productId} />
+            <QuestionsHistory productId={productId} product={product} />
           </div>
         </div>
       </div>

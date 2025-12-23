@@ -76,7 +76,7 @@ export const AuthProvider = ({ children }) => {
 
   const signup = async (userData) => {
     try {
-      const response = await api.post("/api/auth/register", userData);
+      const response = await api.post("/api/auth/signup", userData);
       return { success: true, data: response.data };
     } catch (error) {
       return {
@@ -95,7 +95,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem("user");
       setUser(null);
       setActiveRole("guest");
-      window.location.href = "/api/auth/signin";
+      window.location.href = "/auth/signin";
     }
   };
 

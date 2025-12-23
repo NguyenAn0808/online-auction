@@ -102,7 +102,7 @@ export default function Signup() {
       setStage("done");
       // small delay to let user read message, then navigate to login
       setTimeout(() => {
-        navigate("/api/auth/signin");
+        navigate("/auth/signin");
       }, 900);
     } catch (err) {
       const msg =

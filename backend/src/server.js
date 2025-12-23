@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import morgan from "morgan";
 import session from "express-session";
 import passport from "passport";
 import config from "./config/settings.js";
@@ -29,7 +30,6 @@ import Answer from "./models/Answer.js";
 import questionRoute from "./routes/questionRoute.js";
 import answerRoute from "./routes/answerRoute.js";
 import { initBlockedBiddersTable } from "./models/blocked-bidder.model.js";
-import CronService from "./services/cronService.js";
 import Order from "./models/Order.js";
 
 const app = express();
@@ -53,7 +53,7 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
-
+app.use(morgan("dev"));
 // Session middleware (required for passport)
 app.use(
   session({
@@ -149,8 +149,6 @@ const startServer = async () => {
     await initBidsTable();
     await initBlockedBiddersTable();
 
-    CronService.start();
-    console.log("✅ Auction Cron Service started");
     // Start listening
     app.listen(config.port, () => {
       console.log(`Server is running on port ${config.port}`);
