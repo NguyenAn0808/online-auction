@@ -5,7 +5,11 @@ import Sidebar from "../components/Sidebar";
 import BidOfferCard from "../components/BidOfferCard";
 import FeedbackModal from "../components/FeedbackModal";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { listTransactions } from "../services/transactionService";
+import { winListService } from "../services/winListService";
+import { ratingService } from "../services/ratingService";
+import { ORDER_STATUS } from "../services/orderService";
 import {
   COLORS,
   TYPOGRAPHY,
@@ -14,56 +18,34 @@ import {
   SHADOWS,
 } from "../constants/designSystem";
 
-const demoBids = [
-  {
-    id: 1,
-    name: "Zip Tote Basket",
-    imageSrc:
-      "https://tailwindui.com/plus-assets/img/ecommerce-images/product-page-03-product-01.jpg",
-    status: "Highest Bid",
-    amount: "275.00",
-    endTime: "2d 4h",
-    type: "bid",
-  },
-  {
-    id: 2,
-    name: "Canvas Weekend Bag",
-    imageSrc:
-      "https://tailwindui.com/plus-assets/img/ecommerce-images/product-page-03-related-product-02.jpg",
-    status: "Outbid",
-    amount: "120.00",
-    endTime: "5h 12m",
-    type: "bid",
-  },
-];
+// Helper function to format product data for BidOfferCard
+function formatProductForCard(product, type = "bid") {
+  const productId = product._id || product.id;
+  const productName = product.name || "Unnamed Product";
+  const imageSrc =
+    product.thumbnail ||
+    product.images?.[0]?.image_url ||
+    product.images?.[0]?.src ||
+    "/images/sample.jpg";
+  const price =
+    product.current_price || product.finalPrice || product.start_price || 0;
+  const endTime = product.end_time
+    ? new Date(product.end_time).toLocaleDateString()
+    : null;
 
-const demoWon = [
-  {
-    id: 31,
-    name: "Waxed Canvas Backpack",
-    imageSrc:
-      "https://tailwindui.com/plus-assets/img/ecommerce-images/product-page-03-related-product-04.jpg",
-    status: "Won",
-    amount: "89.99",
-    endTime: "Nov 15",
-    type: "won",
-  },
-];
-
-const demoLost = [
-  {
-    id: 21,
-    name: "Classic Leather Satchel",
-    imageSrc:
-      "https://tailwindui.com/plus-assets/img/ecommerce-images/product-page-03-related-product-01.jpg",
-    status: "Lost",
-    amount: "95.00",
-    endTime: "Nov 10",
-    type: "lost",
-  },
-];
+  return {
+    id: productId,
+    name: productName,
+    imageSrc,
+    status: type === "won" ? "Won" : type === "lost" ? "Lost" : "Active",
+    amount: price.toFixed(2),
+    endTime: endTime || "N/A",
+    type,
+  };
+}
 
 export default function BidsOffers() {
+  const { user } = useAuth();
   const [feedbackModal, setFeedbackModal] = useState({
     isOpen: false,
     item: null,
@@ -71,10 +53,19 @@ export default function BidsOffers() {
   const [transactions, setTransactions] = useState([]);
   const [loadingTx, setLoadingTx] = useState(true);
   const [txError, setTxError] = useState(null);
+  const [activeBids, setActiveBids] = useState([]);
+  const [wonItems, setWonItems] = useState([]);
+  const [loadingWon, setLoadingWon] = useState(false);
+  const [lostItems, setLostItems] = useState([]);
   const navigate = useNavigate();
 
   const handleViewAuction = (item) => {
-    console.log("View auction/item:", item);
+    if (!item || !item.id) {
+      console.error("Cannot navigate: item or item.id is missing", item);
+      return;
+    }
+    // Navigate to product details page
+    navigate(`/products/${item.id}`);
   };
 
   const handleFeedback = (item) => {
@@ -85,8 +76,28 @@ export default function BidsOffers() {
   };
 
   const handleSubmitFeedback = async (feedbackData) => {
-    console.log("Feedback submitted:", feedbackData);
-    alert("Feedback submitted successfully!");
+    try {
+      if (!user?._id || !feedbackData.item?.id) {
+        alert("Missing user or item information");
+        return;
+      }
+
+      // Create rating using ratingService
+      await ratingService.createRating({
+        user_id: feedbackData.sellerId || feedbackData.item.sellerId,
+        reviewer_id: user._id,
+        product_id: feedbackData.item.id,
+        is_positive: feedbackData.rating > 0,
+        comment: feedbackData.comment || "",
+      });
+
+      alert("Feedback submitted successfully!");
+      closeFeedbackModal();
+      // Optionally refresh data
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      alert("Failed to submit feedback. Please try again.");
+    }
   };
 
   const closeFeedbackModal = () => {
@@ -96,6 +107,7 @@ export default function BidsOffers() {
     });
   };
 
+  // Fetch transactions (for transaction history section)
   useEffect(() => {
     let mounted = true;
     async function fetchTx() {
@@ -118,6 +130,96 @@ export default function BidsOffers() {
       mounted = false;
     };
   }, []);
+
+  // Fetch won items
+  useEffect(() => {
+    let mounted = true;
+    async function fetchWonItems() {
+      try {
+        setLoadingWon(true);
+        const data = await winListService.getWinList();
+        if (!mounted) return;
+
+        // Format won items for BidOfferCard
+        const formatted = Array.isArray(data)
+          ? data.map((product) => formatProductForCard(product, "won"))
+          : [];
+        setWonItems(formatted);
+      } catch (err) {
+        // Silently fail if endpoint doesn't exist (404) - endpoint not implemented in backend yet
+        if (err.response?.status === 404) {
+          console.warn("Win-list endpoint not implemented yet");
+          setWonItems([]);
+        } else {
+          console.error("Failed to load won items:", err);
+          setWonItems([]);
+        }
+        if (!mounted) return;
+      } finally {
+        if (mounted) setLoadingWon(false);
+      }
+    }
+    fetchWonItems();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Process transactions to determine active bids and lost items
+  useEffect(() => {
+    if (!transactions.length) {
+      setActiveBids([]);
+      setLostItems([]);
+      return;
+    }
+
+    const now = new Date();
+    const active = [];
+    const lost = [];
+
+    transactions.forEach((tx) => {
+      const product = tx.product || {};
+      const productId = product._id || product.id;
+      const productName = product.name || "Unnamed Product";
+      const endTime = product.end_time ? new Date(product.end_time) : null;
+      const isActive = endTime && endTime > now;
+      const isCompleted =
+        tx.status === ORDER_STATUS.COMPLETED ||
+        tx.status === ORDER_STATUS.PENDING_RATING;
+      const isWon = wonItems.some((item) => item.id === productId);
+
+      if (isActive && !isCompleted && !isWon) {
+        // Active bid - auction still ongoing
+        active.push(
+          formatProductForCard(
+            {
+              ...product,
+              _id: productId,
+              id: productId,
+              name: productName,
+            },
+            "bid"
+          )
+        );
+      } else if (!isActive && !isWon && isCompleted) {
+        // Lost item - auction ended, user didn't win
+        lost.push(
+          formatProductForCard(
+            {
+              ...product,
+              _id: productId,
+              id: productId,
+              name: productName,
+            },
+            "lost"
+          )
+        );
+      }
+    });
+
+    setActiveBids(active);
+    setLostItems(lost);
+  }, [transactions, wonItems]);
 
   return (
     <div style={{ backgroundColor: COLORS.WHISPER, minHeight: "100vh" }}>
@@ -165,7 +267,7 @@ export default function BidsOffers() {
                     gap: SPACING.S,
                   }}
                 >
-                  {demoBids.length === 0 ? (
+                  {activeBids.length === 0 ? (
                     <div
                       style={{
                         borderRadius: BORDER_RADIUS.MEDIUM,
@@ -179,7 +281,7 @@ export default function BidsOffers() {
                       No active bids
                     </div>
                   ) : (
-                    demoBids.map((bid) => (
+                    activeBids.map((bid) => (
                       <BidOfferCard
                         key={bid.id}
                         {...bid}
@@ -320,7 +422,20 @@ export default function BidsOffers() {
                     gap: SPACING.S,
                   }}
                 >
-                  {demoWon.length === 0 ? (
+                  {loadingWon ? (
+                    <div
+                      style={{
+                        borderRadius: BORDER_RADIUS.MEDIUM,
+                        border: `2px dashed ${COLORS.MORNING_MIST}`,
+                        backgroundColor: COLORS.WHITE,
+                        padding: SPACING.L,
+                        textAlign: "center",
+                        color: COLORS.PEBBLE,
+                      }}
+                    >
+                      Loading won items...
+                    </div>
+                  ) : wonItems.length === 0 ? (
                     <div
                       style={{
                         borderRadius: BORDER_RADIUS.MEDIUM,
@@ -334,7 +449,7 @@ export default function BidsOffers() {
                       You haven't won any items yet
                     </div>
                   ) : (
-                    demoWon.map((item) => (
+                    wonItems.map((item) => (
                       <BidOfferCard
                         key={item.id}
                         {...item}
@@ -364,7 +479,7 @@ export default function BidsOffers() {
                     gap: SPACING.S,
                   }}
                 >
-                  {demoLost.length === 0 ? (
+                  {lostItems.length === 0 ? (
                     <div
                       style={{
                         borderRadius: BORDER_RADIUS.MEDIUM,
@@ -378,7 +493,7 @@ export default function BidsOffers() {
                       No lost items
                     </div>
                   ) : (
-                    demoLost.map((lost) => (
+                    lostItems.map((lost) => (
                       <BidOfferCard
                         key={lost.id}
                         {...lost}

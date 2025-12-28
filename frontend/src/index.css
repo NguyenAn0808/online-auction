@@ -367,7 +367,7 @@ button {
   background-color: var(--soft-cloud);
   padding: var(--space-l) 0;
   border-top: 1px solid var(--morning-mist);
-  margin-top: var(--space-xl);
+  /* margin-top removed to fix sticky footer */
 }
 
 .footer-text {

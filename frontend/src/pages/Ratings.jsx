@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Tabs from "../components/Tabs";
 import Sidebar from "../components/Sidebar";
+import { useAuth } from "../context/AuthContext";
+import { ratingService } from "../services/ratingService";
 import {
   HandThumbUpIcon,
   HandThumbDownIcon,
@@ -14,69 +16,70 @@ import {
   SHADOWS,
 } from "../constants/designSystem";
 
-const demoFeedback = [
-  {
-    id: 1,
-    seller: "Jane Cooper",
-    rating: 1,
-    title: "Great buyer!",
-    body: "Item was purchased quickly and payment was made immediately. Excellent communication throughout the transaction. Highly recommend.",
-    date: "2025-11-15",
-    transaction: "Order #12345",
-    itemName: "Vintage Watch",
-  },
-  {
-    id: 2,
-    seller: "John Doe",
-    rating: 1,
-    title: "Smooth transaction",
-    body: "Buyer was responsive and easy to work with. Payment received promptly. Would sell to again.",
-    date: "2025-10-30",
-    transaction: "Order #12344",
-    itemName: "Collectible Sneakers",
-  },
-  {
-    id: 3,
-    seller: "Alex Smith",
-    rating: -1,
-    title: "Communication issues",
-    body: "Buyer took a while to respond to messages. Eventually completed the transaction but could have been smoother.",
-    date: "2025-09-21",
-    transaction: "Order #12343",
-    itemName: "Laptop Stand",
-  },
-  {
-    id: 4,
-    seller: "Maria Garcia",
-    rating: 1,
-    title: "Perfect!",
-    body: "Fast payment and great communication. This is the kind of buyer every seller wants!",
-    date: "2025-09-05",
-    transaction: "Order #12342",
-    itemName: "Phone Case",
-  },
-  {
-    id: 5,
-    seller: "David Wilson",
-    rating: -1,
-    title: "Delayed payment",
-    body: "Buyer took several days to send payment after winning the auction. Finally completed but was slow.",
-    date: "2025-08-20",
-    transaction: "Order #12341",
-    itemName: "Wireless Mouse",
-  },
-];
+// Helper function to format rating data for display
+function formatRating(rating) {
+  return {
+    id: rating._id || rating.id,
+    seller: rating.reviewer?.full_name || rating.reviewer?.username || "Unknown",
+    rating: rating.is_positive ? 1 : -1,
+    title: rating.comment
+      ? rating.comment.split(".")[0] || rating.comment.substring(0, 50)
+      : "No title",
+    body: rating.comment || "",
+    date: rating.createdAt
+      ? new Date(rating.createdAt).toISOString().split("T")[0]
+      : new Date().toISOString().split("T")[0],
+    transaction: `Order #${(rating.product_id || "").slice(0, 8)}`,
+    itemName: rating.product?.name || "Unknown Item",
+  };
+}
 
 export default function Ratings() {
+  const { user } = useAuth();
   const [filterRating, setFilterRating] = useState(null);
+  const [ratings, setRatings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function fetchRatings() {
+      if (!user?._id) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await ratingService.getUserRatings(user._id);
+        // Handle backend response format: { success: true, data: [...] } or { ratings: [...] }
+        const ratingsList = data?.data 
+          ? (Array.isArray(data.data) ? data.data : [])
+          : data?.ratings 
+            ? (Array.isArray(data.ratings) ? data.ratings : [])
+            : Array.isArray(data) 
+              ? data 
+              : [];
+        setRatings(ratingsList.map(formatRating));
+      } catch (err) {
+        console.error("Error fetching ratings:", err);
+        setError("Failed to load ratings");
+        setRatings([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchRatings();
+  }, [user]);
 
   const filteredFeedback =
     filterRating === null
-      ? demoFeedback
-      : demoFeedback.filter((f) => f.rating === filterRating);
+      ? ratings
+      : ratings.filter((f) => f.rating === filterRating);
 
-  const thumbsUpCount = demoFeedback.filter((f) => f.rating === 1).length;
-  const thumbsDownCount = demoFeedback.filter((f) => f.rating === -1).length;
+  const thumbsUpCount = ratings.filter((f) => f.rating === 1).length;
+  const thumbsDownCount = ratings.filter((f) => f.rating === -1).length;
 
   return (
     <div style={{ backgroundColor: COLORS.WHISPER, minHeight: "100vh" }}>
@@ -150,7 +153,7 @@ export default function Ratings() {
                         color: COLORS.MIDNIGHT_ASH,
                       }}
                     >
-                      {demoFeedback.length}
+                      {ratings.length}
                     </div>
                     <div
                       style={{
@@ -325,7 +328,27 @@ export default function Ratings() {
                     divideY: `1px solid ${COLORS.MORNING_MIST}`,
                   }}
                 >
-                  {filteredFeedback.length === 0 ? (
+                  {loading ? (
+                    <div
+                      style={{
+                        padding: SPACING.L,
+                        textAlign: "center",
+                        color: COLORS.PEBBLE,
+                      }}
+                    >
+                      Loading ratings...
+                    </div>
+                  ) : error ? (
+                    <div
+                      style={{
+                        padding: SPACING.L,
+                        textAlign: "center",
+                        color: "#dc2626",
+                      }}
+                    >
+                      {error}
+                    </div>
+                  ) : filteredFeedback.length === 0 ? (
                     <div
                       style={{
                         padding: SPACING.L,

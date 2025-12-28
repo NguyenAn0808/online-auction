@@ -10,11 +10,16 @@ const MainLayout = () => {
   const showChat = user && !pathname.startsWith("/auth");
 
   return (
-    <>
-      <Outlet />
+    <div className="min-h-screen flex flex-col">
+      {/* Main content area - flex-grow makes it fill available space */}
+      <main className="flex-grow">
+        <Outlet />
+      </main>
+      {/* Footer stays at bottom */}
       <Footer />
+      {/* Chat bubble (fixed position, outside flex flow) */}
       {showChat && <ChatBubble />}
-    </>
+    </div>
   );
 };
 

@@ -1,8 +1,11 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Header from "../components/Header";
 import Tabs from "../components/Tabs";
 import Sidebar from "../components/Sidebar";
 import BidderProfile from "../components/BidderProfile";
+import { useAuth } from "../context/AuthContext";
+import { useParams } from "react-router-dom";
+import userService from "../services/userService";
 import {
   COLORS,
   TYPOGRAPHY,
@@ -12,6 +15,45 @@ import {
 } from "../constants/designSystem";
 
 export const BidderProfilePage = () => {
+  const { user: currentUser } = useAuth();
+  const { userId } = useParams();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Use userId from params if available, otherwise use current user
+  const targetUserId = userId || currentUser?._id;
+
+  useEffect(() => {
+    async function fetchUser() {
+      if (!targetUserId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        const userData = await userService.getUserById(targetUserId);
+        setUser(userData);
+      } catch (err) {
+        console.error("Error fetching user profile:", err);
+        // Handle 404 gracefully - endpoint may not be implemented yet
+        if (err.response?.status === 404) {
+          setError(
+            "User profile endpoint not found. Backend route may not be implemented yet."
+          );
+        } else {
+          setError("Failed to load user profile");
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchUser();
+  }, [targetUserId]);
+
   return (
     <div style={{ backgroundColor: COLORS.WHISPER, minHeight: "100vh" }}>
       <Header />
@@ -48,7 +90,39 @@ export const BidderProfilePage = () => {
                     padding: SPACING.L,
                   }}
                 >
-                  <BidderProfile />
+                  {loading ? (
+                    <div
+                      style={{
+                        padding: SPACING.L,
+                        textAlign: "center",
+                        color: COLORS.PEBBLE,
+                      }}
+                    >
+                      Loading profile...
+                    </div>
+                  ) : error ? (
+                    <div
+                      style={{
+                        padding: SPACING.L,
+                        textAlign: "center",
+                        color: "#dc2626",
+                      }}
+                    >
+                      {error}
+                    </div>
+                  ) : user ? (
+                    <BidderProfile user={user} />
+                  ) : (
+                    <div
+                      style={{
+                        padding: SPACING.L,
+                        textAlign: "center",
+                        color: COLORS.PEBBLE,
+                      }}
+                    >
+                      User not found
+                    </div>
+                  )}
                 </div>
               </section>
             </div>

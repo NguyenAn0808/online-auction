@@ -69,14 +69,23 @@ export const cancelOrder = async (orderId, reason) => {
 let _transactions = [];
 let _id = 1;
 
+// DEPRECATED: Use ORDER_STATUS from orderService.js instead
+// These constants are kept for backward compatibility but should be migrated to OpenAPI enums
 export const STATUS = {
-  PENDING_BUYER: "pending_verification", // Was 'PENDING_BUYER'
-  WAITING_SELLER_CONFIRMATION: "pending_verification",
-  IN_TRANSIT: "delivering",
-  COMPLETED_AWAITING_RATING: "await_rating",
-  COMPLETED: "completed",
-  CANCELLED: "cancelled",
-  PAYMENT_REJECTED: "cancelled",
+  // OpenAPI Status Enums (from orderService.ORDER_STATUS):
+  PENDING_BIDDER_PAYMENT: "PendingBidderPayment",
+  PENDING_SELLER_CONFIRMATION: "PendingSellerConfirmation",
+  PENDING_DELIVERY: "PendingDelivery",
+  PENDING_RATING: "PendingRating",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+
+  // Legacy aliases for backward compatibility (deprecated)
+  PENDING_BUYER: "PendingBidderPayment",
+  WAITING_SELLER_CONFIRMATION: "PendingSellerConfirmation",
+  IN_TRANSIT: "PendingDelivery",
+  COMPLETED_AWAITING_RATING: "PendingRating",
+  PAYMENT_REJECTED: "Cancelled",
 };
 
 export function resetStore() {
@@ -92,7 +101,7 @@ export const listTransactions = async (role = "") => {
   // Based on your controller, GET /orders uses req.user.id to find related orders.
 
   const query = role ? `?role=${role}` : "";
-  const response = await api.get(`/orders${query}`);
+  const response = await api.get(`/api/orders${query}`);
 
   // Return the array of orders.
   // We check response.data.data first (standard), then response.data (fallback)

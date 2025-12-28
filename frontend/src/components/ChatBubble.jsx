@@ -18,7 +18,7 @@ function getCurrentUser() {
 
 export default function ChatBubble() {
   // open state for ChatBox visibility
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [txId, setTxId] = useState(null);
   const [badge, setBadge] = useState(0);
   const [contextProduct, setContextProduct] = useState(null);
@@ -53,39 +53,61 @@ export default function ChatBubble() {
     return () => window.removeEventListener("openChat", onOpenChatEvent);
   }, []);
 
-  function findFirstUnreadTx() {
-    const txs = listTransactions();
-    for (const tx of txs) {
-      const last = (tx.lastReadAt && tx.lastReadAt[userId]) || 0;
-      const newMsgs = tx.messages.filter(
-        (m) => m.time && m.time > last && m.sender !== userId
-      );
-      if (newMsgs.length > 0) return tx.id;
+  async function findFirstUnreadTx() {
+    try {
+      const txs = await listTransactions();
+      // Handle case where listTransactions might not return an array
+      if (!txs || !Array.isArray(txs)) {
+        return null;
+      }
+      for (const tx of txs) {
+        const last = (tx.lastReadAt && tx.lastReadAt[userId]) || 0;
+        const newMsgs = (tx.messages || []).filter(
+          (m) => m.time && m.time > last && m.sender !== userId
+        );
+        if (newMsgs.length > 0) return tx.id;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error finding unread transaction:", error);
+      return null;
     }
-    return null;
   }
 
-  function handleToggle() {
-    if (!open) {
-      // Opening: if there are unread messages, open the first one
-      const unreadTxId = findFirstUnreadTx();
-      if (unreadTxId) {
-        setTxId(unreadTxId);
-        setTimeout(() => setBadge(getUnreadCount(userId)), 500);
+  const handleToggle = () => {
+    setOpen((prevOpen) => {
+      const newOpen = !prevOpen;
+
+      if (newOpen) {
+        // Opening: if there are unread messages, open the first one
+        // Use async call but don't block state update
+        findFirstUnreadTx()
+          .then((unreadTxId) => {
+            if (unreadTxId) {
+              setTxId(unreadTxId);
+              setTimeout(() => setBadge(getUnreadCount(userId)), 500);
+            }
+          })
+          .catch((error) => {
+            console.error("Error in findFirstUnreadTx:", error);
+          });
       }
-    }
-    setOpen((s) => !s);
-  }
+
+      return newOpen;
+    });
+  };
 
   return (
     <>
-      <ChatBox
-        open={open}
-        onClose={() => setOpen(false)}
-        openForTx={txId}
-        contextProduct={contextProduct}
-      />
+      {open && (
+        <ChatBox
+          onClose={() => setOpen(false)}
+          openForTx={txId}
+          contextProduct={contextProduct}
+        />
+      )}
       <button
+        type="button"
         onClick={handleToggle}
         aria-label="Toggle messages panel"
         style={{
@@ -107,10 +129,14 @@ export default function ChatBubble() {
           transition: "all 200ms cubic-bezier(0.4, 0, 0.2, 1)",
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.transform = "scale(1.1)";
+          if (!open) {
+            e.currentTarget.style.transform = "scale(1.1)";
+          }
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.transform = "scale(1)";
+          if (!open) {
+            e.currentTarget.style.transform = "scale(1)";
+          }
         }}
       >
         <span

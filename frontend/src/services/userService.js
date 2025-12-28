@@ -88,14 +88,9 @@ const userService = {
   // Get user by ID
   getUserById: async (id) => {
     try {
-      // Simulating API call with mock data
-      // In production, replace with: const response = await api.get(`/users/${id}`);
-
-      const user = usersData.find((u) => u.id === id);
-      if (!user) {
-        throw new Error("User not found");
-      }
-      return user;
+      const response = await api.get(`/api/users/${id}`);
+      // Handle backend response format: { success: true, data: {...} } or direct object
+      return response.data?.data || response.data;
     } catch (error) {
       console.error("Error fetching user:", error);
       throw error;

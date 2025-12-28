@@ -116,11 +116,11 @@ export default function TransactionSummary({ transaction, product }) {
               fontSize: TYPOGRAPHY.SIZE_LABEL,
               fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
               color:
-                displayData.status === "COMPLETED"
+                displayData.status === "Completed"
                   ? "#16A34A"
                   : COLORS.MIDNIGHT_ASH,
               backgroundColor:
-                displayData.status === "COMPLETED"
+                displayData.status === "Completed"
                   ? "#F0FDF4"
                   : COLORS.SOFT_CLOUD,
               padding: `${SPACING.S} ${SPACING.M}`,

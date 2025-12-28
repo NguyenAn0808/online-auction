@@ -40,17 +40,17 @@ const HomePage = () => {
 
   if (loading) {
     return (
-      <>
+      <div>
         <Header />
         <div className="flex justify-center items-center min-h-screen">
           <div className="text-xl">Loading...</div>
         </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
+    <div>
       <Header />
       <Carousel />
       <CategorySection />
@@ -66,7 +66,7 @@ const HomePage = () => {
         title="Top 5 products with the highest price"
         products={topPriceProducts}
       />
-    </>
+    </div>
   );
 };
 

@@ -1,17 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { StarIcon } from "@heroicons/react/20/solid";
+import { HandThumbUpIcon, HandThumbDownIcon } from "@heroicons/react/24/solid";
 
 export default function WriteReviewModal({ open, onClose, onSubmit }) {
-  const [rating, setRating] = useState(5);
-  const [hover, setHover] = useState(0);
+  // DB constraint: ratings.score only allows 1 or -1 (like/dislike system)
+  const [rating, setRating] = useState(null); // 1 (thumb up) or -1 (thumb down)
   const [content, setContent] = useState("");
   const panelRef = useRef(null);
   const MAX = 500;
 
   useEffect(() => {
     if (open) {
-      setRating(5);
-      setHover(0);
+      setRating(null);
       setContent("");
       setTimeout(
         () => panelRef.current?.querySelector("textarea")?.focus(),
@@ -32,8 +31,9 @@ export default function WriteReviewModal({ open, onClose, onSubmit }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!content.trim()) return;
+    if (!content.trim() || rating === null) return;
     try {
+      // DB constraint: ratings.score must be 1 or -1
       await onSubmit?.({ rating, content });
       onClose?.();
     } catch (err) {
@@ -66,32 +66,58 @@ export default function WriteReviewModal({ open, onClose, onSubmit }) {
         </div>
 
         <form onSubmit={handleSubmit} className="mt-6">
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
             Rate this Item
           </label>
 
-          <div className="mt-2 flex items-center gap-3">
-            {[1, 2, 3, 4, 5].map((s) => {
-              const active = (hover || rating) >= s;
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setRating(s)}
-                  onMouseEnter={() => setHover(s)}
-                  onMouseLeave={() => setHover(0)}
-                  aria-label={`Rate ${s} star${s > 1 ? "s" : ""}`}
-                  className="bg-transparent border-0 p-0"
-                >
-                  <StarIcon
-                    className={`h-9 w-9 ${
-                      active ? "text-yellow-400" : "text-gray-300"
-                    }`}
-                  />
-                </button>
-              );
-            })}
-            <div className="ml-2 text-sm text-gray-500">{rating} / 5</div>
+          {/* DB constraint: ratings.score only allows 1 or -1 (like/dislike) */}
+          <div className="mt-2 flex items-center justify-center gap-4">
+            <button
+              type="button"
+              onClick={() => setRating(1)}
+              className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                rating === 1
+                  ? "bg-green-50 border-green-500 scale-105"
+                  : "bg-gray-50 border-transparent hover:bg-gray-100"
+              }`}
+              aria-label="Thumb up - Positive rating"
+            >
+              <HandThumbUpIcon
+                className={`h-8 w-8 ${
+                  rating === 1 ? "text-green-600" : "text-gray-400"
+                }`}
+              />
+              <span
+                className={`text-sm font-medium ${
+                  rating === 1 ? "text-green-600" : "text-gray-500"
+                }`}
+              >
+                +1
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setRating(-1)}
+              className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                rating === -1
+                  ? "bg-red-50 border-red-500 scale-105"
+                  : "bg-gray-50 border-transparent hover:bg-gray-100"
+              }`}
+              aria-label="Thumb down - Negative rating"
+            >
+              <HandThumbDownIcon
+                className={`h-8 w-8 ${
+                  rating === -1 ? "text-red-600" : "text-gray-400"
+                }`}
+              />
+              <span
+                className={`text-sm font-medium ${
+                  rating === -1 ? "text-red-600" : "text-gray-500"
+                }`}
+              >
+                -1
+              </span>
+            </button>
           </div>
 
           <div className="mt-4 relative">
@@ -127,9 +153,9 @@ export default function WriteReviewModal({ open, onClose, onSubmit }) {
 
             <button
               type="submit"
-              disabled={!content.trim()}
+              disabled={!content.trim() || rating === null}
               className={`px-4 py-2 rounded-md text-sm text-white ${
-                content.trim()
+                content.trim() && rating !== null
                   ? "bg-black hover:bg-gray-800"
                   : "bg-gray-300 cursor-not-allowed"
               }`}

@@ -4,8 +4,12 @@ import Tabs from "../components/Tabs";
 import Sidebar from "../components/Sidebar";
 import { HeartIcon } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartIconSolid } from "@heroicons/react/24/solid";
-import watchlistService from "../services/watchlistService";
+import {
+  getWatchlist,
+  removeFromWatchlist,
+} from "../services/watchlistService";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import {
   COLORS,
   TYPOGRAPHY,
@@ -333,16 +337,47 @@ function WatchlistItemCard({ item, onRemove, onNavigate }) {
 }
 
 export default function Watchlist() {
+  const { user } = useAuth();
   const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    setItems(watchlistService.getWatchlist());
-  }, []);
+    async function fetchWatchlist() {
+      if (!user?._id) {
+        setLoading(false);
+        return;
+      }
 
-  const handleRemove = (id) => {
-    watchlistService.removeFromWatchlist(id);
-    setItems(watchlistService.getWatchlist());
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getWatchlist(user._id);
+        setItems(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Error fetching watchlist:", err);
+        setError("Failed to load watchlist");
+        setItems([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchWatchlist();
+  }, [user]);
+
+  const handleRemove = async (id) => {
+    if (!user?._id) return;
+
+    try {
+      await removeFromWatchlist(user._id, id);
+      // Update local state
+      setItems((prev) => prev.filter((item) => item.id !== id));
+    } catch (err) {
+      console.error("Error removing from watchlist:", err);
+      alert("Failed to remove item from watchlist");
+    }
   };
 
   const handleNavigate = (id) => {
@@ -378,7 +413,41 @@ export default function Watchlist() {
               <Tabs />
             </div>
 
-            {items.length === 0 ? (
+            {loading ? (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: SPACING.XXL,
+                }}
+              >
+                <div style={{ color: COLORS.PEBBLE }}>Loading watchlist...</div>
+              </div>
+            ) : error ? (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <div style={{ width: "100%", maxWidth: "672px" }}>
+                  <div
+                    style={{
+                      borderRadius: BORDER_RADIUS.MEDIUM,
+                      border: `2px dashed ${COLORS.MORNING_MIST}`,
+                      backgroundColor: COLORS.WHITE,
+                      padding: SPACING.L,
+                      textAlign: "center",
+                      color: "#dc2626",
+                    }}
+                  >
+                    {error}
+                  </div>
+                </div>
+              </div>
+            ) : items.length === 0 ? (
               <div
                 style={{
                   display: "flex",

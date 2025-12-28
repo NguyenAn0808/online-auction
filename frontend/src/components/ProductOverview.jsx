@@ -197,7 +197,7 @@ export default function ProductOverview({ productId: propProductId }) {
   const allowUnratedBidder = product.allow_unrated_bidder;
 
   return (
-    <div className="bg-whisper">
+    <div style={{ backgroundColor: COLORS.WHISPER }}>
       <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-24 lg:max-w-7xl lg:px-8">
         <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-8">
           {/* Image gallery */}
@@ -208,7 +208,19 @@ export default function ProductOverview({ productId: propProductId }) {
                 {normalizedImages.map((image) => (
                   <Tab
                     key={image.id}
-                    className="group relative flex h-24 cursor-pointer items-center justify-center rounded-md bg-white text-sm font-medium text-gray-900 uppercase hover:bg-gray-50 focus:ring-3 focus:ring-gray-900/50 focus:ring-offset-4 focus:outline-hidden"
+                    className="group relative flex h-24 cursor-pointer items-center justify-center rounded-md uppercase focus:ring-3 focus:ring-offset-4 focus:outline-hidden"
+                    style={{
+                      backgroundColor: COLORS.WHITE,
+                      fontSize: TYPOGRAPHY.SIZE_BODY,
+                      fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
+                      color: COLORS.MIDNIGHT_ASH,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = COLORS.SOFT_CLOUD;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = COLORS.WHITE;
+                    }}
                   >
                     <span className="sr-only">Image</span>
                     <span className="absolute inset-0 overflow-hidden rounded-md">
@@ -220,7 +232,10 @@ export default function ProductOverview({ productId: propProductId }) {
                     </span>
                     <span
                       aria-hidden="true"
-                      className="pointer-events-none absolute inset-0 rounded-md ring-2 ring-transparent ring-offset-2 group-data-selected:ring-gray-900 group-hover:ring-gray-300"
+                      className="pointer-events-none absolute inset-0 rounded-md ring-2 ring-transparent ring-offset-2"
+                      style={{
+                        ringColor: COLORS.MIDNIGHT_ASH,
+                      }}
                     />
                   </Tab>
                 ))}
@@ -243,7 +258,14 @@ export default function ProductOverview({ productId: propProductId }) {
           {/* Product info */}
           <div className="mt-10 px-4 sm:mt-16 sm:px-0 lg:mt-0">
             <div className="flex items-center gap-5">
-              <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+              <h1
+                style={{
+                  fontSize: "1.875rem",
+                  fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+                  letterSpacing: "-0.025em",
+                  color: COLORS.MIDNIGHT_ASH,
+                }}
+              >
                 {product.name}
               </h1>
 
@@ -251,7 +273,20 @@ export default function ProductOverview({ productId: propProductId }) {
                 <button
                   type="button"
                   onClick={openEdit}
-                  className="rounded-full border !border-gray-300 !bg-white p-2 text-sm !text-gray-700 hover:!bg-gray-50"
+                  style={{
+                    borderRadius: BORDER_RADIUS.FULL,
+                    border: `1px solid ${COLORS.MORNING_MIST}`,
+                    backgroundColor: COLORS.WHITE,
+                    padding: SPACING.XS,
+                    fontSize: TYPOGRAPHY.SIZE_BODY,
+                    color: COLORS.MIDNIGHT_ASH,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = COLORS.SOFT_CLOUD;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = COLORS.WHITE;
+                  }}
                 >
                   Edit
                 </button>
@@ -260,7 +295,13 @@ export default function ProductOverview({ productId: propProductId }) {
 
             {/* Category */}
             <div className="mt-2">
-              <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+              <span
+                className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
+                style={{
+                  backgroundColor: COLORS.SOFT_CLOUD,
+                  color: COLORS.PEBBLE,
+                }}
+              >
                 {categoryName}
               </span>
               {status !== "active" && (
@@ -272,15 +313,32 @@ export default function ProductOverview({ productId: propProductId }) {
 
             <div className="mt-3">
               <h2 className="sr-only">Product information</h2>
-              <p className="text-3xl tracking-tight text-gray-900">
+              <p
+                style={{
+                  fontSize: "1.875rem",
+                  letterSpacing: "-0.025em",
+                  color: COLORS.MIDNIGHT_ASH,
+                }}
+              >
                 {currentPrice.toLocaleString("vi-VN", {
                   style: "currency",
                   currency: "VND",
                 })}
               </p>
-              <div className="mt-1 text-sm text-gray-600">
+              <div
+                className="mt-1"
+                style={{
+                  fontSize: TYPOGRAPHY.SIZE_BODY,
+                  color: COLORS.PEBBLE,
+                }}
+              >
                 Starting price:{" "}
-                <span className="font-medium text-gray-900">
+                <span
+                  style={{
+                    fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
+                    color: COLORS.MIDNIGHT_ASH,
+                  }}
+                >
                   {Number(product.start_price || 0).toLocaleString("vi-VN", {
                     style: "currency",
                     currency: "VND",
@@ -288,9 +346,20 @@ export default function ProductOverview({ productId: propProductId }) {
                 </span>
               </div>
               {stepPrice > 0 && (
-                <div className="mt-1 text-sm text-gray-600">
+                <div
+                  className="mt-1"
+                  style={{
+                    fontSize: TYPOGRAPHY.SIZE_BODY,
+                    color: COLORS.PEBBLE,
+                  }}
+                >
                   Bid increment:{" "}
-                  <span className="font-medium text-gray-900">
+                  <span
+                    style={{
+                      fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
+                      color: COLORS.MIDNIGHT_ASH,
+                    }}
+                  >
                     {stepPrice.toLocaleString("vi-VN", {
                       style: "currency",
                       currency: "VND",
@@ -299,9 +368,20 @@ export default function ProductOverview({ productId: propProductId }) {
                 </div>
               )}
               {buyNowPrice > 0 && (
-                <div className="mt-1 text-sm text-gray-600">
+                <div
+                  className="mt-1"
+                  style={{
+                    fontSize: TYPOGRAPHY.SIZE_BODY,
+                    color: COLORS.PEBBLE,
+                  }}
+                >
                   Buy it now:{" "}
-                  <span className="font-medium text-green-600">
+                  <span
+                    style={{
+                      fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
+                      color: "#16a34a",
+                    }}
+                  >
                     {buyNowPrice.toLocaleString("vi-VN", {
                       style: "currency",
                       currency: "VND",
@@ -315,14 +395,31 @@ export default function ProductOverview({ productId: propProductId }) {
             <div className="mt-4 flex items-center gap-6">
               <div className="flex items-center gap-3">
                 {/* Avatar placeholder */}
-                <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold">
+                <div
+                  className="h-10 w-10 rounded-full flex items-center justify-center font-bold"
+                  style={{
+                    backgroundColor: COLORS.MORNING_MIST,
+                    color: COLORS.PEBBLE,
+                  }}
+                >
                   {sellerName.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-gray-900">
+                  <div
+                    style={{
+                      fontSize: TYPOGRAPHY.SIZE_BODY,
+                      fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
+                      color: COLORS.MIDNIGHT_ASH,
+                    }}
+                  >
                     {sellerName}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div
+                    style={{
+                      fontSize: TYPOGRAPHY.SIZE_LABEL,
+                      color: COLORS.PEBBLE,
+                    }}
+                  >
                     {sellerRating ? `Rating: ${sellerRating}` : "Seller"}
                   </div>
                 </div>
@@ -330,25 +427,62 @@ export default function ProductOverview({ productId: propProductId }) {
             </div>
 
             {/* Auction Timing */}
-            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-              <div className="text-sm text-gray-600">
+            <div
+              className="mt-4 p-3 rounded-lg"
+              style={{
+                backgroundColor: COLORS.SOFT_CLOUD,
+                borderRadius: BORDER_RADIUS.MEDIUM,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: TYPOGRAPHY.SIZE_BODY,
+                  color: COLORS.PEBBLE,
+                }}
+              >
                 {startTime && (
                   <p>
-                    <span className="font-medium">Started:</span>{" "}
+                    <span
+                      style={{
+                        fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
+                        color: COLORS.MIDNIGHT_ASH,
+                      }}
+                    >
+                      Started:
+                    </span>{" "}
                     {startTime.toLocaleString()}
                   </p>
                 )}
                 <p className="mt-1">
-                  <span className="font-medium">Ends:</span>{" "}
+                  <span
+                    style={{
+                      fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
+                      color: COLORS.MIDNIGHT_ASH,
+                    }}
+                  >
+                    Ends:
+                  </span>{" "}
                   {endTime ? endTime.toLocaleString() : "N/A"}
                 </p>
                 {autoExtend && (
-                  <p className="mt-1 text-xs text-blue-600">
+                  <p
+                    className="mt-1"
+                    style={{
+                      fontSize: TYPOGRAPHY.SIZE_LABEL,
+                      color: "#2563eb",
+                    }}
+                  >
                     ⏱️ Auto-extend enabled (extends if bid placed near end)
                   </p>
                 )}
                 {!allowUnratedBidder && (
-                  <p className="mt-1 text-xs text-orange-600">
+                  <p
+                    className="mt-1"
+                    style={{
+                      fontSize: TYPOGRAPHY.SIZE_LABEL,
+                      color: "#ea580c",
+                    }}
+                  >
                     ⚠️ Only rated bidders can participate
                   </p>
                 )}
@@ -356,11 +490,21 @@ export default function ProductOverview({ productId: propProductId }) {
             </div>
 
             <div className="mt-6 space-y-6">
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3
+                style={{
+                  fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
+                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                  color: COLORS.MIDNIGHT_ASH,
+                }}
+              >
                 Description
               </h3>
               <div
-                className="text-base text-gray-700"
+                style={{
+                  fontSize: TYPOGRAPHY.SIZE_BODY_LARGE,
+                  color: COLORS.MIDNIGHT_ASH,
+                  lineHeight: TYPOGRAPHY.LINE_HEIGHT_RELAXED,
+                }}
                 dangerouslySetInnerHTML={{ __html: product.description }}
               />
             </div>
@@ -368,7 +512,14 @@ export default function ProductOverview({ productId: propProductId }) {
             <form className="mt-6">
               <div className="mt-10 flex flex-col gap-4">
                 {isEnded ? (
-                  <div className="p-4 bg-gray-100 rounded text-center text-gray-600">
+                  <div
+                    className="p-4 rounded text-center"
+                    style={{
+                      backgroundColor: COLORS.SOFT_CLOUD,
+                      borderRadius: BORDER_RADIUS.MEDIUM,
+                      color: COLORS.PEBBLE,
+                    }}
+                  >
                     This auction has ended.
                   </div>
                 ) : (

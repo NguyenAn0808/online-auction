@@ -10,7 +10,7 @@ export const bidService = {
    * @returns {Promise<Array>} List of bids
    */
   getProductBids: async (productId) => {
-    const response = await api.get(`/bids/${productId}`);
+    const response = await api.get(`/api/bids/${productId}`);
     return response.data;
   },
 
@@ -20,7 +20,7 @@ export const bidService = {
    * @returns {Promise<Object>} Created bid
    */
   placeBid: async (data) => {
-    const response = await api.post(`/bids`, data);
+    const response = await api.post(`/api/bids`, data);
     return response.data;
   },
 
@@ -30,7 +30,7 @@ export const bidService = {
    * @returns {Promise<Object>} Updated bid
    */
   acceptBid: async (bidId) => {
-    const response = await api.patch(`/bids/${bidId}/accept`);
+    const response = await api.patch(`/api/bids/${bidId}/accept`);
     return response.data;
   },
 
@@ -40,7 +40,7 @@ export const bidService = {
    * @returns {Promise<Object>} Updated bid with block info
    */
   rejectBid: async (bidId) => {
-    const response = await api.patch(`/bids/${bidId}/reject`);
+    const response = await api.patch(`/api/bids/${bidId}/reject`);
     return response.data;
   },
 
@@ -50,7 +50,7 @@ export const bidService = {
    * @returns {Promise<Array>} List of blocked bidders
    */
   getProductBlocklist: async (productId) => {
-    const response = await api.get(`/bids/${productId}/blocklist`);
+    const response = await api.get(`/api/bids/${productId}/blocklist`);
     return response.data;
   },
 
@@ -62,7 +62,7 @@ export const bidService = {
    */
   unblockBidder: async (productId, bidderId) => {
     const response = await api.delete(
-      `/bids/${productId}/blocklist/${bidderId}`
+      `/api/bids/${productId}/blocklist/${bidderId}`
     );
     return response.data;
   },

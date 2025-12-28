@@ -16,8 +16,9 @@ import {
   SHADOWS,
 } from "../constants/designSystem";
 import { useAuth } from "../context/AuthContext";
-import * as TransactionService from "../services/transactionService"; // The real service file
-import { STATUS } from "../services/transactionService";
+import * as TransactionService from "../services/transactionService"; // Legacy service (deprecated)
+import { STATUS } from "../services/transactionService"; // Legacy status constants (deprecated)
+import orderService, { ORDER_STATUS } from "../services/orderService"; // Use OpenAPI service
 import CancelOrderModal from "../components/CancelOrderModal";
 const DELIVERY_METHODS = [
   {
@@ -90,8 +91,9 @@ export default function TransactionPage() {
 
   const handleCancelSubmit = async (reason) => {
     try {
-      // The service calls API: POST /orders/:id/cancel
-      await TransactionService.cancelOrder(transactionId, reason);
+      // Use OpenAPI endpoint: POST /orders/{order_id}/cancel
+      const orderId = transactionId; // Assuming transactionId is orderId
+      await orderService.cancelOrder(orderId, reason);
 
       setCancelModalOpen(false);
 
@@ -132,9 +134,9 @@ export default function TransactionPage() {
 
       try {
         setLoading(true);
-        const apiResponse = await TransactionService.getTransaction(
-          transactionId
-        );
+        // Use OpenAPI endpoint: GET /products/{product_id}/order
+        // Note: transactionId should be productId to get the order
+        const apiResponse = await orderService.getOrder(transactionId);
         if (apiResponse) {
           setTx(apiResponse);
         } else {
@@ -168,12 +170,15 @@ export default function TransactionPage() {
   const isBuyer = !tx || (user && user.id === tx.buyer_id);
   const isSeller = tx && user && user.id === tx.seller_id;
   const userRole = isSeller ? "seller" : "buyer";
-  const isCompleted = tx?.status === STATUS.COMPLETED;
-  const isCancelled = tx?.status === STATUS.CANCELLED;
+  // Use OpenAPI status enums instead of database status strings
+  const isCompleted = tx?.status === ORDER_STATUS.COMPLETED;
+  const isCancelled = tx?.status === ORDER_STATUS.CANCELLED;
 
   const isFormValid =
     formData.firstName && formData.address && formData.city && formData.phone;
-  // STEP 1: CREATE ORDER (Buyer)
+  // STEP 1: CREATE ORDER (Buyer) - Submit Payment Proof
+  // NOTE: OpenAPI spec expects paymentProofUrl as URL string, not File.
+  // For now, converting File to data URL. Backend may need separate file upload endpoint.
   async function handleCreateOrder() {
     if (!paymentProofFile)
       return showToast("Please upload payment proof image.");
@@ -184,88 +189,132 @@ export default function TransactionPage() {
     }
 
     try {
-      const data = new FormData();
-      // Logic: If tx exists, use its product_id. If not, use URL param.
-      const pid = tx?.product_id || productIdParam || transactionId;
+      // Logic: Extract product ID from order (OpenAPI Order schema has product object, not product_id)
+      // Handle both OpenAPI format (product._id) and legacy format (product_id)
+      const pid =
+        tx?.product?._id ||
+        tx?.product?.id ||
+        tx?.product_id ||
+        productIdParam ||
+        transactionId;
       if (!pid) return showToast("Product ID missing.");
 
-      data.append("productId", pid);
+      // Get order first to get order_id (OpenAPI: GET /products/{product_id}/order)
+      const order = await orderService.getOrder(pid);
+      const orderId = order?._id || order?.id;
+
+      if (!orderId) {
+        return showToast("Order not found. Please create order first.");
+      }
+
+      // Convert File to data URL (temporary solution - backend should accept file uploads separately)
+      const paymentProofUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(paymentProofFile);
+      });
 
       // Combine address into single string for Backend
       const fullAddress = `${formData.address}, ${formData.city}, ${formData.region}, ${formData.country}. Phone: ${formData.phone}`;
-      data.append("shippingAddress", fullAddress);
 
-      // Append Image (Backend expects 'image' or 'file' depending on middleware)
-      data.append("image", paymentProofFile);
+      // Submit payment proof using OpenAPI endpoint
+      const res = await orderService.submitPayment(orderId, {
+        shippingAddress: fullAddress,
+        paymentProofUrl: paymentProofUrl, // Data URL - backend may need to handle this or provide separate upload endpoint
+      });
 
-      // Create Order
-      const res = await TransactionService.createOrder(data);
-      // Update State & URL
-      if (res.success && res.data) {
-        setTx(res.data);
-        showToast("Order submitted! Waiting for seller confirmation.");
-        // Optional: Navigate to the new URL so refresh works
-        navigate(`/transactions/${res.data.id}`, { replace: true });
+      if (res) {
+        setTx(res);
+        showToast("Payment proof submitted! Waiting for seller confirmation.");
+        navigate(`/transactions/${res._id || res.id}`, { replace: true });
       }
     } catch (err) {
       console.error(err);
-      showToast(err.response?.data?.message || "Failed to create order");
+      showToast(
+        err.response?.data?.message || "Failed to submit payment proof"
+      );
     }
   }
 
   // STEP 2: CONFIRM SHIPPING (Seller)
+  // Use OpenAPI endpoint: POST /orders/{order_id}/shipment-proof
   async function handleSellerConfirm(shippingData) {
     // shippingData comes from ShippingInvoiceForm ({ shippingCode, file })
     if (!tx) return;
-    if (!tx.payment_proof_image) {
+    const orderId = tx._id || tx.id;
+    if (!orderId) return showToast("Order ID missing.");
+
+    if (!tx.paymentProofUrl && !tx.payment_proof_image) {
       return showToast(
         "Cannot ship: Buyer has not uploaded payment proof yet."
       );
     }
     try {
-      const res = await TransactionService.confirmShipping(
-        tx.id,
-        shippingData.shippingCode,
-        shippingData.file
-      );
+      // Convert File to data URL (temporary solution - backend should accept file uploads separately)
+      const shippingProofUrl = await new Promise((resolve, reject) => {
+        if (!shippingData.file) {
+          reject(new Error("Shipping proof file required"));
+          return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(shippingData.file);
+      });
+
+      // Submit shipment proof using OpenAPI endpoint
+      const res = await orderService.submitShipment(orderId, {
+        shippingProofUrl: shippingProofUrl, // Data URL - backend may need to handle this
+      });
 
       if (res) {
-        // Service returns the data directly or success flag
         setTx(res);
-        showToast("Shipping confirmed! Order is now IN TRANSIT.");
+        showToast("Shipping confirmed! Order is now in transit.");
       }
     } catch (err) {
+      console.error("Shipment submission error:", err);
       showToast(err.response?.data?.message || "Failed to confirm shipping");
     }
   }
 
   // STEP 2 (Alt): REJECT / CANCEL (Seller)
+  // Use OpenAPI endpoint: POST /orders/{order_id}/cancel
   async function handleSellerCancel() {
     if (!tx) return;
+    const orderId = tx._id || tx.id;
+    if (!orderId) return showToast("Order ID missing.");
+
     const reason = prompt("Enter reason for cancellation:");
     if (!reason) return;
 
     try {
-      const res = await TransactionService.cancelOrder(tx.id, reason);
-      if (res.success) {
-        setTx(res.data);
+      const res = await orderService.cancelOrder(orderId, reason);
+      if (res) {
+        setTx(res);
         showToast("Order cancelled.");
       }
     } catch (err) {
+      console.error("Cancel order error:", err);
       showToast(err.response?.data?.message || "Failed to cancel order");
     }
   }
 
   // STEP 3: CONFIRM RECEIPT (Buyer)
+  // Use OpenAPI endpoint: POST /orders/{order_id}/delivery-confirmation
   async function handleBuyerConfirmReceipt() {
     if (!tx) return;
+    const orderId = tx._id || tx.id;
+    if (!orderId) return showToast("Order ID missing.");
+
     try {
-      const res = await TransactionService.confirmReceipt(tx.id);
-      if (res.success) {
-        setTx(res.data);
+      const res = await orderService.confirmDelivery(orderId);
+      if (res) {
+        setTx(res);
         showToast("Receipt confirmed! Please rate the seller.");
       }
     } catch (err) {
+      console.error("Delivery confirmation error:", err);
       showToast(err.response?.data?.message || "Failed to confirm receipt");
     }
   }
@@ -291,26 +340,39 @@ export default function TransactionPage() {
   const currentStep = useMemo(() => {
     if (!tx) return 1; // Step 1: Creating Order
 
+    // Use OpenAPI status enums (source of truth: openapi.yaml)
     switch (tx.status) {
-      case "pending_verification":
-      case STATUS.WAITING_SELLER_CONFIRMATION:
-        return 2;
+      case ORDER_STATUS.PENDING_BIDDER_PAYMENT:
+        return 1; // Step 1: Buyer needs to submit payment
 
-      case STATUS.PAYMENT_REJECTED:
-        return 1; // Send back to Step 1 to retry
+      case ORDER_STATUS.PENDING_SELLER_CONFIRMATION:
+        return 2; // Step 2: Seller needs to confirm payment and ship
 
-      case STATUS.IN_TRANSIT:
-      case "delivering": // Handle raw DB string
-        return 3;
+      case ORDER_STATUS.PENDING_DELIVERY:
+        return 3; // Step 3: Product in transit, buyer waiting for delivery
 
-      case "await_rating": // <--- NEW STATUS FOR STEP 4
-      case STATUS.COMPLETED_AWAITING_RATING:
-        return 4;
+      case ORDER_STATUS.PENDING_RATING:
+        return 4; // Step 4: Awaiting ratings from buyer/seller
 
-      case STATUS.COMPLETED:
-        return 5;
+      case ORDER_STATUS.COMPLETED:
+        return 5; // Step 5: Transaction complete
+
+      case ORDER_STATUS.CANCELLED:
+        return 0; // Cancelled transaction
 
       default:
+        // Fallback for legacy status values (if backend still returns DB strings)
+        if (
+          tx.status === "pending_verification" ||
+          tx.status === "delivering" ||
+          tx.status === "await_rating"
+        ) {
+          console.warn(
+            "Received legacy DB status value:",
+            tx.status,
+            "- Backend should return OpenAPI enum"
+          );
+        }
         return 1;
     }
   }, [tx]);
@@ -500,7 +562,7 @@ export default function TransactionPage() {
               {/* STEP 1: CREATE (Buyer View) */}
               {currentStep === 1 && isBuyer && (
                 <div style={{ animation: "fadeSlideIn 0.4s ease-out" }}>
-                  {tx?.status === STATUS.WAITING_SELLER_CONFIRMATION ? (
+                  {tx?.status === ORDER_STATUS.PENDING_SELLER_CONFIRMATION ? (
                     /* Waiting State */
                     <div
                       style={{

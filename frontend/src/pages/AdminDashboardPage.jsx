@@ -22,11 +22,12 @@ const AdminDashboardPage = () => {
 
   useEffect(() => {
     // Calculate statistics
+    // DB constraint: products.status CHECK only allows lowercase ('active', 'ended', 'deleted')
     const activeAuctions = productsData.filter(
-      (p) => p.status === "active" || p.status === "ACTIVE"
+      (p) => p.status === "active" || p.status?.toLowerCase() === "active"
     ).length;
     const endedAuctions = productsData.filter(
-      (p) => p.status === "ended" || p.status === "ENDED"
+      (p) => p.status === "ended" || p.status?.toLowerCase() === "ended"
     ).length;
 
     const sellers = usersData.filter((u) => u.role === "seller").length;
@@ -37,8 +38,11 @@ const AdminDashboardPage = () => {
     ).length;
 
     // Calculate revenue (sum of current prices for ended auctions)
+    // DB constraint: products.status CHECK only allows lowercase ('active', 'ended', 'deleted')
     const revenue = productsData
-      .filter((p) => p.status === "ended" || p.status === "ENDED")
+      .filter(
+        (p) => p.status === "ended" || p.status?.toLowerCase() === "ended"
+      )
       .reduce((sum, p) => sum + (p.current_price || p.start_price), 0);
 
     setStats({

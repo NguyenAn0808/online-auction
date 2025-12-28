@@ -27,7 +27,7 @@ export function saveAccessToken(token, remember = false) {
     } else {
       sessionStorage.setItem(TOKEN_KEY, token);
     }
-  } catch (e) {
+  } catch {
     // ignore storage errors
   }
   setAuthHeader(token);
@@ -40,7 +40,7 @@ export function loadAccessToken() {
       sessionStorage.getItem(TOKEN_KEY) ||
       null
     );
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -49,7 +49,9 @@ export function clearAccessToken() {
   try {
     localStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(TOKEN_KEY);
-  } catch (e) {}
+  } catch {
+    // ignore storage errors
+  }
   setAuthHeader(null);
 }
 
@@ -64,5 +66,36 @@ export function setAuthHeader(token) {
 // initialize header from any stored token
 const _existing = loadAccessToken();
 if (_existing) setAuthHeader(_existing);
+
+// Response interceptor for global error handling (401/403)
+// Defined after clearAccessToken to avoid circular dependency
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      const status = error.response.status;
+
+      // Handle 401 Unauthorized - Token expired or invalid
+      if (status === 401) {
+        clearAccessToken();
+        localStorage.removeItem("user");
+        // Redirect to login if not already there
+        if (window.location.pathname !== "/auth/signin") {
+          window.location.href = "/auth/signin";
+        }
+      }
+
+      // Handle 403 Forbidden - User doesn't have permission
+      if (status === 403) {
+        // Log the error but don't redirect (user might want to see the error message)
+        console.error(
+          "403 Forbidden: User does not have permission for this action"
+        );
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 export default api;

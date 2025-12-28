@@ -145,6 +145,10 @@ const ListingForm = () => {
       setIsSubmitting(true);
 
       // Prepare payload aligned with API spec
+      // Note: end_time is required (NOT NULL in DB). Default to 7 days from now if not provided.
+      const defaultEndTime = new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000
+      ).toISOString();
       const payload = {
         category_id: data.category_id,
         name: data.name,
@@ -155,7 +159,7 @@ const ListingForm = () => {
         allow_unrated_bidder: !!data.allow_unrated_bidder,
         auto_extend: !!data.auto_extend,
         currency_code: currency,
-        // start_time/end_time can be added later via scheduling UI
+        end_time: defaultEndTime, // Required field: products.end_time timestamp with time zone NOT NULL
       };
 
       // Create product
