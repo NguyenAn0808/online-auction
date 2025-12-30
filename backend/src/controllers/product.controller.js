@@ -188,6 +188,79 @@ class ProductController {
       return res.status(500).json({ success: false, message: error.message });
     }
   }
+
+  /**
+   * POST /products/with-images
+   * Create product with images atomically (transactional)
+   */
+  static async createProductWithImages(req, res) {
+    try {
+      const files = req.files;
+
+      // Parse product data from form-data
+      let productData;
+      try {
+        productData =
+          typeof req.body.product === "string"
+            ? JSON.parse(req.body.product)
+            : req.body.product;
+      } catch (e) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid product data format",
+        });
+      }
+
+      if (!productData) {
+        return res.status(400).json({
+          success: false,
+          message: "Product data is required",
+        });
+      }
+
+      // Parse metadata from form-data
+      let metadata = [];
+      if (req.body.metadata) {
+        try {
+          metadata =
+            typeof req.body.metadata === "string"
+              ? JSON.parse(req.body.metadata)
+              : req.body.metadata;
+        } catch (e) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid metadata format",
+          });
+        }
+      }
+
+      const result = await ProductService.createProductWithImages(
+        productData,
+        files,
+        metadata
+      );
+
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          message: result.message,
+        });
+      }
+
+      return res.status(201).json({
+        success: true,
+        data: result.data,
+        message: result.message,
+      });
+    } catch (error) {
+      console.error("Error in createProductWithImages:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+        error: error.message,
+      });
+    }
+  }
 }
 
 export default ProductController;

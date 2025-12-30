@@ -28,8 +28,8 @@ const upload = multer({
 
 // Middleware for single image upload
 export const uploadSingle = upload.single("image");
-// Middleware for multiple image uploads (max 10)
-export const uploadMultiple = upload.array("images", 10);
+// Middleware for multiple image uploads (max 24)
+export const uploadMultiple = upload.array("images", 24);
 
 export const handleMulterError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
@@ -42,7 +42,7 @@ export const handleMulterError = (err, req, res, next) => {
     if (err.code === "LIMIT_FILE_COUNT") {
       return res.status(400).json({
         success: false,
-        message: "Maximum 10 images allowed",
+        message: "Maximum 24 images allowed",
       });
     }
     return res.status(400).json({
