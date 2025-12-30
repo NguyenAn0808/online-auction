@@ -46,7 +46,7 @@ export default function FlyoutMenu({ alignRight = false }) {
     },
     {
       name: "Bids & Offers",
-      description: "Track your bids and offers",
+      description: "Bids, won items, and transaction history",
       href: userId ? `/products/${userId}/bidding` : "/auth/signin",
       icon: CalendarDaysIcon,
     },

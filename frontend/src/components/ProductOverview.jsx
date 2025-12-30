@@ -32,6 +32,16 @@ function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
 }
 
+// Format date to DD/MM/YYYY
+function formatDescriptionDate(dateString) {
+  const date = new Date(dateString);
+  return date.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
 export default function ProductOverview({ productId: propProductId }) {
   const { user } = useAuth(); // Check if user is logged in
   const { productId: paramProductId } = useParams();
@@ -49,6 +59,29 @@ export default function ProductOverview({ productId: propProductId }) {
   const [isWinner, setIsWinner] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isEditDescOpen, setIsEditDescOpen] = useState(false);
+  const [descriptionHistory, setDescriptionHistory] = useState([]);
+
+  // Fetch description history
+  const fetchDescriptionHistory = async () => {
+    if (!productId) return;
+    try {
+      const history = await productService.getDescriptionHistory(productId);
+      setDescriptionHistory(history || []);
+    } catch (err) {
+      console.error("Failed to load description history:", err);
+      // Fallback: use product.description if API fails
+      if (product?.description) {
+        setDescriptionHistory([
+          {
+            id: "initial",
+            content: product.description,
+            created_at: product.created_at || new Date().toISOString(),
+            type: "initial",
+          },
+        ]);
+      }
+    }
+  };
 
   // Fetch product data
   useEffect(() => {
@@ -77,6 +110,13 @@ export default function ProductOverview({ productId: propProductId }) {
 
     fetchProduct();
   }, [productId]);
+
+  // Fetch description history when product is loaded
+  useEffect(() => {
+    if (product?.id) {
+      fetchDescriptionHistory();
+    }
+  }, [product?.id]);
 
   const openBidQuickView = () => {
     setShowBidQuickView(true);
@@ -117,9 +157,8 @@ export default function ProductOverview({ productId: propProductId }) {
   };
 
   const handleUpdateDescription = async (productId, data) => {
-    // Implement if backend supports description history
-    console.log("Description added:", data);
-    alert("Description added successfully!");
+    // Refresh description history after adding new description
+    await fetchDescriptionHistory();
   };
 
   const handleBidClick = () => {
@@ -489,33 +528,81 @@ export default function ProductOverview({ productId: propProductId }) {
               </div>
             </div>
 
-            <div className="mt-6 space-y-6">
-              <h3
-                style={{
-                  fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
-                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                  color: COLORS.MIDNIGHT_ASH,
-                }}
-              >
-                Description
-                <button
-                  className="btn-secondary ml-4"
-                  onClick={openEditDesc}
-                  type="button"
+            <div className="mt-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3
+                  style={{
+                    fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
+                    fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                    color: COLORS.MIDNIGHT_ASH,
+                  }}
                 >
-                  Edit
-                </button>
-              </h3>
+                  Description
+                </h3>
+                {(user?.id === product.seller_id || user?.role === "admin") && (
+                  <button
+                    className="btn-secondary"
+                    onClick={openEditDesc}
+                    type="button"
+                  >
+                    Edit
+                  </button>
+                )}
+              </div>
 
-              <div
-                style={{
-                  fontSize: TYPOGRAPHY.SIZE_BODY_LARGE,
-                  color: COLORS.MIDNIGHT_ASH,
-                  lineHeight: TYPOGRAPHY.LINE_HEIGHT_RELAXED,
-                }}
-                dangerouslySetInnerHTML={{ __html: product.description }}
-                className="mt-4 p-3 rounded-lg border border-gray-200 bg-white"
-              />
+              {/* Description History - Format: ✏️ **DD/MM/YYYY** - content */}
+              <div className="space-y-4">
+                {descriptionHistory.length > 0 ? (
+                  descriptionHistory.map((desc) => (
+                    <div
+                      key={desc.id}
+                      className="p-4 rounded-lg border border-gray-200 bg-white"
+                    >
+                      <div
+                        className="flex items-center gap-2 mb-2"
+                        style={{
+                          fontSize: TYPOGRAPHY.SIZE_BODY,
+                          color: COLORS.PEBBLE,
+                        }}
+                      >
+                        <span>✏️</span>
+                        <span style={{ fontWeight: TYPOGRAPHY.WEIGHT_BOLD }}>
+                          {formatDescriptionDate(desc.created_at)}
+                        </span>
+                        {desc.type === "initial" && (
+                          <span
+                            className="text-xs px-2 py-0.5 rounded"
+                            style={{
+                              backgroundColor: COLORS.SOFT_CLOUD,
+                              color: COLORS.PEBBLE,
+                            }}
+                          >
+                            Initial
+                          </span>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: TYPOGRAPHY.SIZE_BODY_LARGE,
+                          color: COLORS.MIDNIGHT_ASH,
+                          lineHeight: TYPOGRAPHY.LINE_HEIGHT_RELAXED,
+                        }}
+                        dangerouslySetInnerHTML={{ __html: desc.content }}
+                      />
+                    </div>
+                  ))
+                ) : (
+                  <div
+                    className="p-4 rounded-lg border border-gray-200 bg-white"
+                    style={{
+                      fontSize: TYPOGRAPHY.SIZE_BODY_LARGE,
+                      color: COLORS.MIDNIGHT_ASH,
+                      lineHeight: TYPOGRAPHY.LINE_HEIGHT_RELAXED,
+                    }}
+                    dangerouslySetInnerHTML={{ __html: product.description }}
+                  />
+                )}
+              </div>
             </div>
 
             <form className="mt-6">

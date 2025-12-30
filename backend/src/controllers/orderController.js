@@ -408,3 +408,21 @@ export const getMyOrders = async (req, res) => {
     });
   }
 };
+
+export const getWonItems = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const wonItems = await Order.getOrdersByWinner(userId);
+
+    return res.status(200).json({
+      success: true,
+      data: wonItems,
+    });
+  } catch (error) {
+    console.error("Error fetching won items:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};

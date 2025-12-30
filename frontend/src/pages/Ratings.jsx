@@ -43,7 +43,7 @@ export default function Ratings() {
 
   useEffect(() => {
     async function fetchRatings() {
-      if (!user?._id) {
+      if (!user?.id) {
         setLoading(false);
         return;
       }
@@ -51,7 +51,7 @@ export default function Ratings() {
       try {
         setLoading(true);
         setError(null);
-        const data = await ratingService.getUserRatings(user._id);
+        const data = await ratingService.getUserRatings(user.id);
         // Handle backend response format: { success: true, data: [...] } or { ratings: [...] }
         const ratingsList = data?.data 
           ? (Array.isArray(data.data) ? data.data : [])

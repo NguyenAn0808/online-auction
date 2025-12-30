@@ -6,15 +6,18 @@ import api from "./api";
 export const winListService = {
   /**
    * Get won products for the current user
-   * @returns {Promise<Array>} Array of won products
+   * GET /api/orders/won - returns orders where user is the winner/buyer
+   * @returns {Promise<Array>} Array of won orders with product details
    */
   getWinList: async () => {
     try {
-      const response = await api.get(`/api/win-list`);
+      console.log("[winListService] Calling GET /api/orders/won");
+      const response = await api.get(`/api/orders/won`);
+      console.log("[winListService] Response:", response.data);
       // Handle backend response format: { success: true, data: [...] } or direct array
       return response.data?.data || response.data || [];
     } catch (error) {
-      console.error("Error fetching win list:", error);
+      console.error("[winListService] Error fetching win list:", error);
       throw error;
     }
   },

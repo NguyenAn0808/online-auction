@@ -20,17 +20,18 @@ import {
 
 // Helper function to format product data for BidOfferCard
 function formatProductForCard(product, type = "bid") {
-  const productId = product._id || product.id;
-  const productName = product.name || "Unnamed Product";
+  const productId = product._id || product.id || product.product_id;
+  const productName = product.name || product.productName || "Unnamed Product";
   const imageSrc =
     product.thumbnail ||
+    product.productImage ||
     product.images?.[0]?.image_url ||
     product.images?.[0]?.src ||
     "/images/sample.jpg";
   const price =
-    product.current_price || product.finalPrice || product.start_price || 0;
-  const endTime = product.end_time
-    ? new Date(product.end_time).toLocaleDateString()
+    product.final_price || product.current_price || product.finalPrice || product.start_price || 0;
+  const endTime = product.end_time || product.endTime
+    ? new Date(product.end_time || product.endTime).toLocaleDateString()
     : null;
 
   return {
@@ -38,9 +39,29 @@ function formatProductForCard(product, type = "bid") {
     name: productName,
     imageSrc,
     status: type === "won" ? "Won" : type === "lost" ? "Lost" : "Active",
-    amount: price.toFixed(2),
+    amount: typeof price === 'number' ? price.toFixed(2) : price,
     endTime: endTime || "N/A",
     type,
+    // Include extra data for won items (order info)
+    orderId: product.id,
+    sellerName: product.sellerName,
+    orderStatus: product.status,
+  };
+}
+
+// Helper function to format won order data for BidOfferCard
+function formatWonOrderForCard(order) {
+  return {
+    id: order.product_id,
+    orderId: order.id,
+    name: order.productName || "Won Item",
+    imageSrc: order.productImage || "/images/sample.jpg",
+    status: "Won",
+    amount: order.final_price ? Number(order.final_price).toFixed(2) : "N/A",
+    endTime: order.endTime ? new Date(order.endTime).toLocaleDateString() : "N/A",
+    type: "won",
+    sellerName: order.sellerName,
+    orderStatus: order.status,
   };
 }
 
@@ -77,7 +98,7 @@ export default function BidsOffers() {
 
   const handleSubmitFeedback = async (feedbackData) => {
     try {
-      if (!user?._id || !feedbackData.item?.id) {
+      if (!user?.id || !feedbackData.item?.id) {
         alert("Missing user or item information");
         return;
       }
@@ -85,7 +106,7 @@ export default function BidsOffers() {
       // Create rating using ratingService
       await ratingService.createRating({
         user_id: feedbackData.sellerId || feedbackData.item.sellerId,
-        reviewer_id: user._id,
+        reviewer_id: user.id,
         product_id: feedbackData.item.id,
         is_positive: feedbackData.rating > 0,
         comment: feedbackData.comment || "",
@@ -131,7 +152,7 @@ export default function BidsOffers() {
     };
   }, []);
 
-  // Fetch won items
+  // Fetch won items from /api/orders/won
   useEffect(() => {
     let mounted = true;
     async function fetchWonItems() {
@@ -140,13 +161,12 @@ export default function BidsOffers() {
         const data = await winListService.getWinList();
         if (!mounted) return;
 
-        // Format won items for BidOfferCard
+        // Format won orders for BidOfferCard
         const formatted = Array.isArray(data)
-          ? data.map((product) => formatProductForCard(product, "won"))
+          ? data.map((order) => formatWonOrderForCard(order))
           : [];
         setWonItems(formatted);
       } catch (err) {
-        // Silently fail if endpoint doesn't exist (404) - endpoint not implemented in backend yet
         if (err.response?.status === 404) {
           console.warn("Win-list endpoint not implemented yet");
           setWonItems([]);
