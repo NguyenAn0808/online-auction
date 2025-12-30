@@ -30,25 +30,30 @@ function saveCache(list) {
 /**
  * Get user watchlist from backend
  * @param {string} userId - User UUID
- * @returns {Promise<Array>} Array of product IDs
+ * @returns {Promise<Array>} Array of product objects
  */
 export async function getWatchlist(userId) {
   try {
     const response = await api.get(`/api/watchlist?user_id=${userId}`);
-    // Backend returns { success: true, data: [...] }
-    const productIds = Array.isArray(response.data?.data) 
-      ? response.data.data 
-      : Array.isArray(response.data) 
-        ? response.data 
+    // Backend returns { success: true, data: [{ product_id: 'uuid' }, ...] }
+    const rawData = Array.isArray(response.data?.data)
+      ? response.data.data
+      : Array.isArray(response.data)
+        ? response.data
         : [];
-    
+
+    // Extract product_id from each row (backend returns { product_id: 'uuid' })
+    const productIds = rawData.map((item) =>
+      typeof item === 'object' ? item.product_id : item
+    ).filter(Boolean);
+
     // Fetch full product details for each ID
     const products = await Promise.all(
       productIds.map(async (productId) => {
         try {
-          const product = await productService.getProductById(productId);
+          const product = await productAPI.getProductById(productId);
           return {
-            id: product._id || product.id || productId,
+            id: product.id || product._id || productId,
             name: product.name,
             imageSrc: product.thumbnail || product.images?.[0]?.image_url || "/images/sample.jpg",
             price: product.current_price || product.start_price || 0,
@@ -61,7 +66,7 @@ export async function getWatchlist(userId) {
         }
       })
     );
-    
+
     const validProducts = products.filter((p) => p !== null);
     // Cache for offline access
     saveCache(validProducts);
@@ -142,6 +147,32 @@ export function isInWatchlist(productId) {
 }
 
 /**
+ * Check if product is in watchlist from backend (async)
+ * @param {string} userId - User UUID
+ * @param {string} productId - Product UUID
+ * @returns {Promise<boolean>}
+ */
+export async function checkIsInWatchlist(userId, productId) {
+  if (!userId || !productId) return false;
+  try {
+    const response = await api.get(`/api/watchlist?user_id=${userId}`);
+    const rawData = Array.isArray(response.data?.data)
+      ? response.data.data
+      : Array.isArray(response.data)
+        ? response.data
+        : [];
+
+    return rawData.some((item) =>
+      (typeof item === 'object' ? item.product_id : item) === productId
+    );
+  } catch (error) {
+    console.error("Error checking watchlist status:", error);
+    // Fallback to cache
+    return isInWatchlist(productId);
+  }
+}
+
+/**
  * Clear watchlist cache
  */
 export function clearWatchlistCache() {
@@ -174,5 +205,6 @@ export default {
   addToWatchlist,
   removeFromWatchlist,
   isInWatchlist,
+  checkIsInWatchlist,
   clearWatchlistCache,
 };

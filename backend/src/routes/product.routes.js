@@ -16,6 +16,14 @@ router.get("/:id", ProductController.getProductById);
 
 router.post("/", ProductController.createProduct);
 
+// Atomic endpoint: create product with images in a single transaction
+router.post(
+  "/with-images",
+  uploadMultiple,
+  handleMulterError,
+  ProductController.createProductWithImages
+);
+
 router.delete("/:id", ProductController.deleteProduct);
 
 router.get("/:id/images", ProductImageController.getProductImages);
@@ -29,6 +37,14 @@ router.post(
 
 router.post(
   "/:id/images/upload-multiple",
+  uploadMultiple,
+  handleMulterError,
+  ProductImageController.addMultipleProductImages
+);
+
+// Alias for frontend compatibility (frontend calls /bulk)
+router.post(
+  "/:id/images/bulk",
   uploadMultiple,
   handleMulterError,
   ProductImageController.addMultipleProductImages

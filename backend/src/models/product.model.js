@@ -310,6 +310,72 @@ class ProductModel {
     const result = await pool.query(query, [id]);
     return result.rows[0];
   }
+
+  /**
+   * Create product within a transaction
+   * @param {Object} productData - Product data
+   * @param {Object} client - PostgreSQL client from transaction
+   * @returns {Promise<Object>} - Created product
+   */
+  static async createWithClient(productData, client) {
+    const {
+      seller_id,
+      category_id,
+      name,
+      description,
+      start_price,
+      step_price,
+      buy_now_price,
+      start_time,
+      end_time,
+      allow_unrated_bidder,
+      auto_extend,
+    } = productData;
+
+    const query = `
+      INSERT INTO products (
+        seller_id,
+        category_id,
+        name,
+        description,
+        start_price,
+        step_price,
+        buy_now_price,
+        start_time,
+        end_time,
+        allow_unrated_bidder,
+        auto_extend
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      RETURNING *
+    `;
+
+    const result = await client.query(query, [
+      seller_id,
+      category_id,
+      name,
+      description,
+      start_price,
+      step_price,
+      buy_now_price || null,
+      start_time || new Date(),
+      end_time,
+      allow_unrated_bidder !== undefined ? allow_unrated_bidder : true,
+      auto_extend,
+    ]);
+
+    return result.rows[0];
+  }
+
+  /**
+   * Delete product within a transaction (hard delete for rollback scenarios)
+   * @param {string} id - Product UUID
+   * @param {Object} client - PostgreSQL client from transaction
+   */
+  static async deleteWithClient(id, client) {
+    const query = `DELETE FROM products WHERE id = $1`;
+    await client.query(query, [id]);
+  }
 }
 
 export default ProductModel;

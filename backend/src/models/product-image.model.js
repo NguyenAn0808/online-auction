@@ -149,6 +149,32 @@ class ProductImageModel {
     const result = await pool.query(query, [product_id]);
     return result.rows.length > 0;
   }
+
+  /**
+   * Create product image within a transaction
+   * @param {Object} imageData - Image data
+   * @param {Object} client - PostgreSQL client from transaction
+   * @returns {Promise<Object>} - Created image record
+   */
+  static async createWithClient(
+    { product_id, image_url, is_thumbnail, position },
+    client
+  ) {
+    const query = `
+      INSERT INTO product_images (product_id, image_url, is_thumbnail, position)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id, product_id, image_url, is_thumbnail, position, created_at
+    `;
+
+    const result = await client.query(query, [
+      product_id,
+      image_url,
+      is_thumbnail || false,
+      position,
+    ]);
+
+    return result.rows[0];
+  }
 }
 
 export default ProductImageModel;

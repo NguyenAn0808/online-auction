@@ -2,9 +2,23 @@ import pool from "../config/database.js";
 
 // Table init (call manually in DB setup scripts)
 export const initWatchlistTable = async () => {
+  // Check if table exists with wrong schema (INTEGER instead of UUID)
+  const checkSchemaQuery = `
+    SELECT data_type
+    FROM information_schema.columns
+    WHERE table_name = 'watchlist' AND column_name = 'user_id'
+  `;
+  const schemaResult = await pool.query(checkSchemaQuery);
+
+  // If table exists with wrong type, drop and recreate
+  if (schemaResult.rows.length > 0 && schemaResult.rows[0].data_type !== 'uuid') {
+    console.log("Migrating watchlist table: changing user_id from INTEGER to UUID...");
+    await pool.query("DROP TABLE IF EXISTS watchlist CASCADE");
+  }
+
   const createTableQuery = `
     CREATE TABLE IF NOT EXISTS watchlist (
-      user_id INTEGER NOT NULL,
+      user_id UUID NOT NULL,
       product_id UUID NOT NULL,
       added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (user_id, product_id),
@@ -13,6 +27,7 @@ export const initWatchlistTable = async () => {
     );
   `;
   await pool.query(createTableQuery);
+  console.log("Watchlist table initialized");
 };
 
 class Watchlist {
