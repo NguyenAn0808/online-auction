@@ -1,5 +1,6 @@
 import ProductModel from "../models/product.model.js";
 import ProductImageModel from "../models/product-image.model.js";
+import ProductDescriptionModel from "../models/product-description.model.js";
 import CategoryModel from "../models/category.model.js";
 import BlockedBidderModel from "../models/blocked-bidder.model.js";
 import * as EmailService from "./emailService.js";
@@ -412,6 +413,140 @@ class ProductService {
       // DB transaction failed - cleanup Supabase images
       await this.cleanupUploadedImages(uploadResults);
       throw new Error(`Failed to create product: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get description history for a product
+   * Returns initial description from products table + appended descriptions from product_descriptions
+   * @param {string} productId - Product UUID
+   * @returns {Promise<{success: boolean, data?: Array, message?: string}>}
+   */
+  static async getDescriptionHistory(productId) {
+    try {
+      // Get the product to retrieve initial description
+      const product = await ProductModel.findById(productId);
+      if (!product) {
+        return {
+          success: false,
+          message: "Product not found",
+        };
+      }
+
+      // Get seller info for author name
+      const seller = await User.findById(product.seller_id);
+
+      // Build the initial description entry
+      const history = [
+        {
+          id: "initial",
+          product_id: productId,
+          content: product.description,
+          author_id: product.seller_id,
+          author_name: seller?.fullName || "Seller",
+          created_at: product.created_at,
+          type: "initial",
+        },
+      ];
+
+      // Get all appended descriptions
+      const appendedDescriptions =
+        await ProductDescriptionModel.findByProductId(productId);
+
+      // Add appended descriptions to history
+      for (const desc of appendedDescriptions) {
+        history.push({
+          id: desc.id,
+          product_id: desc.product_id,
+          content: desc.content,
+          author_id: desc.author_id,
+          author_name: desc.author_name || "Unknown",
+          created_at: desc.created_at,
+          type: "supplement",
+        });
+      }
+
+      return {
+        success: true,
+        data: history,
+      };
+    } catch (error) {
+      throw new Error(`Failed to fetch description history: ${error.message}`);
+    }
+  }
+
+  /**
+   * Append a new description to a product (seller or admin only)
+   * @param {string} productId - Product UUID
+   * @param {string} content - HTML content
+   * @param {string} authorId - Author UUID (must be the seller or admin)
+   * @param {string} authorRole - Author's role (seller, admin)
+   * @returns {Promise<{success: boolean, data?: Object, message?: string}>}
+   */
+  static async appendDescription(productId, content, authorId, authorRole = "seller") {
+    try {
+      // Validate product exists
+      const product = await ProductModel.findById(productId);
+      if (!product) {
+        return {
+          success: false,
+          message: "Product not found",
+        };
+      }
+
+      // Verify the author is the seller or an admin
+      const isAdmin = authorRole === "admin";
+      const isSeller = product.seller_id === authorId;
+      if (!isAdmin && !isSeller) {
+        return {
+          success: false,
+          message: "Unauthorized: Only the seller can append descriptions",
+        };
+      }
+
+      // Strip HTML for validation
+      const plainText = content.replace(/<[^>]*>/g, "").trim();
+
+      // Validate content length (10-2000 chars after HTML stripping)
+      if (plainText.length < 10) {
+        return {
+          success: false,
+          message: "Description must be at least 10 characters",
+        };
+      }
+
+      if (plainText.length > 2000) {
+        return {
+          success: false,
+          message: "Description must not exceed 2000 characters",
+        };
+      }
+
+      // Create the new description entry
+      const newDescription = await ProductDescriptionModel.create({
+        product_id: productId,
+        content: content,
+        author_id: authorId,
+      });
+
+      // Get author name for response
+      const author = await User.findById(authorId);
+
+      return {
+        success: true,
+        data: {
+          id: newDescription.id,
+          product_id: newDescription.product_id,
+          content: newDescription.content,
+          author_id: newDescription.author_id,
+          author_name: author?.fullName || "Unknown",
+          created_at: newDescription.created_at,
+          type: "supplement",
+        },
+        message: "Description appended successfully",
+      };
+    } catch (error) {
+      throw new Error(`Failed to append description: ${error.message}`);
     }
   }
 }

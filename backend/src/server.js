@@ -30,6 +30,7 @@ import Answer from "./models/Answer.js";
 import questionRoute from "./routes/questionRoute.js";
 import answerRoute from "./routes/answerRoute.js";
 import { initBlockedBiddersTable } from "./models/blocked-bidder.model.js";
+import { initProductDescriptionsTable } from "./models/product-description.model.js";
 import Order from "./models/Order.js";
 
 const app = express();
@@ -144,6 +145,7 @@ const startServer = async () => {
     await initCategoriesTable();
     await initProductsTable();
     await initProductImagesTable();
+    await initProductDescriptionsTable();
     await initWatchlistTable();
     await initRatingsTable();
     await initBidsTable();

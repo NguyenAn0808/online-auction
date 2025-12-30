@@ -59,12 +59,13 @@ router.post(
   ProductController.rejectBidder
 );
 
-// router.post(
-//   "/:id/descriptions",
-//   authenticate,
-//   authorize("seller"),
-//   ProductController.appendDescription
-// );
-// router.get("/:id/descriptions", ProductController.getDescriptionHistory);
+// Description history routes (append-only descriptions per requirements 3.2)
+router.get("/:id/descriptions", ProductController.getDescriptionHistory);
+router.post(
+  "/:id/descriptions",
+  authenticate,
+  authorize("seller", "admin"),
+  ProductController.appendDescription
+);
 
 export default router;

@@ -106,9 +106,21 @@ class Order {
 
   static async getOrdersByWinner(buyerId) {
     const query = `
-      SELECT o.*, p.name as product_name, p.end_time 
+      SELECT
+        o.*,
+        p.name as "productName",
+        p.end_time as "endTime",
+        (
+          SELECT image_url
+          FROM product_images
+          WHERE product_id = p.id
+          ORDER BY is_thumbnail DESC, position ASC
+          LIMIT 1
+        ) as "productImage",
+        u_seller.full_name as "sellerName"
       FROM orders o
       JOIN products p ON o.product_id = p.id
+      JOIN users u_seller ON o.seller_id = u_seller.id
       WHERE o.buyer_id = $1
       ORDER BY o.created_at DESC
     `;
@@ -146,18 +158,6 @@ class Order {
     `;
     const result = await pool.query(query, [orderId]);
     return result.rows[0];
-  }
-
-  static async getOrdersByWinner(buyerId) {
-    const query = `
-      SELECT o.*, p.name as product_name, p.end_time 
-      FROM orders o
-      JOIN products p ON o.product_id = p.id
-      WHERE o.buyer_id = $1
-      ORDER BY o.created_at DESC
-    `;
-    const result = await pool.query(query, [buyerId]);
-    return result.rows;
   }
 
   static async markAsDelivering(orderId, shippingCode, shippingImage) {

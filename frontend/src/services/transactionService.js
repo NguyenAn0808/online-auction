@@ -101,7 +101,9 @@ export const listTransactions = async (role = "") => {
   // Based on your controller, GET /orders uses req.user.id to find related orders.
 
   const query = role ? `?role=${role}` : "";
+  console.log("[transactionService] Calling GET /api/orders" + query);
   const response = await api.get(`/api/orders${query}`);
+  console.log("[transactionService] Response:", response.data);
 
   // Return the array of orders.
   // We check response.data.data first (standard), then response.data (fallback)

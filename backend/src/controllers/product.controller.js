@@ -261,6 +261,79 @@ class ProductController {
       });
     }
   }
+
+  /**
+   * GET /products/:id/descriptions
+   * Get description history for a product
+   */
+  static async getDescriptionHistory(req, res) {
+    try {
+      const { id } = req.params;
+      const result = await ProductService.getDescriptionHistory(id);
+
+      if (!result.success) {
+        return res.status(404).json({
+          success: false,
+          message: result.message,
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: result.data,
+      });
+    } catch (error) {
+      console.error("Error in getDescriptionHistory:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * POST /products/:id/descriptions
+   * Append a new description to a product (seller only)
+   */
+  static async appendDescription(req, res) {
+    try {
+      const { id } = req.params;
+      const { content } = req.body;
+      const authorId = req.user.id; // From auth middleware
+
+      if (!content) {
+        return res.status(400).json({
+          success: false,
+          message: "Content is required",
+        });
+      }
+
+      const authorRole = req.user.role;
+      const result = await ProductService.appendDescription(id, content, authorId, authorRole);
+
+      if (!result.success) {
+        const statusCode = result.message.includes("Unauthorized") ? 403 : 400;
+        return res.status(statusCode).json({
+          success: false,
+          message: result.message,
+        });
+      }
+
+      return res.status(201).json({
+        success: true,
+        data: result.data,
+        message: result.message,
+      });
+    } catch (error) {
+      console.error("Error in appendDescription:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+        error: error.message,
+      });
+    }
+  }
 }
 
 export default ProductController;

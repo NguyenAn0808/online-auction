@@ -11,10 +11,12 @@ export const ratingService = {
    */
   getUserRatings: async (userId) => {
     try {
+      console.log(`[ratingService] Calling GET /api/ratings/${userId}`);
       const response = await api.get(`/api/ratings/${userId}`);
+      console.log("[ratingService] Response:", response.data);
       return response.data;
     } catch (error) {
-      console.error("Error fetching user ratings:", error);
+      console.error("[ratingService] Error fetching user ratings:", error);
       throw error;
     }
   },
@@ -26,10 +28,12 @@ export const ratingService = {
    */
   createRating: async (data) => {
     try {
+      console.log("[ratingService] Calling POST /api/ratings with:", data);
       const response = await api.post(`/api/ratings`, data);
+      console.log("[ratingService] Response:", response.data);
       return response.data;
     } catch (error) {
-      console.error("Error creating rating:", error);
+      console.error("[ratingService] Error creating rating:", error);
       throw error;
     }
   },
@@ -41,10 +45,12 @@ export const ratingService = {
    */
   getUserRatingEligibility: async (userId) => {
     try {
+      console.log(`[ratingService] Calling GET /api/ratings/${userId}/eligibility`);
       const response = await api.get(`/api/ratings/${userId}/eligibility`);
+      console.log("[ratingService] Eligibility response:", response.data);
       return response.data?.data || response.data;
     } catch (error) {
-      console.error("Error checking rating eligibility:", error);
+      console.error("[ratingService] Error checking rating eligibility:", error);
       throw error;
     }
   },

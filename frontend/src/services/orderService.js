@@ -174,9 +174,25 @@ export const ORDER_STATUS = {
   CANCELLED: "Cancelled",
 };
 
+/**
+ * Get all won items (auctions the user has won)
+ * GET /api/orders/won
+ * @returns {Promise<Array>} Array of won orders
+ */
+export const getWonItems = async () => {
+  try {
+    const response = await api.get(`/api/orders/won`);
+    return response.data?.data || response.data || [];
+  } catch (error) {
+    console.error("Error fetching won items:", error);
+    throw error;
+  }
+};
+
 export default {
   getOrder,
   listOrders,
+  getWonItems,
   submitPayment,
   submitShipment,
   confirmDelivery,

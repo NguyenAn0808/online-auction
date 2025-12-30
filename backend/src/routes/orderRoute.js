@@ -6,6 +6,7 @@ import {
   createOrder,
   getMyOrders,
   getOrderById,
+  getWonItems,
   rateTransaction,
 } from "../controllers/orderController.js";
 import { authenticate, authorize } from "../middleware/authMiddleware.js";
@@ -291,6 +292,31 @@ router.post("/:orderId/cancel", authenticate, authorize("seller"), cancelOrder);
  *        description: List of orders
  */
 router.get("/", authenticate, getMyOrders);
+
+/**
+ * @openapi
+ * /api/orders/won:
+ *  get:
+ *    summary: Get all won items (auctions won by the user)
+ *    tags: [Orders]
+ *    security:
+ *    - bearerAuth: []
+ *    responses:
+ *      200:
+ *        description: List of won items
+ *        content:
+ *          application/json:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                success:
+ *                  type: boolean
+ *                data:
+ *                  type: array
+ *                  items:
+ *                    $ref: '#/components/schemas/OrderResponse'
+ */
+router.get("/won", authenticate, getWonItems);
 
 router.get("/:orderId", authenticate, getOrderById);
 export default router;
