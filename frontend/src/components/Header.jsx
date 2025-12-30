@@ -52,7 +52,7 @@ const Header = () => {
   }, [showProfile]);
 
   const handleListing = () => {
-    navigate("/sl/listing");
+    navigate("/seller/listing");
   };
 
   return (

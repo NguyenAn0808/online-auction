@@ -118,20 +118,10 @@ const router = createBrowserRouter(
           {/* Note: 'upgrade-requests' is typically for Bidders who want to become Sellers, 
                 so it might need 'bidder' access depending on your flow */}
           <Route path="upgrade-requests" element={<SellingRequestPage />} />
+          <Route path="seller/listing" element={<ListingPage />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />
-      </Route>
-
-      {/* --- Specialized Seller Listing Layout (SELLER ONLY) --- */}
-      <Route
-        element={
-          <ProtectedRoute allowedRoles={["bidder", "seller", "admin"]} />
-        }
-      >
-        <Route path="/sl" element={<MainLayout />}>
-          <Route path="listing" element={<ListingPage />} />
-        </Route>
       </Route>
 
       {/* --- Admin Layout (ADMIN ONLY) --- */}

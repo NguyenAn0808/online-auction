@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { categoryService } from "../services/categoryService";
-import { productService } from "../services/productService";
+import { productAPI } from "../services/productService";
+import { useNavigate } from "react-router-dom";
+import { Editor } from "@tinymce/tinymce-react";
 
 // Schema with conditional buy now validation
 const schema = z
@@ -51,6 +53,7 @@ const schema = z
   });
 
 const ListingForm = () => {
+  const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
   const [selectedParentId, setSelectedParentId] = useState("");
   const [imageFiles, setImageFiles] = useState([]);
@@ -144,12 +147,26 @@ const ListingForm = () => {
     try {
       setIsSubmitting(true);
 
-      // Prepare payload aligned with API spec
-      // Note: end_time is required (NOT NULL in DB). Default to 7 days from now if not provided.
+      const currentUser = (() => {
+        try {
+          return JSON.parse(localStorage.getItem("user"));
+        } catch {
+          return null;
+        }
+      })();
+
+      if (!currentUser || !currentUser.id) {
+        alert("Please sign in to create a listing");
+        setIsSubmitting(false);
+        return;
+      }
+
       const defaultEndTime = new Date(
         Date.now() + 7 * 24 * 60 * 60 * 1000
       ).toISOString();
+
       const payload = {
+        seller_id: currentUser.id,
         category_id: data.category_id,
         name: data.name,
         description: data.description,
@@ -159,25 +176,27 @@ const ListingForm = () => {
         allow_unrated_bidder: !!data.allow_unrated_bidder,
         auto_extend: !!data.auto_extend,
         currency_code: currency,
-        end_time: defaultEndTime, // Required field: products.end_time timestamp with time zone NOT NULL
+        end_time: defaultEndTime,
       };
 
       // Create product
-      const created = await productService.createProduct(payload);
-      const productId = created?.id || created?._id || created?.product_id;
+      const created = await productAPI.createProduct(payload);
+      const productId =
+        created?.data?.id || created?.id || created?._id || created?.product_id;
+
       if (!productId) {
         throw new Error("Product created but no ID returned");
       }
 
       // Upload images
       if (imageFiles.length > 0) {
-        await productService.uploadProductImages(productId, imageFiles);
+        await productAPI.uploadProductImages(productId, imageFiles);
       }
 
       alert("Listing created successfully!");
-      // Optionally reset form and images
-      setImageFiles([]);
-      setImagePreviews([]);
+
+      // 3. Navigate to home page
+      navigate("/");
     } catch (error) {
       console.error("Failed to create listing:", error);
       alert(error?.response?.data?.message || "Failed to create listing");
@@ -512,12 +531,42 @@ const ListingForm = () => {
         {/* DESCRIPTION */}
         <section className="bg-white rounded-lg border border-gray-200 p-6">
           <h2 className="text-xl font-bold mb-4">DESCRIPTION</h2>
-          <textarea
-            id="description"
-            rows="8"
-            className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Write a detailed description of your item..."
-            {...register("description")}
+          <Editor
+            apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
+            value={watch("description") || ""}
+            onEditorChange={(content) => {
+              setValue("description", content);
+              trigger("description");
+            }}
+            init={{
+              height: 400,
+              menubar: false,
+              plugins: [
+                "advlist",
+                "autolink",
+                "lists",
+                "link",
+                "image",
+                "charmap",
+                "preview",
+                "anchor",
+                "searchreplace",
+                "visualblocks",
+                "code",
+                "fullscreen",
+                "insertdatetime",
+                "media",
+                "table",
+                "code",
+                "help",
+                "wordcount",
+              ],
+              toolbar:
+                "undo redo | blocks | bold italic forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help",
+              content_style:
+                'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 14px }',
+              placeholder: "Write a detailed description of your item...",
+            }}
           />
           {errors.description && (
             <p className="text-red-500 text-sm mt-2">
@@ -724,9 +773,9 @@ const ListingForm = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-8 py-3 text-white rounded-lg font-semibold transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="px-8 py-3 text-white bg-midnight-ash rounded-lg font-semibold transition disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? "Creating..." : "List Item"}
+            {isSubmitting ? "Creating Listing..." : "Create Listing"}
           </button>
         </div>
       </form>

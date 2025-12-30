@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Pagination from "../components/Pagination";
 import upgradeRequestService from "../services/upgradeRequestService";
-import usersMock from "../data/users.json";
+import userService from "../services/userService";
 
 const SellerUpgradesPage = () => {
   const [requests, setRequests] = useState([]);
@@ -12,16 +12,17 @@ const SellerUpgradesPage = () => {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const itemsPerPage = 10;
+  const [userById, setUserById] = useState({});
 
   // Helper to get user info by user_id
   const getUserInfo = (userId) => {
-    return usersMock.find((user) => user.id === userId);
+    return userById[userId] || null;
   };
 
   // Helper to get admin info by admin_id
   const getAdminInfo = (adminId) => {
     if (!adminId) return null;
-    return usersMock.find((user) => user.id === adminId);
+    return userById[adminId] || null;
   };
 
   useEffect(() => {
@@ -44,12 +45,30 @@ const SellerUpgradesPage = () => {
       const response = await upgradeRequestService.getAllRequests(params);
 
       // Handle response structure
-      if (response.data) {
-        setRequests(response.data);
-      } else if (Array.isArray(response)) {
-        setRequests(response);
-      } else {
-        setRequests([]);
+      const data = response.data
+        ? response.data
+        : Array.isArray(response)
+        ? response
+        : [];
+      setRequests(data);
+
+      // Prefetch user info for displayed requests
+      const uniqueIds = Array.from(
+        new Set(data.map((r) => [r.user_id, r.admin_id].filter(Boolean)).flat())
+      );
+      if (uniqueIds.length > 0) {
+        try {
+          const results = await Promise.all(
+            uniqueIds.map((id) => userService.getUserById(id).catch(() => null))
+          );
+          const nextMap = {};
+          results.forEach((u) => {
+            if (u && u.id) nextMap[u.id] = u;
+          });
+          setUserById((prev) => ({ ...prev, ...nextMap }));
+        } catch (e) {
+          // ignore user fetch errors
+        }
       }
 
       // Handle pagination
@@ -68,8 +87,18 @@ const SellerUpgradesPage = () => {
 
   const handleApprove = async (requestId) => {
     try {
-      // TODO: Get actual admin ID from auth context
-      const adminId = "550e8400-e29b-41d4-a716-446655440001"; // Mock admin ID
+      const currentUser = (() => {
+        try {
+          return JSON.parse(localStorage.getItem("user"));
+        } catch {
+          return null;
+        }
+      })();
+      const adminId = currentUser?.id;
+      if (!adminId) {
+        alert("Missing admin ID. Please sign in again.");
+        return;
+      }
 
       await upgradeRequestService.approveRequest(requestId, adminId);
       console.log("Request approved successfully");
@@ -84,8 +113,18 @@ const SellerUpgradesPage = () => {
 
   const handleReject = async (requestId) => {
     try {
-      // TODO: Get actual admin ID from auth context
-      const adminId = "550e8400-e29b-41d4-a716-446655440001"; // Mock admin ID
+      const currentUser = (() => {
+        try {
+          return JSON.parse(localStorage.getItem("user"));
+        } catch {
+          return null;
+        }
+      })();
+      const adminId = currentUser?.id;
+      if (!adminId) {
+        alert("Missing admin ID. Please sign in again.");
+        return;
+      }
 
       await upgradeRequestService.rejectRequest(requestId, adminId);
       console.log("Request rejected successfully");

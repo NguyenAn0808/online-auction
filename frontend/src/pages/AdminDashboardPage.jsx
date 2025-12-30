@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
 import { formatCurrency } from "../utils/formatters";
-import productsData from "../data/productsWithBids.json";
-import usersData from "../data/users.json";
-import upgradeRequestsData from "../data/upgradeRequests.json";
+import { productAPI } from "../services/productService";
+import userService from "../services/userService";
+import upgradeRequestService from "../services/upgradeRequestService";
 
 const AdminDashboardPage = () => {
   const [stats, setStats] = useState({
@@ -21,46 +21,72 @@ const AdminDashboardPage = () => {
   const [recentProducts, setRecentProducts] = useState([]);
 
   useEffect(() => {
-    // Calculate statistics
-    // DB constraint: products.status CHECK only allows lowercase ('active', 'ended', 'deleted')
-    const activeAuctions = productsData.filter(
-      (p) => p.status === "active" || p.status?.toLowerCase() === "active"
-    ).length;
-    const endedAuctions = productsData.filter(
-      (p) => p.status === "ended" || p.status?.toLowerCase() === "ended"
-    ).length;
+    const load = async () => {
+      try {
+        // Fetch products by status for counts and revenue
+        const [activeRes, endedRes] = await Promise.all([
+          productAPI.getProducts({ status: "active", page: 1, limit: 100 }),
+          productAPI.getProducts({ status: "ended", page: 1, limit: 100 }),
+        ]);
 
-    const sellers = usersData.filter((u) => u.role === "seller").length;
-    const bidders = usersData.filter((u) => u.role === "bidder").length;
+        const activeItems = activeRes.items || [];
+        const endedItems = endedRes.items || [];
 
-    const pendingUpgrades = upgradeRequestsData.filter(
-      (r) => r.status === "pending"
-    ).length;
+        const activeAuctions = activeItems.length;
+        const endedAuctions = endedItems.length;
 
-    // Calculate revenue (sum of current prices for ended auctions)
-    // DB constraint: products.status CHECK only allows lowercase ('active', 'ended', 'deleted')
-    const revenue = productsData
-      .filter(
-        (p) => p.status === "ended" || p.status?.toLowerCase() === "ended"
-      )
-      .reduce((sum, p) => sum + (p.current_price || p.start_price), 0);
+        const revenue = endedItems.reduce(
+          (sum, p) => sum + (p.current_price || p.start_price || 0),
+          0
+        );
 
-    setStats({
-      totalProducts: productsData.length,
-      activeAuctions,
-      endedAuctions,
-      totalUsers: usersData.length,
-      totalSellers: sellers,
-      totalBidders: bidders,
-      pendingUpgrades,
-      totalRevenue: revenue,
-    });
+        // Fetch users for totals
+        const usersRes = await userService.getAllUsers({
+          page: 1,
+          limit: 1000,
+        });
+        const users = usersRes.data || [];
+        const totalUsers = usersRes.pagination?.totalItems || users.length;
+        const sellers = users.filter((u) => u.role === "seller").length;
+        const bidders = users.filter((u) => u.role === "bidder").length;
 
-    // Recent products
-    const recent = [...productsData]
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 5);
-    setRecentProducts(recent);
+        // Fetch pending upgrades count
+        const upgradesRes = await upgradeRequestService.getAllRequests({
+          status: "pending",
+          page: 1,
+          limit: 1,
+        });
+        const pendingUpgrades =
+          upgradesRes.pagination?.total || upgradesRes.data?.length || 0;
+
+        setStats({
+          totalProducts:
+            (activeRes.pagination?.total || activeItems.length) +
+            (endedRes.pagination?.total || endedItems.length),
+          activeAuctions,
+          endedAuctions,
+          totalUsers,
+          totalSellers: sellers,
+          totalBidders: bidders,
+          pendingUpgrades,
+          totalRevenue: revenue,
+        });
+
+        // Recent products: fetch a page and sort by createdAt
+        const allRes = await productAPI.getProducts({ page: 1, limit: 50 });
+        const allItems = allRes.items || [];
+        const recent = [...allItems]
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          .slice(0, 5);
+        setRecentProducts(recent);
+      } catch (err) {
+        console.error("Error loading admin dashboard data:", err);
+        setStats((prev) => ({ ...prev }));
+        setRecentProducts([]);
+      }
+    };
+
+    load();
   }, []);
 
   return (

@@ -498,7 +498,15 @@ export default function ProductOverview({ productId: propProductId }) {
                 }}
               >
                 Description
+                <button
+                  className="btn-secondary ml-4"
+                  onClick={openEditDesc}
+                  type="button"
+                >
+                  Edit
+                </button>
               </h3>
+
               <div
                 style={{
                   fontSize: TYPOGRAPHY.SIZE_BODY_LARGE,
@@ -506,6 +514,7 @@ export default function ProductOverview({ productId: propProductId }) {
                   lineHeight: TYPOGRAPHY.LINE_HEIGHT_RELAXED,
                 }}
                 dangerouslySetInnerHTML={{ __html: product.description }}
+                className="mt-4 p-3 rounded-lg border border-gray-200 bg-white"
               />
             </div>
 

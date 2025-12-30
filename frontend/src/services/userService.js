@@ -1,14 +1,24 @@
 import api from "./api";
-import usersData from "../data/users.json";
 
 const userService = {
   // Get all users with filtering, sorting, and pagination
   getAllUsers: async (params = {}) => {
     try {
-      // Simulating API call with mock data
-      // In production, replace with: const response = await api.get('/users', { params });
+      const response = await api.get("/users", { params });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      throw error;
+    }
+  },
 
-      let users = [...usersData];
+  // Legacy method with client-side filtering (kept for backward compatibility)
+  getAllUsersWithClientFiltering: async (params = {}) => {
+    try {
+      const response = await api.get("/users", {
+        params: { page: 1, limit: 1000 },
+      });
+      let users = response.data?.data || [];
 
       // Filter by search query
       if (params.search) {
@@ -17,7 +27,7 @@ const userService = {
           (user) =>
             user.fullname.toLowerCase().includes(searchLower) ||
             user.email.toLowerCase().includes(searchLower) ||
-            user.address.toLowerCase().includes(searchLower)
+            user.address?.toLowerCase().includes(searchLower)
         );
       }
 
@@ -80,7 +90,7 @@ const userService = {
         },
       };
     } catch (error) {
-      console.error("Error fetching users:", error);
+      console.error("Error fetching users (client filtering):", error);
       throw error;
     }
   },

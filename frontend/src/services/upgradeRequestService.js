@@ -1,5 +1,4 @@
 import api from "./api";
-import upgradeRequestsMock from "../data/upgradeRequests.json";
 
 const upgradeRequestService = {
   // Get all upgrade requests with filtering and pagination
