@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import {
-  listTransactions,
-  getTransaction,
-  addMessage,
-  markMessagesRead,
-} from "../services/transactionService";
+  getOrderMessages,
+  sendOrderMessage,
+  listOrders,
+} from "../services/orderService";
+import { useAuth } from "../context/AuthContext";
 import {
   COLORS,
   TYPOGRAPHY,
@@ -14,17 +14,20 @@ import {
   SHADOWS,
 } from "../constants/designSystem";
 
-function getCurrentUser() {
-  return localStorage.getItem("userId") || "buyer-1";
-}
-
-function initials(name) {
-  if (!name) return "?";
-  return name.split("-")[0].slice(0, 1).toUpperCase();
+function initials(nameOrId) {
+  if (!nameOrId) return "?";
+  // If it's a name, use first letter; if it's an ID, use first character
+  if (nameOrId.includes(" ")) {
+    // It's a name
+    return nameOrId.split(" ")[0].slice(0, 1).toUpperCase();
+  }
+  // It's an ID, use first character
+  return nameOrId.slice(0, 1).toUpperCase();
 }
 
 export default function ChatBox({ onClose, openForTx, contextProduct }) {
   const location = useLocation();
+  const { user } = useAuth();
   const [transactions, setTransactions] = useState([]);
   const [filteredTx, setFilteredTx] = useState([]);
   const [selectedTxId, setSelectedTxId] = useState(openForTx || null);
@@ -32,15 +35,37 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
   const [text, setText] = useState("");
   const [files, setFiles] = useState([]);
   const [search, setSearch] = useState("");
-  // Removed minimized state; always expanded
-  const userId = getCurrentUser();
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const userId = user?.id;
   const listRef = useRef(null);
   const containerRef = useRef(null);
   const [productContext, setProductContext] = useState(contextProduct || null);
 
-  // useEffect(() => {
-  //   setTransactions(listTransactions((t) => true));
-  // }, [open]);
+  // Load orders from backend API
+  useEffect(() => {
+    const loadOrders = async () => {
+      if (!userId) return;
+
+      try {
+        const orders = await listOrders();
+        // Map orders to transaction format for compatibility
+        const mappedOrders = orders.map((order) => ({
+          id: order.id,
+          buyerId: order.buyer_id || order.buyer?.id,
+          sellerId: order.seller_id || order.seller?.id,
+          title: `Order #${order.id?.slice(0, 8) || "N/A"}`,
+          product_id: order.product_id || order.product?.id,
+          unread: 0, // Will be calculated from messages
+        }));
+        setTransactions(mappedOrders);
+      } catch (error) {
+        console.error("Failed to load orders:", error);
+        setTransactions([]);
+      }
+    };
+
+    loadOrders();
+  }, [userId]);
 
   useEffect(() => {
     // filter transactions when search changes
@@ -65,13 +90,42 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
     }
   }, [location.search, openForTx]);
 
+  // Load messages for selected order
   useEffect(() => {
-    if (selectedTxId) {
-      setTx(getTransaction(selectedTxId));
-      // mark messages as read for this user
-      markMessagesRead(selectedTxId, userId);
-    } else setTx(null);
-  }, [selectedTxId]);
+    if (selectedTxId && userId) {
+      const loadMessages = async () => {
+        try {
+          setLoadingMessages(true);
+          const messages = await getOrderMessages(selectedTxId);
+
+          // Find the order to get buyer/seller info
+          const order = transactions.find((t) => t.id === selectedTxId);
+
+          setTx({
+            id: selectedTxId,
+            messages: messages.map((msg) => ({
+              id: msg.id,
+              sender: msg.sender_id,
+              text: msg.message,
+              time: new Date(msg.created_at).getTime(),
+              sender_name: msg.sender_name,
+            })),
+            buyerId: order?.buyerId,
+            sellerId: order?.sellerId,
+          });
+        } catch (error) {
+          console.error("Failed to load messages:", error);
+          setTx(null);
+        } finally {
+          setLoadingMessages(false);
+        }
+      };
+
+      loadMessages();
+    } else {
+      setTx(null);
+    }
+  }, [selectedTxId, userId, transactions]);
 
   useEffect(() => {
     // scroll to bottom when messages change
@@ -84,23 +138,36 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
     setProductContext(contextProduct || null);
   }, [contextProduct]);
 
-  function handleSend() {
-    if (!tx || (!text.trim() && files.length === 0)) return;
-    const attachments = files.map((f) => ({
-      name: f.name,
-      url: URL.createObjectURL(f),
-    }));
-    addMessage(tx.id, {
-      sender: userId,
-      text: text.trim(),
-      time: Date.now(),
-      attachments,
-    });
-    setTx(getTransaction(tx.id));
-    setText("");
-    setFiles([]);
-    // mark read
-    markMessagesRead(tx.id, userId);
+  async function handleSend() {
+    if (!tx || !text.trim() || !userId) return;
+
+    try {
+      // Send message via API
+      await sendOrderMessage(tx.id, text.trim());
+
+      // Reload messages to get the new one
+      const messages = await getOrderMessages(tx.id);
+      const order = transactions.find((t) => t.id === tx.id);
+
+      setTx({
+        id: tx.id,
+        messages: messages.map((msg) => ({
+          id: msg.id,
+          sender: msg.sender_id,
+          text: msg.message,
+          time: new Date(msg.created_at).getTime(),
+          sender_name: msg.sender_name,
+        })),
+        buyerId: order?.buyerId,
+        sellerId: order?.sellerId,
+      });
+
+      setText("");
+      setFiles([]);
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      alert("Failed to send message. Please try again.");
+    }
   }
 
   function handleFileChange(e) {
@@ -329,7 +396,7 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
                           flexShrink: 0,
                         }}
                       >
-                        {initials(t.buyerId)}
+                        {initials(t.title || t.buyerId)}
                       </div>
                       <div style={{ flex: 1 }}>
                         <div
@@ -363,7 +430,9 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
                             fontSize: TYPOGRAPHY.SIZE_LABEL,
                             color: COLORS.PEBBLE,
                           }}
-                        >{`${t.buyerId} • ${t.sellerId}`}</div>
+                        >
+                          {t.title || `Order #${t.id?.slice(0, 8) || "N/A"}`}
+                        </div>
                       </div>
                     </li>
                   )
@@ -550,7 +619,7 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
                                     fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
                                   }}
                                 >
-                                  {m.sender}
+                                  {m.sender_name || m.sender}
                                 </span>
                               )}
                               <span

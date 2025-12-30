@@ -11,10 +11,8 @@ import {
   SPACING,
   BORDER_RADIUS,
 } from "../constants/designSystem";
-
-function classNames(...classes) {
-  return classes.filter(Boolean).join(" ");
-}
+import { useAuth } from "../context/AuthContext";
+import ratingService from "../services/ratingService";
 
 export default function BiddingQuickView({
   open = false,
@@ -22,14 +20,19 @@ export default function BiddingQuickView({
   product = null,
 }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   // const [product, setProduct] = useState(null); // Now using prop
   const [manualBid, setManualBid] = useState("");
   const [parsedBid, setParsedBid] = useState(0);
   const [error, setError] = useState("");
   const [isValid, setIsValid] = useState(false);
 
-  // Simplified eligibility check
-  const [eligibility, setEligibility] = useState({ allowed: true });
+  // Rating eligibility check
+  const [eligibility, setEligibility] = useState({
+    allowed: true,
+    message: "",
+    rating_percentage: null,
+  });
 
   const currency = new Intl.NumberFormat("vi-VN", {
     style: "currency",
@@ -53,7 +56,6 @@ export default function BiddingQuickView({
   // No strict max bid usually, or maybe buyNowPrice?
   // Let's assume max is very high or buyNowPrice if set.
   const buyNowPrice = Number(product?.buy_now_price || 0);
-  const maxBid = buyNowPrice > 0 ? buyNowPrice : 999999999999;
 
   // Derive display image
   const displayImage =
@@ -69,18 +71,54 @@ export default function BiddingQuickView({
       setError("");
       setIsValid(false);
 
-      // Determine eligibility
-      // Real logic: check if user is logged in & meets unrated criteria
-      // For now, assume allowed if product allows unrated or simple check
-      const userStr = localStorage.getItem("user");
-      const user = userStr ? JSON.parse(userStr) : null;
+      // Check rating eligibility
+      const checkEligibility = async () => {
+        if (!user || !user.id) {
+          setEligibility({
+            allowed: false,
+            message: "Please sign in to place a bid.",
+            rating_percentage: null,
+          });
+          return;
+        }
 
-      const isAllowed = !!user; // Requires login
-      // TODO: Add more complex eligibility logic if needed
+        try {
+          const stats = await ratingService.getUserRatingEligibility(user.id);
+          const ratingPercentage = stats.rating_percentage;
+          const canBid = stats.can_bid;
 
-      setEligibility({ allowed: isAllowed });
+          // Check if product allows unrated bidders
+          const allowsUnrated = product?.allow_unrated_bidder || false;
+
+          if (!canBid && !allowsUnrated) {
+            setEligibility({
+              allowed: false,
+              message: `Your positive rating (${
+                ratingPercentage?.toFixed(0) || 0
+              }%) is below 80%. You cannot bid on this product.`,
+              rating_percentage: ratingPercentage,
+            });
+          } else {
+            setEligibility({
+              allowed: true,
+              message: "",
+              rating_percentage: ratingPercentage,
+            });
+          }
+        } catch (err) {
+          console.error("Rating check failed:", err);
+          // Default to allowed if check fails (for unrated users or errors)
+          setEligibility({
+            allowed: true,
+            message: "",
+            rating_percentage: null,
+          });
+        }
+      };
+
+      checkEligibility();
     }
-  }, [open, product]);
+  }, [open, product, user]);
 
   useEffect(() => {
     // parse manualBid and validate
@@ -281,9 +319,15 @@ export default function BiddingQuickView({
                     </div>
 
                     {!eligibility.allowed && (
-                      <p className="mt-4 text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-100">
-                        Please sign in to place a bid.
-                      </p>
+                      <div className="mt-4 text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-100">
+                        <p className="font-semibold mb-1">
+                          ⚠️ Cannot Place Bid
+                        </p>
+                        <p>
+                          {eligibility.message ||
+                            "You are not eligible to bid on this product."}
+                        </p>
+                      </div>
                     )}
                   </form>
                 </div>

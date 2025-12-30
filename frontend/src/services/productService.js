@@ -231,6 +231,46 @@ export const productAPI = {
       );
     }
   },
+
+  /**
+   * Append a new description to product (append-only)
+   * @param {string} productId - Product UUID
+   * @param {string} content - HTML content of new description
+   * @returns {Promise<Object>} Created description entry
+   */
+  appendDescription: async (productId, content) => {
+    try {
+      const response = await api.post(
+        `/api/products/${productId}/descriptions`,
+        {
+          content,
+        }
+      );
+      return response.data?.data || response.data;
+    } catch (error) {
+      console.error("Error appending description:", error);
+      throw new Error(
+        error.response?.data?.message || "Failed to append description"
+      );
+    }
+  },
+
+  /**
+   * Get description history for a product
+   * @param {string} productId - Product UUID
+   * @returns {Promise<Array>} Array of description entries with timestamps
+   */
+  getDescriptionHistory: async (productId) => {
+    try {
+      const response = await api.get(`/api/products/${productId}/descriptions`);
+      return response.data?.data || response.data || [];
+    } catch (error) {
+      console.error("Error fetching description history:", error);
+      throw new Error(
+        error.response?.data?.message || "Failed to fetch description history"
+      );
+    }
+  },
 };
 
 /**

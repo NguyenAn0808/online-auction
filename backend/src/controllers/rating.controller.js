@@ -1,6 +1,11 @@
 import RatingService from "../services/rating.service.js";
 
 class RatingController {
+    // GET /:user_id/eligibility
+    static async getUserRatingEligibility(req, res) {
+      // Stub implementation, update logic as needed
+      return res.status(200).json({ success: true, eligible: true });
+    }
   static async addRating(req, res) {
     try {
       const { product_id, reviewer_id, target_user_id, score, comment } = req.body;

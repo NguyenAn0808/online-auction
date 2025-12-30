@@ -43,4 +43,12 @@ router.post(
   ProductController.rejectBidder
 );
 
+// router.post(
+//   "/:id/descriptions",
+//   authenticate,
+//   authorize("seller"),
+//   ProductController.appendDescription
+// );
+// router.get("/:id/descriptions", ProductController.getDescriptionHistory);
+
 export default router;

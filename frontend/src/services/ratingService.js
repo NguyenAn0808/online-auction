@@ -33,7 +33,21 @@ export const ratingService = {
       throw error;
     }
   },
+
+  /**
+   * Get user rating percentage and eligibility
+   * @param {string} userId - User UUID
+   * @returns {Promise<Object>} { rating_percentage, can_bid, total_ratings, positive_ratings, negative_ratings }
+   */
+  getUserRatingEligibility: async (userId) => {
+    try {
+      const response = await api.get(`/api/ratings/${userId}/eligibility`);
+      return response.data?.data || response.data;
+    } catch (error) {
+      console.error("Error checking rating eligibility:", error);
+      throw error;
+    }
+  },
 };
 
 export default ratingService;
-

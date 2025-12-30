@@ -4,6 +4,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Editor } from "@tinymce/tinymce-react";
 import Modal from "./Modal";
+import { productService } from "../services/productService";
 
 // strip HTML tags to validate plain text length
 const stripHtml = (value = "") => value.replace(/<[^>]*>/g, "");
@@ -46,37 +47,64 @@ const EditDescriptionModal = ({ isOpen, onClose, product, onUpdate }) => {
 
   const newDescription = watch("newDescription", "");
 
-  // Initialize descriptions from localStorage mock data
+  // Load description history from backend API
   useEffect(() => {
     if (product && product.id) {
-      const storageKey = `product_descriptions_${product.id}`;
-      const stored = localStorage.getItem(storageKey);
-      let productDescriptions = [];
-
-      if (stored) {
+      const loadDescriptionHistory = async () => {
         try {
-          productDescriptions = JSON.parse(stored);
-        } catch (e) {
-          console.warn("Failed to parse descriptions:", e);
-          productDescriptions = [];
+          const history = await productService.getDescriptionHistory(
+            product.id
+          );
+
+          // If no history, initialize with original description
+          if (!history || history.length === 0) {
+            setDescriptions([
+              {
+                id: "initial",
+                content: product.description || "",
+                created_at:
+                  product.created_at ||
+                  product.postedAt ||
+                  new Date().toISOString(),
+                author_id: product.seller_id,
+                author_name: "System",
+                type: "initial",
+              },
+            ]);
+          } else {
+            // Map backend response to component format
+            const mappedHistory = history.map((desc, index) => ({
+              id: desc.id || `desc-${index}`,
+              content: desc.content,
+              timestamp: desc.created_at,
+              created_at: desc.created_at,
+              author_id: desc.author_id,
+              author: desc.author_name || "Unknown",
+              author_name: desc.author_name || "Unknown",
+              type: index === 0 ? "initial" : "supplement",
+            }));
+            setDescriptions(mappedHistory);
+          }
+        } catch (err) {
+          console.error("Failed to load description history:", err);
+          // Fallback to original description if API fails
+          setDescriptions([
+            {
+              id: "initial",
+              content: product.description || "",
+              created_at:
+                product.created_at ||
+                product.postedAt ||
+                new Date().toISOString(),
+              author_id: product.seller_id,
+              author_name: "System",
+              type: "initial",
+            },
+          ]);
         }
-      }
+      };
 
-      // Initialize with mock data if empty
-      if (productDescriptions.length === 0) {
-        productDescriptions = [
-          {
-            id: "desc-0",
-            content: product.description || "Initial product description",
-            timestamp: new Date(product.postedAt || Date.now()).toISOString(),
-            author: "System",
-            type: "initial",
-          },
-        ];
-        localStorage.setItem(storageKey, JSON.stringify(productDescriptions));
-      }
-
-      setDescriptions(productDescriptions);
+      loadDescriptionHistory();
       reset({ newDescription: "" });
     }
   }, [product, reset]);
@@ -91,28 +119,33 @@ const EditDescriptionModal = ({ isOpen, onClose, product, onUpdate }) => {
       const htmlContent =
         editorRef.current?.getContent() || data.newDescription || "";
 
-      // Create new description entry
-      const newDesc = {
-        id: `desc-${Date.now()}`,
-        content: htmlContent,
-        timestamp: new Date().toISOString(),
-        author: localStorage.getItem("userName") || "Anonymous",
-        type: "supplement",
-      };
+      // Call backend API to append description
+      await productService.appendDescription(product.id, htmlContent);
 
-      // Add to descriptions
-      const updatedDescriptions = [...descriptions, newDesc];
-      setDescriptions(updatedDescriptions);
+      // Refresh description history from backend
+      const updatedHistory = await productService.getDescriptionHistory(
+        product.id
+      );
 
-      // Save to localStorage
-      const storageKey = `product_descriptions_${product.id}`;
-      localStorage.setItem(storageKey, JSON.stringify(updatedDescriptions));
+      // Map backend response to component format
+      const mappedHistory = updatedHistory.map((desc, index) => ({
+        id: desc.id || `desc-${index}`,
+        content: desc.content,
+        timestamp: desc.created_at,
+        created_at: desc.created_at,
+        author_id: desc.author_id,
+        author: desc.author_name || "Unknown",
+        author_name: desc.author_name || "Unknown",
+        type: index === 0 ? "initial" : "supplement",
+      }));
 
-      // Call parent's update handler
+      setDescriptions(mappedHistory);
+
+      // Call parent's update handler if provided
       if (onUpdate) {
         await onUpdate(product.id, {
           newDescription: htmlContent,
-          descriptions: updatedDescriptions,
+          descriptions: mappedHistory,
         });
       }
 
@@ -220,7 +253,7 @@ const EditDescriptionModal = ({ isOpen, onClose, product, onUpdate }) => {
 
                   <div className="pt-2 border-t border-gray-200">
                     <div
-                      className="text-sm text-gray-700 leading-relaxed break-words"
+                      className="text-sm text-gray-700 leading-relaxed wrap-break-word"
                       dangerouslySetInnerHTML={{ __html: desc.content }}
                     />
                   </div>
