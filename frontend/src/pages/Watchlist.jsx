@@ -345,7 +345,7 @@ export default function Watchlist() {
 
   useEffect(() => {
     async function fetchWatchlist() {
-      if (!user?._id) {
+      if (!user?.id) {
         setLoading(false);
         return;
       }
@@ -353,7 +353,7 @@ export default function Watchlist() {
       try {
         setLoading(true);
         setError(null);
-        const data = await getWatchlist(user._id);
+        const data = await getWatchlist(user.id);
         setItems(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Error fetching watchlist:", err);
@@ -368,10 +368,10 @@ export default function Watchlist() {
   }, [user]);
 
   const handleRemove = async (id) => {
-    if (!user?._id) return;
+    if (!user?.id) return;
 
     try {
-      await removeFromWatchlist(user._id, id);
+      await removeFromWatchlist(user.id, id);
       // Update local state
       setItems((prev) => prev.filter((item) => item.id !== id));
     } catch (err) {

@@ -233,6 +233,43 @@ export const productAPI = {
   },
 
   /**
+   * Create product with images in a single atomic operation
+   * @param {Object} productData - Product data
+   * @param {File[]} imageFiles - Array of image files (minimum 3 required)
+   * @param {Array} metadata - Optional image metadata [{is_thumbnail, position}]
+   * @returns {Promise<Object>}
+   */
+  createProductWithImages: async (productData, imageFiles, metadata = []) => {
+    try {
+      const formData = new FormData();
+
+      // Add product data as JSON string
+      formData.append("product", JSON.stringify(productData));
+
+      // Add images
+      imageFiles.forEach((file) => {
+        formData.append("images", file);
+      });
+
+      // Add metadata if provided
+      if (metadata.length > 0) {
+        formData.append("metadata", JSON.stringify(metadata));
+      }
+
+      const response = await api.post("/api/products/with-images", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error("Error creating product with images:", error);
+      throw new Error(
+        error.response?.data?.message || "Failed to create product"
+      );
+    }
+  },
+
+  /**
    * Append a new description to product (append-only)
    * @param {string} productId - Product UUID
    * @param {string} content - HTML content of new description

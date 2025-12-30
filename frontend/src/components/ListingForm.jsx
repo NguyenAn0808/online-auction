@@ -165,7 +165,7 @@ const ListingForm = () => {
         Date.now() + 7 * 24 * 60 * 60 * 1000
       ).toISOString();
 
-      const payload = {
+      const productData = {
         seller_id: currentUser.id,
         category_id: data.category_id,
         name: data.name,
@@ -179,27 +179,28 @@ const ListingForm = () => {
         end_time: defaultEndTime,
       };
 
-      // Create product
-      const created = await productAPI.createProduct(payload);
-      const productId =
-        created?.data?.id || created?.id || created?._id || created?.product_id;
+      // Generate metadata (first image is thumbnail)
+      const metadata = imageFiles.map((_, index) => ({
+        is_thumbnail: index === 0,
+        position: index,
+      }));
 
-      if (!productId) {
-        throw new Error("Product created but no ID returned");
+      // Use atomic endpoint: create product with images in a single transaction
+      const result = await productAPI.createProductWithImages(
+        productData,
+        imageFiles,
+        metadata
+      );
+
+      if (result.success) {
+        alert("Listing created successfully!");
+        navigate("/");
+      } else {
+        throw new Error(result.message || "Failed to create listing");
       }
-
-      // Upload images
-      if (imageFiles.length > 0) {
-        await productAPI.uploadProductImages(productId, imageFiles);
-      }
-
-      alert("Listing created successfully!");
-
-      // 3. Navigate to home page
-      navigate("/");
     } catch (error) {
       console.error("Failed to create listing:", error);
-      alert(error?.response?.data?.message || "Failed to create listing");
+      alert(error?.message || error?.response?.data?.message || "Failed to create listing");
     } finally {
       setIsSubmitting(false);
     }

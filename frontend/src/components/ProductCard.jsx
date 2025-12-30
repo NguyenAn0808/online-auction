@@ -28,9 +28,17 @@ const ProductCard = ({ product }) => {
 
   useEffect(() => {
     if (productId) {
+      // First check cache for immediate UI response
       setIsWatchlist(watchlistService.isInWatchlist(productId));
+
+      // Then verify with backend if user is logged in
+      if (user?.id) {
+        watchlistService.checkIsInWatchlist(user.id, productId).then((inWatchlist) => {
+          setIsWatchlist(inWatchlist);
+        });
+      }
     }
-  }, [productId]);
+  }, [productId, user?.id]);
 
   const requireAuth = (actionCallback) => {
     if (!user) {
@@ -102,21 +110,20 @@ const ProductCard = ({ product }) => {
     });
   };
 
-  const handleWatchlistClick = (e) => {
+  const handleWatchlistClick = async (e) => {
     e.stopPropagation();
 
-    requireAuth(() => {
-      if (isWatchlist) {
-        watchlistService.removeFromWatchlist(productId);
-      } else {
-        watchlistService.addToWatchlist({
-          id: productId,
-          name: productName,
-          images: product?.images || [],
-          price: currentPrice,
-        });
+    requireAuth(async () => {
+      try {
+        if (isWatchlist) {
+          await watchlistService.removeFromWatchlist(user.id, productId);
+        } else {
+          await watchlistService.addToWatchlist(user.id, productId);
+        }
+        setIsWatchlist(!isWatchlist);
+      } catch (error) {
+        console.error("Watchlist error:", error);
       }
-      setIsWatchlist(!isWatchlist);
     });
   };
 

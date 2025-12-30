@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import watchlistService from "../services/watchlistService";
+import { useAuth } from "../context/AuthContext";
 
 const SimpleProductCard = ({ product }) => {
+  const { user } = useAuth();
   const [isWatchlist, setIsWatchlist] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Extract data from database schema
   const productId = product?.id;
@@ -22,9 +25,17 @@ const SimpleProductCard = ({ product }) => {
 
   useEffect(() => {
     if (productId) {
+      // First check cache for immediate UI response
       setIsWatchlist(watchlistService.isInWatchlist(productId));
+
+      // Then verify with backend if user is logged in
+      if (user?.id) {
+        watchlistService.checkIsInWatchlist(user.id, productId).then((inWatchlist) => {
+          setIsWatchlist(inWatchlist);
+        });
+      }
     }
-  }, [productId]);
+  }, [productId, user?.id]);
 
   const handleCardClick = () => {
     if (productId) {
@@ -32,19 +43,24 @@ const SimpleProductCard = ({ product }) => {
     }
   };
 
-  const handleWatchlistClick = (e) => {
+  const handleWatchlistClick = async (e) => {
     e.stopPropagation();
-    if (isWatchlist) {
-      watchlistService.removeFromWatchlist(productId);
-    } else {
-      watchlistService.addToWatchlist({
-        id: productId,
-        name: productName,
-        images: product?.images || [],
-        price: displayPrice,
-      });
+
+    if (!user) {
+      navigate("/auth/signin", { state: { from: location } });
+      return;
     }
-    setIsWatchlist(!isWatchlist);
+
+    try {
+      if (isWatchlist) {
+        await watchlistService.removeFromWatchlist(user.id, productId);
+      } else {
+        await watchlistService.addToWatchlist(user.id, productId);
+      }
+      setIsWatchlist(!isWatchlist);
+    } catch (error) {
+      console.error("Watchlist error:", error);
+    }
   };
   return (
     <div
