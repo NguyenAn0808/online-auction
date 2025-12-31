@@ -63,7 +63,7 @@ const ProductDetails = () => {
               borderTop: `1px solid ${COLORS.MORNING_MIST}20`,
             }}
           >
-            <ProductFeatures />
+            <ProductFeatures product={product} />
           </div>
 
           {/* Similar Products Section */}

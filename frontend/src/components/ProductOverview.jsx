@@ -2,6 +2,7 @@
 import { useAuth } from "../context/AuthContext";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useCart } from "../context/CartContext";
 import {
   Disclosure,
   DisclosureButton,
@@ -167,9 +168,20 @@ export default function ProductOverview({ productId: propProductId }) {
     });
   };
 
+  const { addToCart } = useCart();
   const handleBuyNow = () => {
     requireAuth(() => {
-      navigate(`/transactions/create?productId=${product.id}`);
+      if (product) {
+        addToCart({
+          id: product.id,
+          name: product.name,
+          price: product.buy_now_price || product.price || 0,
+          imageSrc: product.images?.[0]?.url || "",
+          imageAlt: product.name,
+          color: product.color || "",
+          href: `/products/${product.id}`,
+        });
+      }
     });
   };
 

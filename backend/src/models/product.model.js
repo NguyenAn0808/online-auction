@@ -14,6 +14,7 @@ export const initProductsTable = async () => {
       start_time TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
       end_time TIMESTAMP WITH TIME ZONE NOT NULL,
       status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'ended', 'deleted')),
+      specifications JSONB DEFAULT '[]'::jsonb,
       allow_unrated_bidder BOOLEAN DEFAULT true,
       auto_extend BOOLEAN NOT NULL,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -62,6 +63,7 @@ class ProductModel {
         p.status,
         p.allow_unrated_bidder,
         p.auto_extend,
+        p.specifications,
         p.created_at,
         p.updated_at,
         c.name as category_name,
@@ -191,6 +193,7 @@ class ProductModel {
         p.status,
         p.allow_unrated_bidder,
         p.auto_extend,
+        p.specifications,
         p.created_at,
         p.updated_at,
         c.name as category_name,
@@ -218,6 +221,7 @@ class ProductModel {
       end_time,
       allow_unrated_bidder,
       auto_extend,
+      specifications,
     } = productData;
 
     const query = `
@@ -232,9 +236,10 @@ class ProductModel {
         start_time,
         end_time,
         allow_unrated_bidder,
-        auto_extend
+        auto_extend,
+        specifications
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
     `;
 
@@ -250,6 +255,7 @@ class ProductModel {
       end_time,
       allow_unrated_bidder !== undefined ? allow_unrated_bidder : true,
       auto_extend,
+      specifications || [],
     ]);
 
     return result.rows[0];
@@ -270,6 +276,7 @@ class ProductModel {
       "status",
       "allow_unrated_bidder",
       "auto_extend",
+      "specifications",
     ];
 
     allowedFields.forEach((field) => {
@@ -330,6 +337,7 @@ class ProductModel {
       end_time,
       allow_unrated_bidder,
       auto_extend,
+      specifications,
     } = productData;
 
     const query = `
@@ -344,9 +352,10 @@ class ProductModel {
         start_time,
         end_time,
         allow_unrated_bidder,
-        auto_extend
+        auto_extend,
+        specifications
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
     `;
 
@@ -362,6 +371,7 @@ class ProductModel {
       end_time,
       allow_unrated_bidder !== undefined ? allow_unrated_bidder : true,
       auto_extend,
+      specifications || [],
     ]);
 
     return result.rows[0];
