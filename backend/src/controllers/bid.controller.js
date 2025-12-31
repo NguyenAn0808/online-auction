@@ -3,8 +3,9 @@ import BidService from "../services/bid.service.js";
 class BidController {
   static async addBid(req, res) {
     try {
-      const { product_id, bidder_id, amount } = req.body;
-      if (!product_id || !bidder_id || !amount)
+      const bidder_id = req.user.id;
+      const { product_id, amount } = req.body;
+      if (!product_id || !amount)
         return res
           .status(400)
           .json({ success: false, message: "Missing required fields" });
@@ -31,7 +32,7 @@ class BidController {
 
   static async acceptBid(req, res) {
     try {
-      const { bid_id } = req.query;
+      const { bid_id } = req.params;
       if (!bid_id)
         return res
           .status(400)
@@ -49,7 +50,7 @@ class BidController {
 
   static async rejectBid(req, res) {
     try {
-      const { bid_id } = req.query;
+      const { bid_id } = req.params;
       if (!bid_id)
         return res
           .status(400)

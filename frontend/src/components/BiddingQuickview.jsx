@@ -13,6 +13,7 @@ import {
 } from "../constants/designSystem";
 import { useAuth } from "../context/AuthContext";
 import ratingService from "../services/ratingService";
+import { bidService } from "../services/bidService";
 
 export default function BiddingQuickView({
   open = false,
@@ -26,6 +27,7 @@ export default function BiddingQuickView({
   const [parsedBid, setParsedBid] = useState(0);
   const [error, setError] = useState("");
   const [isValid, setIsValid] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Rating eligibility check
   const [eligibility, setEligibility] = useState({
@@ -153,17 +155,31 @@ export default function BiddingQuickView({
     setError("");
   }, [manualBid, minBid]);
 
-  const handlePlaceBid = (event) => {
+  const handlePlaceBid = async (event) => {
     event.preventDefault();
     if (!isValid) return;
+    if (!product?.id) return;
 
-    // Navigate to product detail page to place bid, or handle API here
-    // For "Quick View", maybe we just navigate to the detail page with the bid pre-filled?
-    // Or simpler: navigate to product page.
+    try {
+      setLoading(true);
+      setError("");
 
-    if (product?.id) {
-      navigate(`/products/${product.id}`);
+      await bidService.placeBid({
+        product_id: product.id,
+        amount: parsedBid,
+      });
+
+      alert("Đặt giá thầu thành công!");
       onClose();
+
+      window.location.reload();
+    } catch (err) {
+      console.error("Bid error:", err);
+      setError(
+        err.response?.data?.message || "Đặt giá thất bại. Vui lòng thử lại."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 

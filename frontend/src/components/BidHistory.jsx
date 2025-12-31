@@ -99,7 +99,7 @@ function maskName(fullName, userId) {
   return `${fullName.charAt(0)}***`;
 }
 
-export default function BidHistory({ isSeller = true, productId = null }) {
+export default function BidHistory({ isSeller = false, productId = null }) {
   const { user } = useAuth();
   const [localBids, setLocalBids, loading] = useBids(productId);
   const [blocklist, setBlocklist] = useState([]);
@@ -108,7 +108,6 @@ export default function BidHistory({ isSeller = true, productId = null }) {
   if (!user) {
     return null;
   }
-
   // Use user data from context
   const currentUserId = user.id;
   const currentUserName = user.fullName || user.username || "You";
