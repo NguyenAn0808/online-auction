@@ -9,6 +9,7 @@ export const initProductsTable = async () => {
       name VARCHAR(255) NOT NULL,
       description TEXT NOT NULL,
       start_price DECIMAL(10, 2) NOT NULL,
+      current_price DECIMAL(10, 2),
       step_price DECIMAL(10, 2) NOT NULL,
       buy_now_price DECIMAL(10, 2),
       start_time TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -385,6 +386,23 @@ class ProductModel {
   static async deleteWithClient(id, client) {
     const query = `DELETE FROM products WHERE id = $1`;
     await client.query(query, [id]);
+  }
+
+  /**
+   * Update the current price of a product (called after bid placement)
+   * @param {string} id - Product UUID
+   * @param {number} newPrice - New current price
+   * @returns {Promise<Object>} - Updated product
+   */
+  static async updateCurrentPrice(id, newPrice) {
+    const query = `
+      UPDATE products
+      SET current_price = $2, updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `;
+    const result = await pool.query(query, [id, newPrice]);
+    return result.rows[0];
   }
 }
 

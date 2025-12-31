@@ -100,7 +100,10 @@ const ProductDetails = () => {
                 borderTop: `1px solid ${COLORS.MORNING_MIST}20`,
               }}
             >
-              <BidHistory productId={productId} />
+              <BidHistory
+                productId={productId}
+                isSeller={user && product && user.id === product.seller_id}
+              />
             </div>
           )}
 
