@@ -2,6 +2,7 @@ import api from "./api";
 
 /**
  * Bid service - handles bid-related API calls
+ * Auto-bid system: Users set max_bid, system bids automatically
  */
 export const bidService = {
   /**
@@ -10,17 +11,22 @@ export const bidService = {
    * @returns {Promise<Array>} List of bids
    */
   getProductBids: async (productId) => {
-    const response = await api.get(`/api/bids/${productId}`);
+    console.log(`[bidService] Calling GET /api/bids?product_id=${productId}`);
+    const response = await api.get(`/api/bids?product_id=${productId}`);
+    console.log("[bidService] Response:", response.data);
     return response.data;
   },
 
   /**
-   * Place a bid on a product (bidder only, seller cannot bid their own product)
-   * @param {Object} data - Bid data { product_id, bid_amount }
-   * @returns {Promise<Object>} Created bid
+   * Place an auto-bid on a product
+   * Auto-bid system: Set max_bid, system bids just enough to win
+   * @param {Object} data - Bid data { product_id, max_bid }
+   * @returns {Promise<Object>} Created/updated bid with competition result
    */
   placeBid: async (data) => {
+    console.log("[bidService] Calling POST /api/bids with:", data);
     const response = await api.post(`/api/bids`, data);
+    console.log("[bidService] Response:", response.data);
     return response.data;
   },
 

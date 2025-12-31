@@ -19,15 +19,16 @@ export default function BiddingQuickView({
   open = false,
   onClose = () => {},
   product = null,
+  onBidSuccess = () => {},
 }) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  // const [product, setProduct] = useState(null); // Now using prop
-  const [manualBid, setManualBid] = useState("");
-  const [parsedBid, setParsedBid] = useState(0);
+  const [maxBid, setMaxBid] = useState("");
+  const [parsedMaxBid, setParsedMaxBid] = useState(0);
   const [error, setError] = useState("");
   const [isValid, setIsValid] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Rating eligibility check
   const [eligibility, setEligibility] = useState({
@@ -48,30 +49,27 @@ export default function BiddingQuickView({
 
   const stepPrice = Number(product?.step_price || 0);
 
-  // Min bid = current + step
-  // EXCEPT if no bids yet? usually start_price is the min for first bid.
-  // If current_price == start_price and bid_count == 0, then min is start_price?
-  // Let's assume min bid is always > current price unless no bids.
-  // Simplified logic: Next valid bid must be at least current + step
-  const minBid = currentPrice + stepPrice;
+  // Min bid = current + step (for first bid, it's start_price)
+  const hasBids = product?.bid_count > 0 || product?.current_price > product?.start_price;
+  const minBid = hasBids ? currentPrice + stepPrice : currentPrice;
 
-  // No strict max bid usually, or maybe buyNowPrice?
-  // Let's assume max is very high or buyNowPrice if set.
+  // Buy now price (optional)
   const buyNowPrice = Number(product?.buy_now_price || 0);
 
   // Derive display image
   const displayImage =
     product?.thumbnail ||
-    product?.images?.[0] || // handle if images is array of strings
-    product?.images?.[0]?.image_url || // handle if images is array of objects
+    product?.images?.[0] ||
+    product?.images?.[0]?.image_url ||
     "/images/sample.jpg";
 
   useEffect(() => {
     // Reset state when product changes or opens
     if (open) {
-      setManualBid("");
+      setMaxBid("");
       setError("");
       setIsValid(false);
+      setSuccessMessage("");
 
       // Check rating eligibility
       const checkEligibility = async () => {
@@ -123,23 +121,23 @@ export default function BiddingQuickView({
   }, [open, product, user]);
 
   useEffect(() => {
-    // parse manualBid and validate
-    if (!manualBid) {
-      setParsedBid(0);
+    // Parse and validate max bid
+    if (!maxBid) {
+      setParsedMaxBid(0);
       setIsValid(false);
       setError("");
       return;
     }
 
-    const num = Number(manualBid);
+    const num = Number(maxBid);
     if (Number.isNaN(num)) {
-      setParsedBid(0);
+      setParsedMaxBid(0);
       setIsValid(false);
       setError("Enter a valid number");
       return;
     }
 
-    setParsedBid(num);
+    setParsedMaxBid(num);
 
     if (num < minBid) {
       setIsValid(false);
@@ -147,44 +145,54 @@ export default function BiddingQuickView({
       return;
     }
 
-    // Optional: Validate step increment if strictly enforced
-    // (num - currentPrice) % step == 0 ?
-    // For now, loose validation
-
     setIsValid(true);
     setError("");
-  }, [manualBid, minBid]);
+  }, [maxBid, minBid]);
 
   const handlePlaceBid = async (event) => {
     event.preventDefault();
-    if (!isValid) return;
-    if (!product?.id) return;
+    if (!isValid || isSubmitting) return;
+
+    setIsSubmitting(true);
+    setError("");
+    setSuccessMessage("");
 
     try {
-      setLoading(true);
-      setError("");
-
-      await bidService.placeBid({
+      console.log("[BiddingQuickview] Placing auto-bid:", {
         product_id: product.id,
-        amount: parsedBid,
+        max_bid: parsedMaxBid,
       });
 
-      alert("Đặt giá thầu thành công!");
-      onClose();
+      const result = await bidService.placeBid({
+        product_id: product.id,
+        max_bid: parsedMaxBid,
+      });
 
-      window.location.reload();
-    } catch (err) {
-      console.error("Bid error:", err);
-      setError(
-        err.response?.data?.message || "Đặt giá thất bại. Vui lòng thử lại."
+      console.log("[BiddingQuickview] Bid result:", result);
+
+      // Show success message
+      const winningAmount = result.data?.competition?.winningAmount || parsedMaxBid;
+      setSuccessMessage(
+        `Auto-bid set! Current winning bid: ${currency.format(winningAmount)}`
       );
+
+      // Notify parent component
+      onBidSuccess(result.data);
+
+      // Close modal after a short delay
+      setTimeout(() => {
+        onClose(true);
+      }, 2000);
+    } catch (err) {
+      console.error("[BiddingQuickview] Bid error:", err);
+      setError(err.response?.data?.message || err.message || "Failed to place bid");
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   const handleUseSuggestion = () => {
-    setManualBid(String(minBid));
+    setMaxBid(String(minBid));
   };
 
   if (!product) return null;
@@ -233,7 +241,7 @@ export default function BiddingQuickView({
                         {product.name}
                       </h2>
                       <p className="mt-1 text-lg text-gray-700">
-                        {currency.format(currentPrice)}
+                        Current: {currency.format(currentPrice)}
                       </p>
                     </div>
                     {product.end_time && (
@@ -244,16 +252,20 @@ export default function BiddingQuickView({
                     )}
                   </div>
 
-                  {/* Auto-increment / Suggestion */}
-                  <div className="mt-6">
-                    <h3 className="text-sm font-medium text-gray-900">
-                      Quick bid
+                  {/* Auto-bid explanation */}
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <h3 className="text-sm font-semibold text-blue-800">
+                      Auto-Bid System
                     </h3>
+                    <p className="mt-1 text-sm text-blue-700">
+                      Set your maximum bid. The system will automatically bid just enough to keep you winning, up to your maximum.
+                    </p>
                   </div>
 
+                  {/* Suggested bid */}
                   <div className="mt-4 text-sm text-gray-600 flex items-center justify-between">
                     <div>
-                      Suggested next bid:{" "}
+                      Minimum bid:{" "}
                       <span className="font-medium text-gray-900">
                         {currency.format(minBid)}
                       </span>
@@ -262,61 +274,69 @@ export default function BiddingQuickView({
                       <button
                         type="button"
                         onClick={handleUseSuggestion}
+                        disabled={!eligibility.allowed}
                         style={{
                           padding: `4px ${SPACING.M}`,
                           borderRadius: BORDER_RADIUS.FULL,
                           backgroundColor: COLORS.WHITE,
                           color: COLORS.MIDNIGHT_ASH,
                           border: `1.5px solid ${COLORS.MORNING_MIST}`,
-                          cursor: "pointer",
+                          cursor: eligibility.allowed ? "pointer" : "not-allowed",
                           fontSize: TYPOGRAPHY.SIZE_LABEL_LARGE,
                           fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
                           marginLeft: SPACING.M,
+                          opacity: eligibility.allowed ? 1 : 0.5,
                         }}
                         className="hover:opacity-90 transition-all"
                       >
-                        Use suggestion
+                        Use minimum
                       </button>
                     </div>
                   </div>
 
-                  {/* Manual bid input & feedback */}
+                  {/* Max bid input form */}
                   <form onSubmit={handlePlaceBid} className="mt-6">
                     <label className="block text-sm font-medium text-gray-700">
-                      Your bid amount
+                      Your maximum bid (VND)
                     </label>
+                    <p className="text-xs text-gray-500 mt-1">
+                      You will only pay enough to beat other bidders
+                    </p>
                     <div className="mt-2 flex items-center gap-2">
                       <div className="relative w-full">
                         <input
                           type="number"
-                          value={manualBid}
-                          onChange={(e) => setManualBid(e.target.value)}
-                          placeholder={minBid}
+                          value={maxBid}
+                          onChange={(e) => setMaxBid(e.target.value)}
+                          placeholder={String(minBid)}
                           className={`w-full rounded-md border px-3 py-2 text-lg focus:ring-2 focus:ring-indigo-500 ${
-                            !eligibility.allowed
+                            !eligibility.allowed || isSubmitting
                               ? "opacity-50 cursor-not-allowed"
                               : ""
                           }`}
-                          disabled={!eligibility.allowed}
+                          disabled={!eligibility.allowed || isSubmitting}
                         />
                       </div>
                     </div>
                     {error && (
                       <p className="mt-2 text-sm text-red-600">{error}</p>
                     )}
-                    {isValid && (
+                    {successMessage && (
+                      <p className="mt-2 text-sm text-green-600">{successMessage}</p>
+                    )}
+                    {isValid && !successMessage && (
                       <p className="mt-2 text-sm text-green-600">
-                        Valid bid: {currency.format(parsedBid)}
+                        Maximum bid: {currency.format(parsedMaxBid)}
                       </p>
                     )}
 
                     <div className="mt-6">
                       <button
                         type="submit"
-                        disabled={!isValid || !eligibility.allowed}
+                        disabled={!isValid || !eligibility.allowed || isSubmitting}
                         style={{
                           backgroundColor:
-                            isValid && eligibility.allowed
+                            isValid && eligibility.allowed && !isSubmitting
                               ? COLORS.MIDNIGHT_ASH
                               : "#d1d5db",
                           color: "#fff",
@@ -325,19 +345,19 @@ export default function BiddingQuickView({
                           width: "100%",
                           fontWeight: "600",
                           cursor:
-                            isValid && eligibility.allowed
+                            isValid && eligibility.allowed && !isSubmitting
                               ? "pointer"
                               : "not-allowed",
                         }}
                       >
-                        Place Bid
+                        {isSubmitting ? "Setting bid..." : "Set Maximum Bid"}
                       </button>
                     </div>
 
                     {!eligibility.allowed && (
                       <div className="mt-4 text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-100">
                         <p className="font-semibold mb-1">
-                          ⚠️ Cannot Place Bid
+                          Cannot Place Bid
                         </p>
                         <p>
                           {eligibility.message ||

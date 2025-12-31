@@ -304,7 +304,21 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                   color: COLORS.MIDNIGHT_ASH,
                 }}
               >
-                Amount
+                Current Bid
+              </th>
+              <th
+                style={{
+                  paddingLeft: SPACING.M,
+                  paddingRight: SPACING.M,
+                  paddingTop: SPACING.M,
+                  paddingBottom: SPACING.M,
+                  textAlign: "left",
+                  fontSize: TYPOGRAPHY.SIZE_LABEL,
+                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                  color: COLORS.MIDNIGHT_ASH,
+                }}
+              >
+                Max Bid
               </th>
               <th
                 style={{
@@ -430,7 +444,40 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                       color: COLORS.MIDNIGHT_ASH,
                     }}
                   >
-                    ${bid.amount.toFixed(2)}
+                    {Number(bid.amount).toLocaleString("vi-VN")} VND
+                    {bid.max_bid && (
+                      <span
+                        style={{
+                          marginLeft: SPACING.S,
+                          fontSize: TYPOGRAPHY.SIZE_LABEL,
+                          color: COLORS.PEBBLE,
+                          fontStyle: "italic",
+                        }}
+                      >
+                        (auto)
+                      </span>
+                    )}
+                  </td>
+                  <td
+                    style={{
+                      paddingLeft: SPACING.M,
+                      paddingRight: SPACING.M,
+                      paddingTop: SPACING.M,
+                      paddingBottom: SPACING.M,
+                      fontSize: TYPOGRAPHY.SIZE_BODY,
+                      color: COLORS.PEBBLE,
+                    }}
+                  >
+                    {/* Only show max_bid to the bidder themselves or seller */}
+                    {(bid.bidder_id === currentUserId || isSeller) && bid.max_bid ? (
+                      <span style={{ color: COLORS.MIDNIGHT_ASH }}>
+                        {Number(bid.max_bid).toLocaleString("vi-VN")} VND
+                      </span>
+                    ) : bid.max_bid ? (
+                      <span style={{ fontStyle: "italic" }}>Hidden</span>
+                    ) : (
+                      <span>—</span>
+                    )}
                   </td>
                   <td
                     style={{

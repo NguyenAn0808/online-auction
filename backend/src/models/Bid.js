@@ -8,6 +8,7 @@ export const initBidsTable = async () => {
       product_id UUID NOT NULL,
       bidder_id UUID NOT NULL,
       amount DECIMAL(12, 2) NOT NULL,
+      max_bid DECIMAL(12, 2),
       timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'rejected', 'accepted')),
       FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
@@ -16,18 +17,56 @@ export const initBidsTable = async () => {
     CREATE INDEX IF NOT EXISTS idx_bids_product_id ON bids(product_id);
     CREATE INDEX IF NOT EXISTS idx_bids_bidder_id ON bids(bidder_id);
     CREATE INDEX IF NOT EXISTS idx_bids_status ON bids(status);
+    CREATE INDEX IF NOT EXISTS idx_bids_max_bid ON bids(max_bid DESC);
   `;
   await pool.query(query);
 };
 
 class Bid {
-  static async add({ product_id, bidder_id, amount }) {
+  static async add({ product_id, bidder_id, amount, max_bid }) {
     const query = `
-      INSERT INTO bids (product_id, bidder_id, amount)
-      VALUES ($1, $2, $3)
+      INSERT INTO bids (product_id, bidder_id, amount, max_bid)
+      VALUES ($1, $2, $3, $4)
       RETURNING *
     `;
-    const result = await pool.query(query, [product_id, bidder_id, amount]);
+    const result = await pool.query(query, [product_id, bidder_id, amount, max_bid]);
+    return result.rows[0];
+  }
+
+  // Update bid amount (used for auto-bid competition)
+  static async updateAmount(bid_id, newAmount) {
+    const query = `UPDATE bids SET amount = $2 WHERE id = $1 RETURNING *`;
+    const result = await pool.query(query, [bid_id, newAmount]);
+    return result.rows[0];
+  }
+
+  // Get all active bids for auto-bid competition (ordered by max_bid DESC, timestamp ASC)
+  static async getActiveBidsForCompetition(product_id) {
+    const query = `
+      SELECT * FROM bids
+      WHERE product_id = $1 AND status != 'rejected' AND max_bid IS NOT NULL
+      ORDER BY max_bid DESC, timestamp ASC
+    `;
+    const result = await pool.query(query, [product_id]);
+    return result.rows;
+  }
+
+  // Get existing bid by user for a product (to allow increasing max_bid)
+  static async getByProductAndBidder(product_id, bidder_id) {
+    const query = `
+      SELECT * FROM bids
+      WHERE product_id = $1 AND bidder_id = $2 AND status != 'rejected'
+      ORDER BY timestamp DESC
+      LIMIT 1
+    `;
+    const result = await pool.query(query, [product_id, bidder_id]);
+    return result.rows[0];
+  }
+
+  // Update max_bid for existing bid
+  static async updateMaxBid(bid_id, newMaxBid) {
+    const query = `UPDATE bids SET max_bid = $2 WHERE id = $1 RETURNING *`;
+    const result = await pool.query(query, [bid_id, newMaxBid]);
     return result.rows[0];
   }
 
