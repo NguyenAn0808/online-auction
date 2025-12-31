@@ -29,9 +29,11 @@ import Question from "./models/Question.js";
 import Answer from "./models/Answer.js";
 import questionRoute from "./routes/questionRoute.js";
 import answerRoute from "./routes/answerRoute.js";
+import userRoutes from "./routes/userRoute.js";
 import { initBlockedBiddersTable } from "./models/blocked-bidder.model.js";
 import { initProductDescriptionsTable } from "./models/product-description.model.js";
 import Order from "./models/Order.js";
+import OrderMessage from "./models/OrderMessage.js";
 
 const app = express();
 
@@ -112,7 +114,7 @@ app.use(
 
 // API Routes
 app.use("/api/auth", authRoute);
-
+app.use("/api/users", userRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/watchlist", watchlistRoutes);
@@ -138,6 +140,7 @@ const startServer = async () => {
     await Question.createTable();
     await Answer.createTable();
     await Order.createTable();
+    await OrderMessage.createTable();
 
     console.log("Database tables initialized");
     // Initialize database schema

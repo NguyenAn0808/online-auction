@@ -6,7 +6,7 @@ const upgradeRequestService = {
     try {
       // Try API call first
       try {
-        const response = await api.get("/upgrade-requests", { params });
+        const response = await api.get("/api/upgrade-requests", { params });
         return response.data;
       } catch (apiError) {
         console.warn("API call failed, using mock data:", apiError.message);
@@ -46,7 +46,7 @@ const upgradeRequestService = {
   // Get upgrade request by ID
   getRequestById: async (id) => {
     try {
-      const response = await api.get(`/upgrade-requests/${id}`);
+      const response = await api.get(`/api/upgrade-requests/${id}`);
       return response.data;
     } catch (error) {
       console.error("Error fetching upgrade request:", error);
@@ -57,7 +57,7 @@ const upgradeRequestService = {
   // Approve upgrade request
   approveRequest: async (id, adminId) => {
     try {
-      const response = await api.post(`/upgrade-requests/${id}/approve`, {
+      const response = await api.post(`/api/upgrade-requests/${id}/approve`, {
         admin_id: adminId,
       });
       return response.data;
@@ -70,7 +70,7 @@ const upgradeRequestService = {
   // Reject upgrade request
   rejectRequest: async (id, adminId) => {
     try {
-      const response = await api.post(`/upgrade-requests/${id}/reject`, {
+      const response = await api.post(`/api/upgrade-requests/${id}/reject`, {
         admin_id: adminId,
       });
       return response.data;

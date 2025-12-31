@@ -98,10 +98,7 @@ const router = createBrowserRouter(
           {/* Transactions */}
           {/* Note: Kept all variations found in source to ensure coverage */}
           <Route path="transactions" element={<TransactionHistory />} />
-          <Route
-            path="transactions/:transactionId"
-            element={<TransactionPage />}
-          />
+          <Route path="transactions/create" element={<TransactionPage />} />
           <Route
             path="transactions-old/:transactionId"
             element={<TransactionHistory />}
@@ -109,11 +106,7 @@ const router = createBrowserRouter(
         </Route>
 
         {/* SELLER ONLY ROUTES */}
-        <Route
-          element={
-            <ProtectedRoute allowedRoles={["bidder", "seller", "admin"]} />
-          }
-        >
+        <Route element={<ProtectedRoute allowedRoles={["seller", "admin"]} />}>
           <Route path="seller/transactions" element={<SellerTransactions />} />
           {/* Note: 'upgrade-requests' is typically for Bidders who want to become Sellers, 
                 so it might need 'bidder' access depending on your flow */}

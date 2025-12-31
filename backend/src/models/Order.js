@@ -217,6 +217,41 @@ class Order {
     const result = await pool.query(query, [reason, orderId]);
     return result.rows[0];
   }
+
+  static async findByProductId(productId) {
+    const query = `
+      SELECT 
+        o.*,
+        p.name as "productName",
+        (
+          SELECT image_url 
+          FROM product_images 
+          WHERE product_id = p.id 
+          ORDER BY is_thumbnail DESC, position ASC 
+          LIMIT 1
+        ) as "productImage"
+      FROM orders o
+      JOIN products p ON o.product_id = p.id
+      WHERE o.product_id = $1
+    `;
+    const result = await pool.query(query, [productId]);
+    return result.rows[0]; // Returns order or undefined
+  }
+
+  static async updatePaymentProof(orderId, proofImage, address) {
+    const query = `
+      UPDATE orders 
+      SET 
+        payment_proof_image = $1,
+        shipping_address = $2,
+        status = 'pending_seller_confirmation', -- Reset status if needed
+        updated_at = NOW()
+      WHERE id = $3
+      RETURNING *
+    `;
+    const result = await pool.query(query, [proofImage, address, orderId]);
+    return result.rows[0];
+  }
 }
 
 export default Order;

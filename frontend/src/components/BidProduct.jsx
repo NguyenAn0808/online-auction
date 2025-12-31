@@ -53,6 +53,9 @@ export default function BidProduct() {
     return bids.slice().sort((a, b) => b.amount - a.amount)[0];
   }, []);
 
+  const handlePayNow = (productId) => {
+    navigate(`/transactions/create?productId=${productId}`);
+  };
   return (
     <>
       <div style={{ marginBottom: SPACING.L }}>
@@ -290,7 +293,7 @@ export default function BidProduct() {
                       {isWinner && (
                         <button
                           type="button"
-                          onClick={() => navigate(`/orders/${product.id}`)}
+                          onClick={() => handlePayNow(product.id)}
                           aria-label="Pay now"
                           style={{
                             display: "inline-flex",

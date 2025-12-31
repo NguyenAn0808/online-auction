@@ -20,6 +20,7 @@ import * as TransactionService from "../services/transactionService"; // Legacy 
 import { STATUS } from "../services/transactionService"; // Legacy status constants (deprecated)
 import orderService, { ORDER_STATUS } from "../services/orderService"; // Use OpenAPI service
 import CancelOrderModal from "../components/CancelOrderModal";
+import { productService } from "../services/productService";
 const DELIVERY_METHODS = [
   {
     id: 1,
@@ -62,6 +63,7 @@ export default function TransactionPage() {
 
   // --- STATE ---
   const [tx, setTx] = useState(null);
+  const [productDetails, setProductDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [isCancelModalOpen, setCancelModalOpen] = useState(false);
@@ -126,7 +128,14 @@ export default function TransactionPage() {
   useEffect(() => {
     async function loadData() {
       // If no ID, we are likely creating a new order (Step 1)
-      if (!transactionId) {
+      if (!transactionId && productIdParam) {
+        const productData = await productService.getProductById(productIdParam);
+        setProductDetails(productData);
+        setLoading(false);
+        return;
+      }
+
+      if (!transactionId && !productIdParam) {
         setLoading(false);
         navigate("/", { replace: true });
         return;
@@ -139,6 +148,14 @@ export default function TransactionPage() {
         const apiResponse = await orderService.getOrder(transactionId);
         if (apiResponse) {
           setTx(apiResponse);
+          if (apiResponse.productName) {
+            setProductDetails({
+              name: apiResponse.productName,
+              id: apiResponse.product_id,
+              // Add image if available in apiResponse
+              thumbnail: apiResponse.productImage,
+            });
+          }
         } else {
           // Handle case where API returns success but no data (rare)
           throw new Error("Order not found");
@@ -160,7 +177,7 @@ export default function TransactionPage() {
       }
     }
     loadData();
-  }, [transactionId, navigate]);
+  }, [transactionId, productIdParam, navigate]);
 
   function showToast(message) {
     setToast(message);
@@ -183,60 +200,53 @@ export default function TransactionPage() {
     if (!paymentProofFile)
       return showToast("Please upload payment proof image.");
 
-    // Simple validation
     if (!formData.address || !formData.city || !formData.phone) {
       return showToast("Please fill in Address, City and Phone.");
     }
 
     try {
-      // Logic: Extract product ID from order (OpenAPI Order schema has product object, not product_id)
-      // Handle both OpenAPI format (product._id) and legacy format (product_id)
-      const pid =
-        tx?.product?._id ||
-        tx?.product?.id ||
-        tx?.product_id ||
-        productIdParam ||
-        transactionId;
+      // 1. Get Product ID from URL param or existing transaction state
+      const pid = productIdParam || tx?.product_id || tx?.product?.id;
       if (!pid) return showToast("Product ID missing.");
 
-      // Get order first to get order_id (OpenAPI: GET /products/{product_id}/order)
-      const order = await orderService.getOrder(pid);
-      const orderId = order?._id || order?.id;
-
-      if (!orderId) {
-        return showToast("Order not found. Please create order first.");
-      }
-
-      // Convert File to data URL (temporary solution - backend should accept file uploads separately)
-      const paymentProofUrl = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(paymentProofFile);
-      });
-
-      // Combine address into single string for Backend
+      // 2. Prepare Form Data (Backend expects multipart/form-data)
       const fullAddress = `${formData.address}, ${formData.city}, ${formData.region}, ${formData.country}. Phone: ${formData.phone}`;
 
-      // Submit payment proof using OpenAPI endpoint
-      const res = await orderService.submitPayment(orderId, {
-        shippingAddress: fullAddress,
-        paymentProofUrl: paymentProofUrl, // Data URL - backend may need to handle this or provide separate upload endpoint
-      });
+      const payload = new FormData();
+      payload.append("productId", pid);
+      payload.append("shippingAddress", fullAddress);
+      payload.append("image", paymentProofFile); // Backend middleware checks for 'image' or 'file'
 
-      if (res) {
-        setTx(res);
-        showToast("Payment proof submitted! Waiting for seller confirmation.");
-        navigate(`/transactions/${res._id || res.id}`, { replace: true });
+      let res;
+
+      // 3. LOGIC FIX: Check if we are Creating (New) or Updating (Existing)
+      if (!tx || !tx.id) {
+        // CASE A: NEW ORDER -> Call createOrder (POST /api/orders)
+        // This skips the "Order not found" check entirely
+        res = await orderService.createOrder(payload);
+      } else {
+        // CASE B: EXISTING ORDER (Re-uploading proof) -> Call submitPayment
+        res = await orderService.submitPayment(tx.id, {
+          shippingAddress: fullAddress,
+          paymentProofUrl: await convertFileToUrl(paymentProofFile), // Or use FormData if submitPayment supports it
+        });
+      }
+
+      // 4. Handle Success
+      if (res && (res.success || res.data)) {
+        const newTx = res.data || res;
+        setTx(newTx);
+        showToast("Order submitted successfully!");
+
+        // Navigate to the transaction ID to exit "creation mode"
+        navigate(`/transactions/${newTx.id}`, { replace: true });
       }
     } catch (err) {
       console.error(err);
-      showToast(
-        err.response?.data?.message || "Failed to submit payment proof"
-      );
+      // Display backend error message if available
+      showToast(err.response?.data?.message || "Failed to submit order");
     }
   }
-
   // STEP 2: CONFIRM SHIPPING (Seller)
   // Use OpenAPI endpoint: POST /orders/{order_id}/shipment-proof
   async function handleSellerConfirm(shippingData) {
@@ -467,9 +477,15 @@ export default function TransactionPage() {
                   gap: SPACING.M,
                 }}
               >
-                {tx?.productImage && (
+                {(tx?.productImage ||
+                  productDetails?.thumbnail ||
+                  productDetails?.images?.[0]?.image_url) && (
                   <img
-                    src={tx.productImage}
+                    src={
+                      tx?.productImage ||
+                      productDetails?.thumbnail ||
+                      productDetails?.images?.[0]?.image_url
+                    }
                     alt="Product"
                     style={{
                       width: "64px",
@@ -487,11 +503,34 @@ export default function TransactionPage() {
                       fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
                       color: COLORS.MIDNIGHT_ASH,
                       marginBottom: SPACING.S,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
                     }}
                   >
+                    {/* Show Product Name from TX or ProductDetails */}
                     {tx?.productName ||
-                      `Transaction #${tx?.id ? tx.id.slice(0, 8) : "..."}`}
+                      productDetails?.name ||
+                      `Transaction #${transactionId?.slice(0, 8)}`}
+
+                    {/* ID Badge */}
+                    <span
+                      style={{
+                        fontSize: "13px",
+                        fontWeight: "normal",
+                        backgroundColor: "#E5E7EB",
+                        padding: "2px 8px",
+                        borderRadius: "12px",
+                        color: "#374151",
+                      }}
+                    >
+                      #
+                      {productDetails?.id
+                        ? productDetails.id.slice(0, 8)
+                        : tx?.product_id?.slice(0, 8) || "..."}
+                    </span>
                   </h1>
+
                   <p
                     style={{
                       fontSize: TYPOGRAPHY.SIZE_LABEL,

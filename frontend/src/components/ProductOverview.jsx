@@ -169,7 +169,7 @@ export default function ProductOverview({ productId: propProductId }) {
 
   const handleBuyNow = () => {
     requireAuth(() => {
-      navigate(`/transactions?productId=${product.id}`);
+      navigate(`/transactions/create?productId=${product.id}`);
     });
   };
 

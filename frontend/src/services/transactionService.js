@@ -4,7 +4,7 @@ import api from "./api";
  */
 export const getTransaction = async (orderId) => {
   try {
-    const response = await api.get(`/orders/${orderId}`);
+    const response = await api.get(`/api/orders/${orderId}`);
     return response.data.data || response.data;
   } catch (error) {
     console.error("Error fetching transaction:", error);
@@ -17,7 +17,7 @@ export const getTransaction = async (orderId) => {
  * @param {FormData} formData - Contains productId, shippingAddress, image
  */
 export const createOrder = async (formData) => {
-  const response = await api.post("/orders", formData, {
+  const response = await api.post("./api/orders", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
   return response.data;
@@ -31,7 +31,7 @@ export const confirmShipping = async (orderId, trackingCode, file) => {
   }
 
   // CHANGE THIS TO api.patch
-  const response = await api.patch(`/orders/${orderId}/ship`, formData, {
+  const response = await api.patch(`/api/orders/${orderId}/ship`, formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
 
@@ -42,7 +42,7 @@ export const confirmShipping = async (orderId, trackingCode, file) => {
  * Step 3: Buyer Confirms Receipt
  */
 export const confirmReceipt = async (orderId) => {
-  const response = await api.patch(`/orders/${orderId}/receive`);
+  const response = await api.patch(`/api/orders/${orderId}/receive`);
   return response.data;
 };
 
@@ -50,7 +50,7 @@ export const confirmReceipt = async (orderId) => {
  * Step 4: Rate Transaction
  */
 export const rateTransaction = async (orderId, score, comment) => {
-  const response = await api.post(`/orders/${orderId}/rate`, {
+  const response = await api.post(`/api/orders/${orderId}/rate`, {
     score,
     comment,
   });
@@ -61,7 +61,7 @@ export const rateTransaction = async (orderId, score, comment) => {
  * Seller Cancels Order
  */
 export const cancelOrder = async (orderId, reason) => {
-  const response = await api.post(`/orders/${orderId}/cancel`, { reason });
+  const response = await api.post(`/api/orders/${orderId}/cancel`, { reason });
   return response.data;
 };
 

@@ -3,6 +3,7 @@ import Bid from "../models/Bid.js";
 import Order from "../models/Order.js";
 import Rating from "../models/Rating.js";
 import UploadService from "../services/upload.service.js";
+import OrderMessage from "../models/OrderMessage.js";
 import pool from "../config/database.js";
 
 export const createOrder = async (req, res) => {
@@ -424,5 +425,160 @@ export const getWonItems = async (req, res) => {
       success: false,
       message: "Internal server error",
     });
+  }
+};
+
+export const getOrderByProductId = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const order = await Order.findByProductId(productId);
+
+    if (!order) {
+      return res
+        .status(404)
+        .json({ success: false, message: "No order found for this product" });
+    }
+
+    // Security check: ensure user is buyer or seller
+    if (order.buyer_id !== req.user.id && order.seller_id !== req.user.id) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+
+    res.json({ success: true, data: order });
+  } catch (error) {
+    console.error("Error fetching order by product:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+export const getOrderMessages = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const userId = req.user.id;
+
+    // 1. Check if Order exists
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
+    }
+
+    // 2. Check Permissions (User must be Buyer or Seller)
+    if (order.buyer_id !== userId && order.seller_id !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to view messages for this order",
+      });
+    }
+
+    // 3. Fetch Messages
+    const messages = await OrderMessage.getByOrderId(orderId);
+
+    // 4. Return Data (Empty array if no messages, as per requirement)
+    res.status(200).json({
+      success: true,
+      data: messages || [],
+    });
+  } catch (error) {
+    console.error("Error fetching messages:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+// POST /api/orders/:orderId/messages
+export const sendOrderMessage = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { message } = req.body;
+    const userId = req.user.id;
+
+    // 1. Validate Message (Must not be empty after trim)
+    if (
+      !message ||
+      typeof message !== "string" ||
+      message.trim().length === 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Message cannot be empty",
+      });
+    }
+
+    // 2. Check if Order exists
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
+    }
+
+    // 3. Check Permissions (User must be Buyer or Seller)
+    if (order.buyer_id !== userId && order.seller_id !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to send messages for this order",
+      });
+    }
+
+    // 4. Create Message
+    const newMessage = await OrderMessage.create({
+      orderId,
+      senderId: userId,
+      message: message.trim(),
+    });
+
+    res.status(201).json({
+      success: true,
+      data: newMessage,
+    });
+  } catch (error) {
+    console.error("Error sending message:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+export const updatePaymentProof = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { shippingAddress } = req.body;
+
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Payment proof image is required" });
+    }
+
+    // 1. Find existing order to get the OLD image URL
+    const existingOrder = await Order.findById(orderId);
+    if (!existingOrder) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
+    }
+
+    // 2. Upload NEW image
+    const uploadResult = await UploadService.uploadImage(
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype
+    );
+
+    // 3. Update Database
+    const updatedOrder = await Order.updatePaymentProof(
+      orderId,
+      uploadResult.url,
+      shippingAddress
+    );
+
+    // 4. (Optional) Delete OLD image from cloud to save space
+    // if (existingOrder.payment_proof_image) {
+    //   await UploadService.deleteImage(existingOrder.payment_proof_image);
+    // }
+
+    return res.json({ success: true, data: updatedOrder });
+  } catch (error) {
+    console.error("Error updating payment:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
   }
 };

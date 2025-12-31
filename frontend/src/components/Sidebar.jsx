@@ -18,7 +18,9 @@ function classNames(...classes) {
 }
 
 export default function Sidebar() {
-  const userId = localStorage.getItem("userId") || "buyer-1";
+  const storedUserStr = localStorage.getItem("user");
+  const storedUser = storedUserStr ? JSON.parse(storedUserStr) : null;
+  const userId = storedUser?.id || "buyer-1";
   const items = [
     { name: "Profile", to: `/summary/${userId}`, icon: UserIcon },
     { name: "Ratings", to: `/ratings/${userId}`, icon: StarIcon },

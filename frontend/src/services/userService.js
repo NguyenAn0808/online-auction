@@ -4,7 +4,7 @@ const userService = {
   // Get all users with filtering, sorting, and pagination
   getAllUsers: async (params = {}) => {
     try {
-      const response = await api.get("/users", { params });
+      const response = await api.get("/api/users", { params });
       return response.data;
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -15,7 +15,7 @@ const userService = {
   // Legacy method with client-side filtering (kept for backward compatibility)
   getAllUsersWithClientFiltering: async (params = {}) => {
     try {
-      const response = await api.get("/users", {
+      const response = await api.get("/api/users", {
         params: { page: 1, limit: 1000 },
       });
       let users = response.data?.data || [];
@@ -36,12 +36,12 @@ const userService = {
         users = users.filter((user) => user.role === params.role);
       }
 
-      // Filter by verification status
-      if (params.is_verify !== undefined && params.is_verify !== "all") {
-        const isVerify =
-          params.is_verify === "true" || params.is_verify === true;
-        users = users.filter((user) => user.is_verify === isVerify);
-      }
+      // // Filter by verification status
+      // if (params.is_verify !== undefined && params.is_verify !== "all") {
+      //   const isVerify =
+      //     params.is_verify === "true" || params.is_verify === true;
+      //   users = users.filter((user) => user.is_verify === isVerify);
+      // }
 
       // Sort users
       if (params.sortBy) {
@@ -110,7 +110,7 @@ const userService = {
   // Create new user
   createUser: async (userData) => {
     try {
-      const response = await api.post("/users", userData);
+      const response = await api.post("/api/users", userData);
       return response.data;
     } catch (error) {
       console.error("Error creating user:", error);
@@ -121,7 +121,7 @@ const userService = {
   // Update user
   updateUser: async (id, userData) => {
     try {
-      const response = await api.put(`/users/${id}`, userData);
+      const response = await api.put(`/api/users/${id}`, userData);
       return response.data;
     } catch (error) {
       console.error("Error updating user:", error);
@@ -132,7 +132,7 @@ const userService = {
   // Delete user
   deleteUser: async (id) => {
     try {
-      const response = await api.delete(`/users/${id}`);
+      const response = await api.delete(`/api/users/${id}`);
       return response.data;
     } catch (error) {
       console.error("Error deleting user:", error);
@@ -140,21 +140,10 @@ const userService = {
     }
   },
 
-  // Verify user
-  verifyUser: async (id) => {
-    try {
-      const response = await api.patch(`/users/${id}/verify`);
-      return response.data;
-    } catch (error) {
-      console.error("Error verifying user:", error);
-      throw error;
-    }
-  },
-
   // Update user role
   updateUserRole: async (id, role) => {
     try {
-      const response = await api.patch(`/users/${id}/role`, { role });
+      const response = await api.patch(`/api/users/${id}/role`, { role });
       return response.data;
     } catch (error) {
       console.error("Error updating user role:", error);

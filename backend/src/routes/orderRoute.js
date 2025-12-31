@@ -6,8 +6,12 @@ import {
   createOrder,
   getMyOrders,
   getOrderById,
+  getOrderByProductId,
+  getOrderMessages,
   getWonItems,
   rateTransaction,
+  sendOrderMessage,
+  updatePaymentProof,
 } from "../controllers/orderController.js";
 import { authenticate, authorize } from "../middleware/authMiddleware.js";
 import {
@@ -68,6 +72,15 @@ router.post(
   createOrder
 );
 
+router.post(
+  "/:orderId/payment-proof",
+  authenticate,
+  authorize("bidder"),
+  uploadSingle,
+  handleMulterError,
+  updatePaymentProof
+);
+
 /**
  * @openapi
  * /api/orders/{orderId}/ship:
@@ -119,7 +132,7 @@ router.post(
  *        description: Internal server error
  */
 router.patch(
-  "/:orderId/ship",
+  "/:orderId/shipment-proof",
   authenticate,
   authorize("seller"),
   uploadSingle,
@@ -173,7 +186,7 @@ router.patch(
  *        description: Internal server error
  */
 router.patch(
-  "/:orderId/receive",
+  "/:orderId/delivery-confirmation",
   authenticate,
   authorize("bidder"),
   confirmReceipt
@@ -319,4 +332,9 @@ router.get("/", authenticate, getMyOrders);
 router.get("/won", authenticate, getWonItems);
 
 router.get("/:orderId", authenticate, getOrderById);
+
+router.get("/product/:productId", authenticate, getOrderByProductId);
+router.post("/:orderId/messages", authenticate, sendOrderMessage);
+router.get("/:orderId/messages", authenticate, getOrderMessages);
+
 export default router;

@@ -20,10 +20,26 @@ import api from "./api";
  */
 export const getOrder = async (productId) => {
   try {
-    const response = await api.get(`/api/products/${productId}/order`);
+    const response = await api.get(`/api/orders/product/${productId}`);
+    return response.data?.data || response.data;
+  } catch (error) {
+    // If 404, it just means no order exists yet (not an error for new buyers)
+    if (error.response && error.response.status === 404) {
+      return null;
+    }
+    console.error("Error fetching order:", error);
+    throw error;
+  }
+};
+
+export const createOrder = async (formData) => {
+  try {
+    const response = await api.post("/api/orders", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
     return response.data;
   } catch (error) {
-    console.error("Error fetching order:", error);
+    console.error("Error creating order:", error);
     throw error;
   }
 };
@@ -193,6 +209,7 @@ export default {
   getOrder,
   listOrders,
   getWonItems,
+  createOrder,
   submitPayment,
   submitShipment,
   confirmDelivery,
