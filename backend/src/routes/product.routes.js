@@ -59,6 +59,13 @@ router.post(
   ProductController.rejectBidder
 );
 
+router.post(
+  "/:product_id/unblock-bidder",
+  authenticate,
+  authorize("seller"),
+  ProductController.unblockBidder
+);
+
 // Description history routes (append-only descriptions per requirements 3.2)
 router.get("/:id/descriptions", ProductController.getDescriptionHistory);
 router.post(

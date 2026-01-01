@@ -25,8 +25,8 @@ export const initBidsTable = async () => {
 class Bid {
   static async add({ product_id, bidder_id, amount, max_bid }) {
     const query = `
-      INSERT INTO bids (product_id, bidder_id, amount, max_bid)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO bids (product_id, bidder_id, amount, max_bid, status)
+      VALUES ($1, $2, $3, $4, 'accepted')
       RETURNING *
     `;
     const result = await pool.query(query, [product_id, bidder_id, amount, max_bid]);
@@ -43,9 +43,13 @@ class Bid {
   // Get all active bids for auto-bid competition (ordered by max_bid DESC, timestamp ASC)
   static async getActiveBidsForCompetition(product_id) {
     const query = `
-      SELECT * FROM bids
-      WHERE product_id = $1 AND status != 'rejected' AND max_bid IS NOT NULL
-      ORDER BY max_bid DESC, timestamp ASC
+      SELECT b.* FROM bids b
+      LEFT JOIN blocked_bidders bb ON b.product_id = bb.product_id AND b.bidder_id = bb.user_id
+      WHERE b.product_id = $1 
+        AND b.status != 'rejected' 
+        AND b.max_bid IS NOT NULL
+        AND bb.user_id IS NULL
+      ORDER BY b.max_bid DESC, b.timestamp ASC
     `;
     const result = await pool.query(query, [product_id]);
     return result.rows;
@@ -111,6 +115,16 @@ class Bid {
     return result.rows;
   }
 
+  // Reject all active bids by a user for a product
+  static async rejectBidsByUser(product_id, bidder_id) {
+    const query = `
+      UPDATE bids 
+      SET status = 'rejected'
+      WHERE product_id = $1 AND bidder_id = $2 AND status != 'rejected'
+    `;
+    await pool.query(query, [product_id, bidder_id]);
+  }
+
   static async rejectBidderForProduct(product_id, bidder_id) {
     const query = `
     UPDATE bids 
@@ -122,13 +136,25 @@ class Bid {
 
   static async getHighest(product_id) {
     const query = `
-      SELECT * FROM bids 
-      WHERE product_id = $1 AND status != 'rejected'
-      ORDER BY amount DESC 
+      SELECT b.* FROM bids b
+      LEFT JOIN blocked_bidders bb ON b.product_id = bb.product_id AND b.bidder_id = bb.user_id
+      WHERE b.product_id = $1 
+        AND b.status != 'rejected'
+        AND bb.user_id IS NULL
+      ORDER BY b.amount DESC, b.timestamp DESC
       LIMIT 1
     `;
     const result = await pool.query(query, [product_id]);
     return result.rows[0]; // Returns undefined if no bids exist
+  }
+
+  static async restoreBidsByUser(product_id, bidder_id) {
+    const query = `
+      UPDATE bids 
+      SET status = 'accepted'
+      WHERE product_id = $1 AND bidder_id = $2 AND status = 'rejected'
+    `;
+    await pool.query(query, [product_id, bidder_id]);
   }
 }
 

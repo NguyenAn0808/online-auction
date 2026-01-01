@@ -233,6 +233,32 @@ export const productAPI = {
   },
 
   /**
+   * Unblock bidder (seller only, requires authentication)
+   * @param {string} productId - Product UUID
+   * @param {string} bidderId - Bidder UUID
+   * @returns {Promise<Object>}
+   */
+  unblockBidder: async (productId, bidderId) => {
+    try {
+      const response = await api.post(
+        `/api/products/${productId}/unblock-bidder`,
+        {
+          bidder_id: bidderId,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error unblocking bidder ${bidderId} for product ${productId}:`,
+        error
+      );
+      throw new Error(
+        error.response?.data?.message || "Failed to unblock bidder"
+      );
+    }
+  },
+
+  /**
    * Create product with images in a single atomic operation
    * @param {Object} productData - Product data
    * @param {File[]} imageFiles - Array of image files (minimum 3 required)

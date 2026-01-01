@@ -180,11 +180,31 @@ class ProductController {
         bidder_id
       );
 
-      if (!result.success) {
-        return res.status(403).json(result);
+      return res.status(result.success ? 200 : 403).json(result);
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  static async unblockBidder(req, res) {
+    try {
+      const seller_id = req.user.id;
+      const { product_id } = req.params;
+      const { bidder_id } = req.body;
+
+      if (!bidder_id) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Bidder ID is required" });
       }
 
-      return res.status(200).json(result);
+      const result = await ProductService.unblockBidder(
+        product_id,
+        seller_id,
+        bidder_id
+      );
+
+      return res.status(result.success ? 200 : 403).json(result);
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message });
     }

@@ -39,6 +39,27 @@ class BlockedBidderModel {
     const result = await pool.query(query, [product_id, user_id]);
     return result.rows.length > 0;
   }
+  static async remove(product_id, user_id) {
+    const query = `
+      DELETE FROM blocked_bidders 
+      WHERE product_id = $1 AND user_id = $2
+      RETURNING *
+    `;
+    const result = await pool.query(query, [product_id, user_id]);
+    return result.rows[0];
+  }
+
+  static async getByProduct(product_id) {
+    const query = `
+      SELECT bb.*, u.full_name as bidder_name 
+      FROM blocked_bidders bb
+      JOIN users u ON bb.user_id = u.id
+      WHERE bb.product_id = $1
+      ORDER BY bb.created_at DESC
+    `;
+    const result = await pool.query(query, [product_id]);
+    return result.rows;
+  }
 }
 
 export default BlockedBidderModel;

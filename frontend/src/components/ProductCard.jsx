@@ -218,9 +218,8 @@ const ProductCard = ({ product, onWatchlistChange }) => {
 
   return (
     <div
-      className={`product-card flex gap-4 cursor-pointer ${
-        isNew ? "ring-2 ring-amber-400 bg-amber-50" : ""
-      }`}
+      className={`product-card flex gap-4 cursor-pointer ${isNew ? "ring-2 ring-amber-400 bg-amber-50" : ""
+        }`}
       onClick={handleCardClick}
     >
       {/* Product Image */}
@@ -230,10 +229,11 @@ const ProductCard = ({ product, onWatchlistChange }) => {
           alt={productName || "Product"}
           className="product-image"
         />
-        {isNew && (
-          <span className="absolute top-2 left-2 text-xs font-semibold px-2 py-1 rounded bg-red-500 text-white shadow">
-            New
-          </span>
+        {/* New Badge */}
+        {new Date() - new Date(postedDate) < 60 * 60 * 1000 && (
+          <div className="absolute top-2 left-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded shadow-md z-10">
+            NEW
+          </div>
         )}
         {/* Watchlist Button */}
         <button

@@ -410,8 +410,8 @@ export default function BidsOffers() {
                                 tx.status === "completed"
                                   ? "#16a34a"
                                   : tx.status === "cancelled"
-                                  ? "#dc2626"
-                                  : "#b45309",
+                                    ? "#dc2626"
+                                    : "#b45309",
                             }}
                           >
                             {tx.status || "Unknown"}

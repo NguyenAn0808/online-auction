@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState, useCallback } from "react";
 import Notification from "./Notification";
 import productService from "../services/productService";
 import userService from "../services/userService";
@@ -49,9 +49,15 @@ function formatDateTime(dateString) {
 function useBids(productId) {
   const [bids, setBids] = useState([]);
   const [productInfo, setProductInfo] = useState(null);
+  const [blockedBidders, setBlockedBidders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bidderInfo, setBidderInfo] = useState({}); // Store bidder user info by bidder_id
   const [bidderRatings, setBidderRatings] = useState({}); // Store bidder rating summary by bidder_id
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const refresh = useCallback(() => {
+    setRefreshTrigger((v) => v + 1);
+  }, []);
 
   useEffect(() => {
     const fetchBids = async () => {
@@ -65,9 +71,13 @@ function useBids(productId) {
           setProductInfo(result.product);
         }
 
+        if (result.blockedBidders) {
+          setBlockedBidders(result.blockedBidders);
+        }
+
         const initial = bidsList.map((bid) => ({
           ...bid,
-          bidder_id: bid.bidder_id || bid.name || bid.id,
+          bidder_id: bid.bidder_id || bid.user_id || bid.name || bid.id,
           status: bid.status || "pending",
         }));
         setBids(initial);
@@ -112,10 +122,10 @@ function useBids(productId) {
         setLoading(false);
       }
     };
-    fetchBids();
-  }, [productId]);
+    if (productId) fetchBids();
+  }, [productId, refreshTrigger]);
 
-  return [bids, setBids, loading, productInfo, bidderInfo, bidderRatings];
+  return [bids, setBids, loading, productInfo, bidderInfo, bidderRatings, refresh, blockedBidders];
 }
 
 function maskName(fullName, userId, bidderUserData) {
@@ -148,8 +158,15 @@ export default function BidHistory({ isSeller = false, productId = null }) {
     productInfo,
     bidderInfo,
     bidderRatings,
-  ] = useBids(productId);
+    , refresh, apiBlocklist] = useBids(productId);
   const [blocklist, setBlocklist] = useState([]);
+
+  // Sync blocklist from API
+  useEffect(() => {
+    if (apiBlocklist) {
+      setBlocklist(apiBlocklist);
+    }
+  }, [apiBlocklist]);
   const [showBlocklist, setShowBlocklist] = useState(false);
   const [isProcessing, setIsProcessing] = useState({});
 
@@ -227,32 +244,26 @@ export default function BidHistory({ isSeller = false, productId = null }) {
   };
 
   const handleRejectBid = async (bidId) => {
-    if (!confirm("Reject this bid and block the bidder from this product?")) {
+    if (!confirm("Reject all bids from this bidder and block them from this product?")) {
       return;
     }
     try {
       setIsProcessing((prev) => ({ ...prev, [bidId]: true }));
-      // TODO: Wire to backend via bidService.rejectBid
 
-      setLocalBids((prev) =>
-        prev.map((b) => (b.id === bidId ? { ...b, status: "rejected" } : b))
-      );
+      const targetBid = localBids.find(b => b.id === bidId);
+      if (!targetBid) throw new Error("Bid not found");
 
-      const rejectedBid = localBids.find((b) => b.id === bidId);
-      if (rejectedBid) {
-        setBlocklist((prev) => [
-          ...prev,
-          {
-            bidder_id: rejectedBid.bidder_id || rejectedBid.name,
-            blocked_at: new Date().toISOString(),
-          },
-        ]);
-      }
+      const bidderId = targetBid.bidder_id;
 
-      alert("Bid rejected and bidder blocked from this product.");
+      await productService.rejectBidder(productId, bidderId);
+
+      // Force refresh of history and product info (price_holder etc)
+      refresh();
+
+      alert("Bidder rejected and blocked. Product price and winner updated.");
     } catch (error) {
       console.error("Failed to reject bid:", error);
-      alert(error?.response?.data?.message || "Failed to reject bid");
+      alert(error?.message || "Failed to reject bid");
     } finally {
       setIsProcessing((prev) => ({ ...prev, [bidId]: false }));
     }
@@ -264,12 +275,19 @@ export default function BidHistory({ isSeller = false, productId = null }) {
     }
     try {
       setIsProcessing((prev) => ({ ...prev, [bidderId]: true }));
-      // TODO: Wire to backend via bidService.unblockBidder
+      await productService.unblockBidder(productId, bidderId);
+
+      // Update local state
       setBlocklist((prev) => prev.filter((b) => b.bidder_id !== bidderId));
-      alert("Bidder unblocked successfully!");
+
+      // Force refresh of history and product info
+      refresh();
+
+      alert("Bidder unblocked and bids restored successfully!");
     } catch (error) {
       console.error("Failed to unblock bidder:", error);
-      alert(error?.response?.data?.message || "Failed to unblock bidder");
+      alert(error?.message || "Failed to unblock bidder");
+    } finally {
       setIsProcessing((prev) => ({ ...prev, [bidderId]: false }));
     }
   };
@@ -564,7 +582,7 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {bid.status === "pending" ? (
+                      {bid.status !== "rejected" ? (
                         <div
                           style={{
                             display: "flex",

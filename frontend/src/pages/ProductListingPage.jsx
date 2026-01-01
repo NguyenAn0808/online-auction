@@ -59,7 +59,7 @@ const ProductListingPage = () => {
         // Build query params from URL search params
         const params = {
           page: currentPage,
-          limit: 5,
+          limit: 3,
         };
 
         if (categoryId) params.category_id = categoryId;
@@ -114,13 +114,8 @@ const ProductListingPage = () => {
     return activeCategory ? activeCategory.name : "";
   };
 
-  // Paginate products
-  const productsPerPage = 5;
-  const startIndex = (currentPage - 1) * productsPerPage;
-  const currentProducts = products.slice(
-    startIndex,
-    startIndex + productsPerPage
-  );
+  // Products are already paginated by backend
+  const currentProducts = products;
 
   return (
     <div className="min-h-screen bg-whisper">

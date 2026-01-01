@@ -17,9 +17,9 @@ import { bidService } from "../services/bidService";
 
 export default function BiddingQuickView({
   open = false,
-  onClose = () => {},
+  onClose = () => { },
   product = null,
-  onBidSuccess = () => {},
+  onBidSuccess = () => { },
 }) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -93,9 +93,8 @@ export default function BiddingQuickView({
           if (!canBid && !allowsUnrated) {
             setEligibility({
               allowed: false,
-              message: `Your positive rating (${
-                ratingPercentage?.toFixed(0) || 0
-              }%) is below 80%. You cannot bid on this product.`,
+              message: `Your positive rating (${ratingPercentage?.toFixed(0) || 0
+                }%) is below 80%. You cannot bid on this product.`,
               rating_percentage: ratingPercentage,
             });
           } else {
@@ -309,11 +308,10 @@ export default function BiddingQuickView({
                           value={maxBid}
                           onChange={(e) => setMaxBid(e.target.value)}
                           placeholder={String(minBid)}
-                          className={`w-full rounded-md border px-3 py-2 text-lg focus:ring-2 focus:ring-indigo-500 ${
-                            !eligibility.allowed || isSubmitting
-                              ? "opacity-50 cursor-not-allowed"
-                              : ""
-                          }`}
+                          className={`w-full rounded-md border px-3 py-2 text-lg focus:ring-2 focus:ring-indigo-500 ${!eligibility.allowed || isSubmitting
+                            ? "opacity-50 cursor-not-allowed"
+                            : ""
+                            }`}
                           disabled={!eligibility.allowed || isSubmitting}
                         />
                       </div>

@@ -151,13 +151,13 @@ export default function ProductOverview({ productId: propProductId }) {
       setProduct((prev) => ({
         ...prev,
         ...auctionData,
-        current_price:
-          highestBid?.amount ||
-          auctionData.current_price ||
-          prev?.current_price,
+        // ALWAYS prioritize actual product table data over inferred highest bid
+        current_price: auctionData.current_price ?? prev?.current_price,
+        price_holder: auctionData.price_holder ?? prev?.price_holder,
+        price_holder_name: auctionData.price_holder_name ?? prev?.price_holder_name,
       }));
     }
-  }, [auctionData, highestBid]);
+  }, [auctionData]);
 
   // Fetch description history when product is loaded
   useEffect(() => {
@@ -430,6 +430,22 @@ export default function ProductOverview({ productId: propProductId }) {
                   currency: "VND",
                 })}
               </p>
+
+              {/* Winning Bidder Info - Source of Truth: product.price_holder */}
+              {product.price_holder && (
+                <div
+                  className="mt-2 text-sm font-medium"
+                  style={{
+                    color: product.price_holder === user?.id ? "#16a34a" : "#2563eb",
+                    backgroundColor: product.price_holder === user?.id ? "#f0fdf4" : "#eff6ff",
+                    padding: "4px 12px",
+                    borderRadius: BORDER_RADIUS.FULL,
+                    display: "inline-block"
+                  }}
+                >
+                  🏆 {product.price_holder === user?.id ? "You are currently winning!" : `${product.price_holder_name || "A bidder"} is currently winning`}
+                </div>
+              )}
               <div
                 className="mt-1"
                 style={{

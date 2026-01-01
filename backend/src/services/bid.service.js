@@ -69,14 +69,12 @@ class BidService {
       stepPrice
     );
 
-    // 8. UPDATE PRODUCT'S CURRENT PRICE
-    if (competitionResult.winningAmount) {
-      await ProductModel.updateCurrentPrice(
-        product_id,
-        competitionResult.winningAmount,
-        competitionResult.price_holder
-      );
-    }
+    // 8. UPDATE PRODUCT'S CURRENT PRICE AND HOLDER
+    await ProductModel.updateCurrentPrice(
+      product_id,
+      competitionResult.winningAmount,
+      competitionResult.price_holder
+    );
 
     // 9. SEND NOTIFICATIONS (async, fire-and-forget)
     this.sendBidNotifications(
@@ -155,15 +153,25 @@ class BidService {
       };
     }
 
-    // Use Math.round to ensure integer values (avoid floating point issues)
     const winnerMaxBid = Math.round(parseFloat(winner.max_bid));
     const secondMaxBid = Math.round(parseFloat(secondHighest.max_bid));
 
-    // Logic Change: Winning amount is EXACTLY the second highest max_bid
-    // No step price added.
-    let winningAmount = Math.max(secondMaxBid, startPrice);
+    // Logic: Winning amount is the second highest max_bid exactly
+    // But must be at least startPrice and at most winnerMaxBid
+    let winningAmount = secondMaxBid;
 
-    // If for some reason winningAmount > winnerMaxBid (shouldn't happen due to logic below), cap it.
+    // Special case: if multiple people have the EXACT same max_bid, 
+    // the first one (winner) wins at their full max_bid
+    if (winnerMaxBid === secondMaxBid) {
+      winningAmount = winnerMaxBid;
+    }
+
+    // Ensure winningAmount is at least startPrice
+    if (winningAmount < startPrice) {
+      winningAmount = startPrice;
+    }
+
+    // Cap winningAmount at winnerMaxBid
     if (winningAmount > winnerMaxBid) {
       winningAmount = winnerMaxBid;
     }
@@ -171,11 +179,17 @@ class BidService {
     // Update winner's bid amount to the calculated price
     await Bid.updateAmount(winner.id, winningAmount);
 
-    // Update ALL other bids to their max_bid (to show they lost at their max)
-    // This includes the second place and any superseded bids
+    // Update ALL other bids
     for (const bid of activeBids) {
       if (bid.id !== winner.id) {
-        await Bid.updateAmount(bid.id, Math.round(parseFloat(bid.max_bid)));
+        if (bid.bidder_id !== winner.bidder_id) {
+          // This is a bid from someone else - they lost, so they lost at their max
+          await Bid.updateAmount(bid.id, Math.round(parseFloat(bid.max_bid)));
+        } else {
+          // This is a previous (superseded) bid from the current winner.
+          // We set it to startPrice so it doesn't interfere with "highest bid" logic in UI.
+          await Bid.updateAmount(bid.id, startPrice);
+        }
       }
     }
 
@@ -248,19 +262,94 @@ class BidService {
   static async getProductBids(product_id, status) {
     const bids = await Bid.getByProduct(product_id, status);
     const product = await ProductModel.findById(product_id);
+    const blockedBidders = await BlockedBidderModel.getByProduct(product_id);
 
     return {
       bids,
-      product: product
+      product: product,
+      blockedBidders
     };
   }
 
-  static async acceptBid(bid_id) {
-    return Bid.accept(bid_id);
+  static async denyBidder(product_id, bidder_id, seller_id) {
+    // 1. VERIFY SELLER
+    const product = await ProductModel.findById(product_id);
+    if (!product) throw new Error("Product not found");
+    if (product.seller_id !== seller_id) {
+      throw new Error("Unauthorized: Only the seller can deny bidders");
+    }
+
+    // 2. BLOCK BIDDER
+    await BlockedBidderModel.create(product_id, bidder_id);
+
+    // 3. REJECT ALL BIDS FROM THIS BIDDER
+    await Bid.rejectBidsByUser(product_id, bidder_id);
+
+    // 4. RECALCULATE COMPETITION
+    // Since this bidder is now out, we need to re-run the auto-bid logic
+    // to find the new winner and price among remaining valid bids.
+    const startPrice = Math.round(parseFloat(product.start_price || 0));
+    const stepPrice = Math.round(parseFloat(product.step_price || 0));
+
+    const competitionResult = await this.processAutoBidCompetition(
+      product_id,
+      startPrice,
+      stepPrice
+    );
+
+    // 5. UPDATE PRODUCT PRICE & HOLDER
+    // Even if there are no bids left, competitionResult handles that (winner=null)
+    const newPrice = competitionResult.winningAmount;
+    const newHolder = competitionResult.price_holder;
+
+    await ProductModel.updateCurrentPrice(product_id, newPrice, newHolder);
+
+    // 6. NOTIFY (Optional: notify new winner, etc.)
+    // For now we might just return the result.
+    // Ideally we should notify the denied bidder.
+
+    return {
+      success: true,
+      message: "Bidder denied and blocked. Auction recalculated.",
+      competition: competitionResult,
+    };
   }
 
-  static async rejectBid(bid_id) {
-    return Bid.reject(bid_id);
+  static async unblockBidder(product_id, bidder_id, seller_id) {
+    // 1. VERIFY SELLER
+    const product = await ProductModel.findById(product_id);
+    if (!product) throw new Error("Product not found");
+    if (product.seller_id !== seller_id) {
+      throw new Error("Unauthorized: Only the seller can unblock bidders");
+    }
+
+    // 2. UNBLOCK BIDDER
+    await BlockedBidderModel.remove(product_id, bidder_id);
+
+    // 3. RESTORE BIDS
+    await Bid.restoreBidsByUser(product_id, bidder_id);
+
+    // 4. RECALCULATE COMPETITION
+    const startPrice = Math.round(parseFloat(product.start_price || 0));
+    const stepPrice = Math.round(parseFloat(product.step_price || 0));
+
+    const competitionResult = await this.processAutoBidCompetition(
+      product_id,
+      startPrice,
+      stepPrice
+    );
+
+    // 5. UPDATE PRODUCT PRICE & HOLDER
+    const newPrice = competitionResult.winningAmount;
+    const newHolder = competitionResult.price_holder;
+
+    await ProductModel.updateCurrentPrice(product_id, newPrice, newHolder);
+
+    return {
+      success: true,
+      message: "Bidder unblocked and bids restored. Auction recalculated.",
+      competition: competitionResult,
+    };
   }
 
   static async getBidsByUser(bidder_id) {

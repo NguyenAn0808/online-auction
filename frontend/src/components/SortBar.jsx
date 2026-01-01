@@ -83,15 +83,15 @@ const SortBar = ({ categoryName = "" }) => {
             >
               <SortOption label="Price: Low → High" param="price_asc" />
               <SortOption label="Price: High → Low" param="price_desc" />
-              <SortOption label="End Time (Desc)" param="end_time_desc" />
-              <SortOption
+              <SortOption label="End Time" param="end_time_desc" />
+              {/* <SortOption
                 label="Bid Amount: High → Low"
                 param="bid_amount_desc"
               />
               <SortOption
                 label="Bid Amount: Low → High"
                 param="bid_amount_asc"
-              />
+              /> */}
               <ClearSortOption />
             </div>
           )}
@@ -188,9 +188,8 @@ const SortOption = ({ label, param }) => {
     <button
       type="button"
       onClick={applySort}
-      className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors ${
-        isActive ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50"
-      }`}
+      className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors ${isActive ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50"
+        }`}
     >
       {label}
     </button>
@@ -224,11 +223,10 @@ const ClearSortOption = () => {
     <button
       type="button"
       onClick={clear}
-      className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors ${
-        anyActive
-          ? "hover:bg-red-50 text-red-600"
-          : "text-gray-400 cursor-default"
-      }`}
+      className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors ${anyActive
+        ? "hover:bg-red-50 text-red-600"
+        : "text-gray-400 cursor-default"
+        }`}
       disabled={!anyActive}
     >
       Clear Sort

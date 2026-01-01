@@ -6,6 +6,7 @@ import BlockedBidderModel from "../models/blocked-bidder.model.js";
 import * as EmailService from "./emailService.js";
 import User from "../models/User.js";
 import Bid from "../models/Bid.js";
+import BidService from "./bid.service.js";
 import UploadService from "./upload.service.js";
 import { withTransaction } from "../config/database.js";
 class ProductService {
@@ -183,61 +184,49 @@ class ProductService {
 
   static async rejectBidder(product_id, seller_id, bidder_id) {
     try {
-      const product = await ProductModel.findById(product_id);
+      const result = await BidService.denyBidder(
+        product_id,
+        bidder_id,
+        seller_id
+      );
 
-      if (!product) {
-        return {
-          success: false,
-          message: "Product not found",
-        };
-      }
-
-      if (product.seller_id !== seller_id) {
-        return {
-          success: false,
-          message: "Unauthorized: Only the seller can reject bidders",
-        };
-      }
-
-      // Block the bidder for this product
-      await BlockedBidderModel.create(product_id, bidder_id);
-
-      // Reject their bids for this product
-      await Bid.rejectBidderForProduct(product_id, bidder_id);
-
-      // Find the highest bid
-      const newHighestBids = await Bid.getHighest(product_id);
-
-      // Change to the second if block the top bidder
-      const newCurrentPrice = newHighestBids
-        ? newHighestBids.amount
-        : product.start_price;
-
-      // Send email notification to the blocked bidder
-      (async () => {
-        try {
-          const blockedUser = await User.findById(bidder_id);
-          if (blockedUser?.email) {
-            await EmailService.sendBidRejectNotification(
-              blockedUser.email,
-              blockedUser.fullname,
-              product.name
-            );
+      // Send email notification to the blocked bidder (async)
+      if (result.success) {
+        (async () => {
+          try {
+            const blockedUser = await User.findById(bidder_id);
+            const product = await ProductModel.findById(product_id);
+            if (blockedUser?.email && product) {
+              await EmailService.sendBidRejectNotification(
+                blockedUser.email,
+                blockedUser.fullname,
+                product.name
+              );
+            }
+          } catch (err) {
+            console.error("Failed to send rejection email:", err);
           }
-        } catch (err) {
-          console.error("Failed to send rejection email:", err);
-        }
-      })();
+        })();
+      }
 
-      return {
-        success: true,
-        message: "Bidder blocked. Price updated to next highest bid.",
-        new_current_price: newCurrentPrice,
-        new_highest_bids: newHighestBids,
-      };
+      return result;
     } catch (error) {
       console.error("Error in rejectBidder service:", error);
       throw new Error(`Failed to reject bidder: ${error.message}`);
+    }
+  }
+
+  static async unblockBidder(product_id, seller_id, bidder_id) {
+    try {
+      const result = await BidService.unblockBidder(
+        product_id,
+        bidder_id,
+        seller_id
+      );
+      return result;
+    } catch (error) {
+      console.error("Error in unblockBidder service:", error);
+      throw new Error(`Failed to unblock bidder: ${error.message}`);
     }
   }
 
