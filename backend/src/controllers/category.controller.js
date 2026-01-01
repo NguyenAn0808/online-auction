@@ -113,7 +113,9 @@ class CategoryController {
       const result = await CategoryService.deleteCategory(id);
 
       if (!result.success) {
-        return res.status(404).json({
+        // Return 400 for constraint violations (has products/children), 404 for not found
+        const statusCode = result.message === "Category not found" ? 404 : 400;
+        return res.status(statusCode).json({
           success: false,
           message: result.message,
         });

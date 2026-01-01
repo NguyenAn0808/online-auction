@@ -102,6 +102,34 @@ class CategoryModel {
     const result = await pool.query(query, [name]);
     return result.rows.length > 0;
   }
+
+  // Check if category has products
+  static async hasProducts(id) {
+    const query = "SELECT COUNT(*) as count FROM products WHERE category_id = $1";
+    const result = await pool.query(query, [id]);
+    return parseInt(result.rows[0].count) > 0;
+  }
+
+  // Check if category has child categories
+  static async hasChildren(id) {
+    const query = "SELECT COUNT(*) as count FROM categories WHERE parent_id = $1";
+    const result = await pool.query(query, [id]);
+    return parseInt(result.rows[0].count) > 0;
+  }
+
+  // Get products count for a category
+  static async getProductsCount(id) {
+    const query = "SELECT COUNT(*) as count FROM products WHERE category_id = $1";
+    const result = await pool.query(query, [id]);
+    return parseInt(result.rows[0].count);
+  }
+
+  // Get child categories count
+  static async getChildrenCount(id) {
+    const query = "SELECT COUNT(*) as count FROM categories WHERE parent_id = $1";
+    const result = await pool.query(query, [id]);
+    return parseInt(result.rows[0].count);
+  }
 }
 
 export default CategoryModel;

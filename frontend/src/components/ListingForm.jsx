@@ -33,6 +33,9 @@ const schema = z
     description: z
       .string()
       .min(10, { message: "Description must be at least 10 characters" }),
+    auction_duration: z
+      .number({ invalid_type_error: "Please select auction duration" })
+      .min(0.003, { message: "Auction duration is required" }), // min ~5 minutes
     images: z
       .array(z.instanceof(File))
       .min(3, { message: "Please upload at least 3 photos" })
@@ -75,6 +78,7 @@ const ListingForm = () => {
       buy_now_enabled: false,
       allow_unrated_bidder: false,
       auto_extend: false,
+      auction_duration: 7, // Default to 7 days
     },
   });
 
@@ -161,9 +165,10 @@ const ListingForm = () => {
         return;
       }
 
-      const defaultEndTime = new Date(
-        Date.now() + 7 * 24 * 60 * 60 * 1000
-      ).toISOString();
+      // Calculate end time based on auction duration
+      // Values < 1 are days as fraction (e.g., 5 minutes = 5/1440 days)
+      const durationInMs = data.auction_duration * 24 * 60 * 60 * 1000;
+      const endTime = new Date(Date.now() + durationInMs).toISOString();
 
       const productData = {
         seller_id: currentUser.id,
@@ -176,7 +181,7 @@ const ListingForm = () => {
         allow_unrated_bidder: !!data.allow_unrated_bidder,
         auto_extend: !!data.auto_extend,
         currency_code: currency,
-        end_time: defaultEndTime,
+        end_time: endTime,
       };
 
       // Generate metadata (first image is thumbnail)
@@ -200,7 +205,11 @@ const ListingForm = () => {
       }
     } catch (error) {
       console.error("Failed to create listing:", error);
-      alert(error?.message || error?.response?.data?.message || "Failed to create listing");
+      alert(
+        error?.message ||
+          error?.response?.data?.message ||
+          "Failed to create listing"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -722,6 +731,36 @@ const ListingForm = () => {
               {errors.step_price && (
                 <p className="text-red-500 text-sm mt-1">
                   {errors.step_price.message}
+                </p>
+              )}
+            </div>
+
+            {/* Auction Duration */}
+            <div>
+              <label
+                htmlFor="auction_duration"
+                className="block text-sm font-medium mb-2"
+              >
+                Auction Duration
+              </label>
+              <select
+                id="auction_duration"
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                {...register("auction_duration", {
+                  setValueAs: (v) => Number(v),
+                })}
+              >
+                <option value={5 / 1440}>5 minutes (testing)</option>
+                <option value={10 / 1440}>10 minutes (testing)</option>
+                <option value={1}>1 day</option>
+                <option value={3}>3 days</option>
+                <option value={7}>7 days (recommended)</option>
+                <option value={10}>10 days</option>
+                <option value={14}>14 days</option>
+              </select>
+              {errors.auction_duration && (
+                <p className="text-red-500 text-sm mt-1">
+                  {errors.auction_duration.message}
                 </p>
               )}
             </div>

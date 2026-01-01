@@ -144,6 +144,26 @@ class CategoryService {
         };
       }
 
+      // Check if category has products
+      const hasProducts = await CategoryModel.hasProducts(id);
+      if (hasProducts) {
+        const productsCount = await CategoryModel.getProductsCount(id);
+        return {
+          success: false,
+          message: `Cannot delete category. It has ${productsCount} product(s) associated with it.`,
+        };
+      }
+
+      // Check if category has child categories
+      const hasChildren = await CategoryModel.hasChildren(id);
+      if (hasChildren) {
+        const childrenCount = await CategoryModel.getChildrenCount(id);
+        return {
+          success: false,
+          message: `Cannot delete category. It has ${childrenCount} subcategory(ies). Please delete or reassign them first.`,
+        };
+      }
+
       await CategoryModel.delete(id);
 
       return {

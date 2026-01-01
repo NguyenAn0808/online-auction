@@ -8,10 +8,10 @@ export const initProductsTable = async () => {
       category_id UUID NOT NULL,
       name VARCHAR(255) NOT NULL,
       description TEXT NOT NULL,
-      start_price DECIMAL(10, 2) NOT NULL,
-      current_price DECIMAL(10, 2),
-      step_price DECIMAL(10, 2) NOT NULL,
-      buy_now_price DECIMAL(10, 2),
+      start_price DECIMAL(15, 2) NOT NULL,
+      current_price DECIMAL(15, 2),
+      step_price DECIMAL(15, 2) NOT NULL,
+      buy_now_price DECIMAL(15, 2),
       start_time TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
       end_time TIMESTAMP WITH TIME ZONE NOT NULL,
       status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'ended', 'deleted')),
@@ -156,21 +156,27 @@ class ProductModel {
       LEFT JOIN categories c ON p.category_id = c.id
       WHERE p.status = 'active'
     `;
-    
+
     // Re-apply the same filters to count query
     let countParamIndex = 0;
     const countParams = [];
-    
+
     if (category_id) {
       const categoryCheckQuery = `SELECT parent_id FROM categories WHERE id = $1`;
-      const categoryResult = await pool.query(categoryCheckQuery, [category_id]);
-      
+      const categoryResult = await pool.query(categoryCheckQuery, [
+        category_id,
+      ]);
+
       if (categoryResult.rows.length > 0) {
         const category = categoryResult.rows[0];
         if (category.parent_id === null) {
           const childCategoriesQuery = `SELECT id FROM categories WHERE parent_id = $1`;
-          const childCategoriesResult = await pool.query(childCategoriesQuery, [category_id]);
-          const childCategoryIds = childCategoriesResult.rows.map((row) => row.id);
+          const childCategoriesResult = await pool.query(childCategoriesQuery, [
+            category_id,
+          ]);
+          const childCategoryIds = childCategoriesResult.rows.map(
+            (row) => row.id
+          );
           const allCategoryIds = [category_id, ...childCategoryIds];
           countParamIndex++;
           countQuery += ` AND p.category_id = ANY($${countParamIndex}::uuid[])`;
@@ -182,7 +188,7 @@ class ProductModel {
         }
       }
     }
-    
+
     if (search) {
       countParamIndex++;
       const searchParam1 = countParamIndex;
@@ -191,11 +197,11 @@ class ProductModel {
       countParams.push(`%${search}%`);
       countParams.push(`%${search}%`);
     }
-    
+
     if (new_only) {
       countQuery += ` AND p.created_at >= NOW() - INTERVAL '60 minutes'`;
     }
-    
+
     const countResult = await pool.query(countQuery, countParams);
     const total = parseInt(countResult.rows[0].total);
 

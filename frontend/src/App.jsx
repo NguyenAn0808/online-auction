@@ -53,10 +53,7 @@ import SellerUpgradesPage from "./pages/SellerUpgradesPage";
 import SystemSettingsPage from "./pages/SystemSettingsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 // Services
-import { seedDemo } from "./services/transactionService";
 import OAuthCallback from "./pages/OAuthCallback";
-// Seed demo transactions on app load
-seedDemo();
 
 const router = createBrowserRouter(
   createRoutesFromElements(
