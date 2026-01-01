@@ -79,12 +79,14 @@ const Header = () => {
             />
           </form>
 
-          <button
-            onClick={handleListing}
-            className="btn-primary whitespace-nowrap"
-          >
-            List Product
-          </button>
+          {user?.role !== "bidder" && (
+            <button
+              onClick={handleListing}
+              className="btn-primary whitespace-nowrap"
+            >
+              List Product
+            </button>
+          )}
 
           <button
             className="p-2 rounded-full transition btn-icon"

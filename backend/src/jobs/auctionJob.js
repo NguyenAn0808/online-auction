@@ -6,12 +6,6 @@ import Order from "../models/Order.js";
 import User from "../models/User.js";
 import * as EmailService from "../services/emailService.js";
 
-/**
- * Finalize an auction when it ends
- * - Create order if there's a winner
- * - Update product status to 'ended'
- * - Send notification emails
- */
 const finalizeAuction = async (product) => {
   try {
     const winner = await Bid.getHighest(product.id);
@@ -59,7 +53,7 @@ const finalizeAuction = async (product) => {
       // 3. Auction ends (no buyer) - Send email to seller
       const sellerUser = await User.findById(product.seller_id);
       await ProductModel.update(product.id, { status: "ended" });
-      
+
       if (sellerUser?.email) {
         await EmailService.sendAuctionNoSaleNotification(
           sellerUser.email,
