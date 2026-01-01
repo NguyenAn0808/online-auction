@@ -25,7 +25,8 @@ class ProductController {
 
       return res.status(200).json({
         success: true,
-        ...result.data,
+        items: result.data.items,
+        pagination: result.data.pagination,
       });
     } catch (error) {
       console.error("Error in getAllProducts:", error);

@@ -34,6 +34,7 @@ import { initBlockedBiddersTable } from "./models/blocked-bidder.model.js";
 import { initProductDescriptionsTable } from "./models/product-description.model.js";
 import Order from "./models/Order.js";
 import OrderMessage from "./models/OrderMessage.js";
+import { initializeCronJobs } from "./jobs/index.js";
 
 const app = express();
 
@@ -134,13 +135,6 @@ const startServer = async () => {
     await testConnection();
 
     // Initialize database tables (like Mongoose schema initialization)
-    await User.createTable();
-    await Session.createTable();
-    await OTP.createTable();
-    await Question.createTable();
-    await Answer.createTable();
-    await Order.createTable();
-    await OrderMessage.createTable();
 
     console.log("Database tables initialized");
     // Initialize database schema
@@ -154,6 +148,17 @@ const startServer = async () => {
     await initBidsTable();
     await initBlockedBiddersTable();
 
+    await User.createTable();
+    await Session.createTable();
+    await OTP.createTable();
+    await Question.createTable();
+    await Answer.createTable();
+    await Order.createTable();
+    await OrderMessage.createTable();
+    
+    // Initialize all CronJobs
+    initializeCronJobs();
+    
     // Start listening
     app.listen(config.port, () => {
       console.log(`Server is running on port ${config.port}`);

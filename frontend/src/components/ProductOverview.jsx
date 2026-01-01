@@ -28,6 +28,9 @@ import {
   SPACING,
   BORDER_RADIUS,
 } from "../constants/designSystem";
+import { useAuctionPolling } from "../hooks/useAuctionPolling";
+import { useBidPolling } from "../hooks/useBidPolling";
+import { useAuctionCountdown } from "../hooks/useAuctionCountdown";
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -61,6 +64,17 @@ export default function ProductOverview({ productId: propProductId }) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isEditDescOpen, setIsEditDescOpen] = useState(false);
   const [descriptionHistory, setDescriptionHistory] = useState([]);
+
+  // ✨ Real-time polling hooks
+  const { auctionData, loading: auctionLoading } = useAuctionPolling(productId);
+  const { bids, highestBid, bidCount } = useBidPolling(productId);
+  const { timeRemaining, hasEnded } = useAuctionCountdown(
+    auctionData?.end_time,
+    () => {
+      console.log("Auction ended!");
+      setIsEnded(true);
+    }
+  );
 
   // Fetch description history
   const fetchDescriptionHistory = async () => {
@@ -96,7 +110,7 @@ export default function ProductOverview({ productId: propProductId }) {
         // Check watchlist status
         setInWatchlist(watchlistService.isInWatchlist(productId));
 
-        // Check if ended
+        // Check if ended (initially)
         if (data.end_time) {
           const ended = new Date(data.end_time) <= new Date();
           setIsEnded(ended);
@@ -111,6 +125,20 @@ export default function ProductOverview({ productId: propProductId }) {
 
     fetchProduct();
   }, [productId]);
+
+  // Update product data when polling detects changes
+  useEffect(() => {
+    if (auctionData) {
+      setProduct((prev) => ({
+        ...prev,
+        ...auctionData,
+        current_price:
+          highestBid?.amount ||
+          auctionData.current_price ||
+          prev?.current_price,
+      }));
+    }
+  }, [auctionData, highestBid]);
 
   // Fetch description history when product is loaded
   useEffect(() => {
@@ -511,10 +539,25 @@ export default function ProductOverview({ productId: propProductId }) {
                       color: COLORS.MIDNIGHT_ASH,
                     }}
                   >
-                    Ends:
+                    {hasEnded ? "Ended:" : "Time remaining:"}
                   </span>{" "}
-                  {endTime ? endTime.toLocaleString() : "N/A"}
+                  {hasEnded
+                    ? endTime
+                      ? endTime.toLocaleString()
+                      : "Ended"
+                    : timeRemaining?.formatted || "Calculating..."}
                 </p>
+                {!hasEnded && bidCount > 0 && (
+                  <p
+                    className="mt-1"
+                    style={{
+                      fontSize: TYPOGRAPHY.SIZE_LABEL,
+                      color: COLORS.PEBBLE,
+                    }}
+                  >
+                    📊 {bidCount} bid{bidCount !== 1 ? "s" : ""}
+                  </p>
+                )}
                 {autoExtend && (
                   <p
                     className="mt-1"

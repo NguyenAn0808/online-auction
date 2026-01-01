@@ -103,6 +103,7 @@ const router = createBrowserRouter(
             path="transactions-old/:transactionId"
             element={<TransactionHistory />}
           />
+          <Route path="upgrade-requests" element={<SellingRequestPage />} />
         </Route>
 
         {/* SELLER ONLY ROUTES */}
@@ -110,7 +111,6 @@ const router = createBrowserRouter(
           <Route path="seller/transactions" element={<SellerTransactions />} />
           {/* Note: 'upgrade-requests' is typically for Bidders who want to become Sellers, 
                 so it might need 'bidder' access depending on your flow */}
-          <Route path="upgrade-requests" element={<SellingRequestPage />} />
           <Route path="seller/listing" element={<ListingPage />} />
         </Route>
 

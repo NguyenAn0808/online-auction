@@ -198,7 +198,7 @@ class BidService {
           );
         }
 
-        // To previous highest bidder if they were outbid
+        // 1. To previous highest bidder if they were outbid
         if (
           previousHighestBidderId &&
           previousHighestBidderId !== bidderId &&
@@ -208,9 +208,9 @@ class BidService {
           if (previousBidder?.email) {
             await EmailService.sendOutbidEmailToPreviousBidder(
               previousBidder.email,
+              previousBidder.full_name,
               product.name,
-              winningAmount,
-              currentBidder?.full_name || "Another bidder"
+              winningAmount
             );
           }
         }

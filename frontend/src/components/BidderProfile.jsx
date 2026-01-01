@@ -95,7 +95,7 @@ export default function BidderProfile() {
     setLoading(true);
     try {
       // 4. FIX: Use .patch to match your backend route
-      await api.post("/auth/change-password", {
+      await api.post("/api/auth/change-password", {
         currentPassword,
         newPassword,
       });
@@ -517,7 +517,7 @@ export default function BidderProfile() {
       </div>
 
       {/* --- PASSWORD / SECURITY SECTION --- */}
-      {user.hasPassword ? (
+      {user?.hasPassword !== false ? (
         <div className="grid grid-cols-1 gap-x-8 gap-y-8 py-10 md:grid-cols-3">
           <div className="px-4 sm:px-0">
             <h2 className="text-base/7 font-semibold text-gray-900">

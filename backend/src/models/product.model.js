@@ -149,11 +149,54 @@ class ProductModel {
     }
 
     // Count total for pagination
-    const countQuery = query.replace(
-      /SELECT .+ FROM/,
-      "SELECT COUNT(*) as total FROM"
-    );
-    const countResult = await pool.query(countQuery, params);
+    // Build a simpler count query without the complex SELECT
+    let countQuery = `
+      SELECT COUNT(DISTINCT p.id) as total
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.id
+      WHERE p.status = 'active'
+    `;
+    
+    // Re-apply the same filters to count query
+    let countParamIndex = 0;
+    const countParams = [];
+    
+    if (category_id) {
+      const categoryCheckQuery = `SELECT parent_id FROM categories WHERE id = $1`;
+      const categoryResult = await pool.query(categoryCheckQuery, [category_id]);
+      
+      if (categoryResult.rows.length > 0) {
+        const category = categoryResult.rows[0];
+        if (category.parent_id === null) {
+          const childCategoriesQuery = `SELECT id FROM categories WHERE parent_id = $1`;
+          const childCategoriesResult = await pool.query(childCategoriesQuery, [category_id]);
+          const childCategoryIds = childCategoriesResult.rows.map((row) => row.id);
+          const allCategoryIds = [category_id, ...childCategoryIds];
+          countParamIndex++;
+          countQuery += ` AND p.category_id = ANY($${countParamIndex}::uuid[])`;
+          countParams.push(allCategoryIds);
+        } else {
+          countParamIndex++;
+          countQuery += ` AND p.category_id = $${countParamIndex}`;
+          countParams.push(category_id);
+        }
+      }
+    }
+    
+    if (search) {
+      countParamIndex++;
+      const searchParam1 = countParamIndex;
+      countParamIndex++;
+      countQuery += ` AND (p.name ILIKE $${searchParam1} OR c.name ILIKE $${countParamIndex})`;
+      countParams.push(`%${search}%`);
+      countParams.push(`%${search}%`);
+    }
+    
+    if (new_only) {
+      countQuery += ` AND p.created_at >= NOW() - INTERVAL '60 minutes'`;
+    }
+    
+    const countResult = await pool.query(countQuery, countParams);
     const total = parseInt(countResult.rows[0].total);
 
     // Pagination

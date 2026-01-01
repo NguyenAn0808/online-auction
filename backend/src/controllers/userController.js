@@ -102,9 +102,18 @@ export const getUserById = async (req, res) => {
         .status(404)
         .json({ success: false, message: "User not found" });
     }
+    
+    // Check if user has password before deleting it
+    const hasPassword = !!(user.hashedPassword && user.hashedPassword.length > 0);
     delete user.hashedPassword;
 
-    res.json({ success: true, data: user });
+    res.json({ 
+      success: true, 
+      data: {
+        ...user,
+        hasPassword
+      }
+    });
   } catch (error) {
     console.error("Error fetching user:", error);
     res.status(500).json({ success: false, message: "Server Error" });

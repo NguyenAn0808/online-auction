@@ -11,6 +11,7 @@ import {
   SHADOWS,
 } from "../constants/designSystem";
 import { useAuth } from "../context/AuthContext";
+import { useBidPolling } from "../hooks/useBidPolling";
 // Fallbacks for demo/dev: some components assume globals like CURRENT_USER_ID / CURRENT_USER_NAME
 // Provide safe defaults from localStorage to avoid ReferenceError in dev environment.
 const CURRENT_USER_ID = (() => {
@@ -105,6 +106,23 @@ export default function BidHistory({ isSeller = false, productId = null }) {
   const [blocklist, setBlocklist] = useState([]);
   const [showBlocklist, setShowBlocklist] = useState(false);
   const [isProcessing, setIsProcessing] = useState({});
+
+  // ✨ Real-time bid polling
+  const { bids: realtimeBids, highestBid } = useBidPolling(productId);
+
+  // Update local bids when new bids arrive from polling
+  useEffect(() => {
+    if (realtimeBids && realtimeBids.length > 0) {
+      setLocalBids(
+        realtimeBids.map((bid) => ({
+          ...bid,
+          bidder_id: bid.bidder_id || bid.name || bid.id,
+          status: bid.status || "pending",
+        }))
+      );
+    }
+  }, [realtimeBids]);
+
   if (!user) {
     return null;
   }
@@ -469,7 +487,8 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                     }}
                   >
                     {/* Only show max_bid to the bidder themselves or seller */}
-                    {(bid.bidder_id === currentUserId || isSeller) && bid.max_bid ? (
+                    {(bid.bidder_id === currentUserId || isSeller) &&
+                    bid.max_bid ? (
                       <span style={{ color: COLORS.MIDNIGHT_ASH }}>
                         {Number(bid.max_bid).toLocaleString("vi-VN")} VND
                       </span>

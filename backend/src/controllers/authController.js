@@ -369,6 +369,7 @@ export const signIn = async (req, res) => {
           email: user.email,
           fullName: user.fullName,
           role: user.role,
+          hasPassword: true, // User logged in with password
         },
         accessToken,
       },
