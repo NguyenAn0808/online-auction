@@ -82,7 +82,11 @@ class BidService {
 
     // 8. UPDATE PRODUCT'S CURRENT PRICE
     if (competitionResult.winningAmount) {
-      await ProductModel.updateCurrentPrice(product_id, competitionResult.winningAmount);
+      await ProductModel.updateCurrentPrice(
+        product_id,
+        competitionResult.winningAmount,
+        competitionResult.price_holder
+      );
     }
 
     // 9. SEND NOTIFICATIONS (async, fire-and-forget)
@@ -113,7 +117,12 @@ class BidService {
     const activeBids = await Bid.getActiveBidsForCompetition(product_id);
 
     if (activeBids.length === 0) {
-      return { winner: null, winningAmount: startPrice, allBids: [] };
+      return {
+        winner: null,
+        winningAmount: startPrice,
+        price_holder: null,
+        allBids: [],
+      };
     }
 
     if (activeBids.length === 1) {
@@ -121,44 +130,45 @@ class BidService {
       const winner = activeBids[0];
       const currentAmount = Math.round(parseFloat(winner.amount));
       const winningAmount = Math.max(startPrice, currentAmount);
+
       await Bid.updateAmount(winner.id, winningAmount);
       return {
         winner: { ...winner, amount: winningAmount },
         winningAmount,
+        price_holder: winner.bidder_id, // Winner holds the product
         allBids: activeBids,
       };
     }
 
     // Multiple bidders - determine winner
-    // Winner is the one with highest max_bid (or earliest timestamp if tied)
-    const winner = activeBids[0]; // Already sorted by max_bid DESC, timestamp ASC
+    // Winner is the one with highest max_bid (to break ties: earliest timestamp)
+    const winner = activeBids[0];
     const secondHighest = activeBids[1];
 
     // Use Math.round to ensure integer values (avoid floating point issues)
     const winnerMaxBid = Math.round(parseFloat(winner.max_bid));
     const secondMaxBid = Math.round(parseFloat(secondHighest.max_bid));
 
-    // Winning amount = second highest max_bid + step_price (capped at winner's max_bid)
-    let winningAmount = secondMaxBid + stepPrice;
+    // Logic Change: Winning amount is EXACTLY the second highest max_bid
+    // No step price added.
+    let winningAmount = Math.max(secondMaxBid, startPrice);
 
-    // Cap at winner's max_bid
+    // If for some reason winningAmount > winnerMaxBid (shouldn't happen due to logic below), cap it.
     if (winningAmount > winnerMaxBid) {
       winningAmount = winnerMaxBid;
     }
 
-    // Ensure winning amount is at least start_price
-    winningAmount = Math.max(winningAmount, startPrice);
-
-    // Update winner's bid amount
+    // Update winner's bid amount to the calculated price
     await Bid.updateAmount(winner.id, winningAmount);
 
-    // Update second place bid amount to their max (they lost but show what they bid)
+    // Update second place bid amount to their max (they lost)
     await Bid.updateAmount(secondHighest.id, secondMaxBid);
 
     return {
       winner: { ...winner, amount: winningAmount },
       winningAmount,
       secondPlace: { ...secondHighest, amount: secondMaxBid },
+      price_holder: winner.bidder_id, // Winner holds the product
       allBids: activeBids,
     };
   }

@@ -12,6 +12,7 @@ export const initProductsTable = async () => {
       current_price DECIMAL(15, 2),
       step_price DECIMAL(15, 2) NOT NULL,
       buy_now_price DECIMAL(15, 2),
+      price_holder UUID,
       start_time TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
       end_time TIMESTAMP WITH TIME ZONE NOT NULL,
       status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'ended', 'deleted')),
@@ -67,6 +68,7 @@ class ProductModel {
         p.specifications,
         p.created_at,
         p.updated_at,
+        p.price_holder,
         c.name as category_name,
         pi.image_url as thumbnail
       FROM products p
@@ -246,6 +248,7 @@ class ProductModel {
         p.specifications,
         p.created_at,
         p.updated_at,
+        p.price_holder,
         c.name as category_name,
         pi.image_url as thumbnail
       FROM products p
@@ -443,14 +446,14 @@ class ProductModel {
    * @param {number} newPrice - New current price
    * @returns {Promise<Object>} - Updated product
    */
-  static async updateCurrentPrice(id, newPrice) {
+  static async updateCurrentPrice(id, newPrice, priceHolder = null) {
     const query = `
       UPDATE products
-      SET current_price = $2, updated_at = NOW()
+      SET current_price = $2, price_holder = $3, updated_at = NOW()
       WHERE id = $1
       RETURNING *
     `;
-    const result = await pool.query(query, [id, newPrice]);
+    const result = await pool.query(query, [id, newPrice, priceHolder]);
     return result.rows[0];
   }
 }
