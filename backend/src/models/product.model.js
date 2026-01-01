@@ -250,10 +250,12 @@ class ProductModel {
         p.updated_at,
         p.price_holder,
         c.name as category_name,
-        pi.image_url as thumbnail
+        pi.image_url as thumbnail,
+        u.full_name as price_holder_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_thumbnail = true
+      LEFT JOIN users u ON p.price_holder = u.id
       WHERE p.id = $1
     `;
 

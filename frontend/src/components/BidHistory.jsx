@@ -33,8 +33,6 @@ const CURRENT_USER_NAME = (() => {
 })();
 
 // Minimal usersData mock to prevent runtime errors in demo mode when user service is not wired.
-const usersData = window.__USERS_DATA__ || [];
-
 // Helper to format time ago
 function formatTimeAgo(dateString) {
   const date = new Date(dateString);
@@ -51,16 +49,9 @@ function formatTimeAgo(dateString) {
   return `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
 }
 
-// demo ratings for bidders (would come from user service)
-const bidderRatings = {
-  "Jane Cooper": 4.5,
-  "John Doe": 4.2,
-  "Alex Smith": 4.0,
-  "Lisa Wong": 4.8,
-};
-
 function useBids(productId) {
   const [bids, setBids] = useState([]);
+  const [productInfo, setProductInfo] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -68,7 +59,14 @@ function useBids(productId) {
       try {
         setLoading(true);
         const result = await productService.getBidHistory(productId);
-        const initial = (Array.isArray(result) ? result : []).map((bid) => ({
+        // Handle both old array format (fallback) and new object format
+        const bidsList = Array.isArray(result) ? result : (result.bids || []);
+
+        if (result.product) {
+          setProductInfo(result.product);
+        }
+
+        const initial = bidsList.map((bid) => ({
           ...bid,
           bidder_id: bid.bidder_id || bid.name || bid.id,
           status: bid.status || "pending",
@@ -84,7 +82,7 @@ function useBids(productId) {
     fetchBids();
   }, [productId]);
 
-  return [bids, setBids, loading];
+  return [bids, setBids, loading, productInfo];
 }
 
 function maskName(fullName, userId) {
@@ -102,7 +100,7 @@ function maskName(fullName, userId) {
 
 export default function BidHistory({ isSeller = false, productId = null }) {
   const { user } = useAuth();
-  const [localBids, setLocalBids, loading] = useBids(productId);
+  const [localBids, setLocalBids, loading, productInfo] = useBids(productId);
   const [blocklist, setBlocklist] = useState([]);
   const [showBlocklist, setShowBlocklist] = useState(false);
   const [isProcessing, setIsProcessing] = useState({});
@@ -201,23 +199,9 @@ export default function BidHistory({ isSeller = false, productId = null }) {
     } catch (error) {
       console.error("Failed to unblock bidder:", error);
       alert(error?.response?.data?.message || "Failed to unblock bidder");
-    } finally {
       setIsProcessing((prev) => ({ ...prev, [bidderId]: false }));
     }
   };
-
-  function renderRating(rating) {
-    return (
-      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-        <span style={{ fontSize: TYPOGRAPHY.SIZE_LABEL, color: COLORS.PEBBLE }}>
-          {rating.toFixed(1)}
-        </span>
-        <span style={{ fontSize: TYPOGRAPHY.SIZE_LABEL, color: "#FBBF24" }}>
-          ★
-        </span>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -244,6 +228,21 @@ export default function BidHistory({ isSeller = false, productId = null }) {
           >
             Bidding history
           </h2>
+          {productInfo && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              {productInfo.price_holder_name && (
+                <p
+                  style={{
+                    fontSize: TYPOGRAPHY.SIZE_LABEL,
+                    color: COLORS.PEBBLE,
+                    margin: 0,
+                  }}
+                >
+                  Held by: <span style={{ fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD, color: COLORS.MIDNIGHT_ASH }}>{productInfo.price_holder_name}</span>
+                </p>
+              )}
+            </div>
+          )}
           <p
             style={{
               fontSize: TYPOGRAPHY.SIZE_LABEL,
@@ -275,7 +274,11 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                   color: COLORS.MIDNIGHT_ASH,
                 }}
               >
-                ${highest?.amount?.toFixed(2)}
+                {productInfo?.current_price ? (
+                  <span>${Number(productInfo.current_price).toLocaleString("vi-VN")}</span>
+                ) : (
+                  <span>${highest?.amount?.toFixed(2)}</span>
+                )}
               </span>
             </div>
           )}
@@ -336,49 +339,7 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                   color: COLORS.MIDNIGHT_ASH,
                 }}
               >
-                Max Bid
-              </th>
-              <th
-                style={{
-                  paddingLeft: SPACING.M,
-                  paddingRight: SPACING.M,
-                  paddingTop: SPACING.M,
-                  paddingBottom: SPACING.M,
-                  textAlign: "left",
-                  fontSize: TYPOGRAPHY.SIZE_LABEL,
-                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                  color: COLORS.MIDNIGHT_ASH,
-                }}
-              >
-                Rating
-              </th>
-              <th
-                style={{
-                  paddingLeft: SPACING.M,
-                  paddingRight: SPACING.M,
-                  paddingTop: SPACING.M,
-                  paddingBottom: SPACING.M,
-                  textAlign: "left",
-                  fontSize: TYPOGRAPHY.SIZE_LABEL,
-                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                  color: COLORS.MIDNIGHT_ASH,
-                }}
-              >
                 Time
-              </th>
-              <th
-                style={{
-                  paddingLeft: SPACING.M,
-                  paddingRight: SPACING.M,
-                  paddingTop: SPACING.M,
-                  paddingBottom: SPACING.M,
-                  textAlign: "left",
-                  fontSize: TYPOGRAPHY.SIZE_LABEL,
-                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                  color: COLORS.MIDNIGHT_ASH,
-                }}
-              >
-                Status
               </th>
               {isSeller && (
                 <th
@@ -476,49 +437,7 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                       </span>
                     )}
                   </td>
-                  <td
-                    style={{
-                      paddingLeft: SPACING.M,
-                      paddingRight: SPACING.M,
-                      paddingTop: SPACING.M,
-                      paddingBottom: SPACING.M,
-                      fontSize: TYPOGRAPHY.SIZE_BODY,
-                      color: COLORS.PEBBLE,
-                    }}
-                  >
-                    {/* Only show max_bid to the bidder themselves or seller */}
-                    {(bid.bidder_id === currentUserId || isSeller) &&
-                    bid.max_bid ? (
-                      <span style={{ color: COLORS.MIDNIGHT_ASH }}>
-                        {Number(bid.max_bid).toLocaleString("vi-VN")} VND
-                      </span>
-                    ) : bid.max_bid ? (
-                      <span style={{ fontStyle: "italic" }}>Hidden</span>
-                    ) : (
-                      <span>—</span>
-                    )}
-                  </td>
-                  <td
-                    style={{
-                      paddingLeft: SPACING.M,
-                      paddingRight: SPACING.M,
-                      paddingTop: SPACING.M,
-                      paddingBottom: SPACING.M,
-                    }}
-                  >
-                    {bidderRatings[bid.name] ? (
-                      renderRating(bidderRatings[bid.name])
-                    ) : (
-                      <span
-                        style={{
-                          fontSize: TYPOGRAPHY.SIZE_LABEL,
-                          color: COLORS.PEBBLE,
-                        }}
-                      >
-                        No rating
-                      </span>
-                    )}
-                  </td>
+
                   <td
                     style={{
                       paddingLeft: SPACING.M,
@@ -529,60 +448,9 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                       color: COLORS.PEBBLE,
                     }}
                   >
-                    {formatTimeAgo(bid.time)}
+                    {formatTimeAgo(bid.timestamp)}
                   </td>
-                  <td
-                    style={{
-                      paddingLeft: SPACING.M,
-                      paddingRight: SPACING.M,
-                      paddingTop: SPACING.M,
-                      paddingBottom: SPACING.M,
-                      fontSize: TYPOGRAPHY.SIZE_LABEL,
-                    }}
-                  >
-                    {/* {bid.status === "accepted" && (
-                      <span
-                        style={{
-                          padding: "4px 10px",
-                          borderRadius: BORDER_RADIUS.FULL,
-                          backgroundColor: "#DCFCE7",
-                          color: "#166534",
-                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                          fontSize: TYPOGRAPHY.SIZE_LABEL,
-                        }}
-                      >
-                        Accepted
-                      </span>
-                    )} */}
-                    {bid.status === "rejected" && (
-                      <span
-                        style={{
-                          padding: "4px 10px",
-                          borderRadius: BORDER_RADIUS.FULL,
-                          backgroundColor: "#FEE2E2",
-                          color: "#991B1B",
-                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                          fontSize: TYPOGRAPHY.SIZE_LABEL,
-                        }}
-                      >
-                        Rejected
-                      </span>
-                    )}
-                    {bid.status === "pending" && (
-                      <span
-                        style={{
-                          padding: "4px 10px",
-                          borderRadius: BORDER_RADIUS.FULL,
-                          backgroundColor: "#FEF9C3",
-                          color: "#854D0E",
-                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                          fontSize: TYPOGRAPHY.SIZE_LABEL,
-                        }}
-                      >
-                        Pending
-                      </span>
-                    )}
-                  </td>
+
                   {isSeller && (
                     <td
                       style={{

@@ -71,13 +71,18 @@ class Bid {
   }
 
   static async getByProduct(product_id, status = null) {
-    let query = `SELECT * FROM bids WHERE product_id = $1`;
+    let query = `
+      SELECT b.*, u.full_name as bidder_name 
+      FROM bids b
+      JOIN users u ON b.bidder_id = u.id
+      WHERE b.product_id = $1
+    `;
     const params = [product_id];
     if (status) {
-      query += ` AND status = $2`;
+      query += ` AND b.status = $2`;
       params.push(status);
     }
-    query += " ORDER BY timestamp DESC";
+    query += " ORDER BY b.timestamp DESC";
     const result = await pool.query(query, params);
     return result.rows;
   }

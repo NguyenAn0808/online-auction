@@ -52,26 +52,15 @@ class BidService {
     let bidRecord;
     const previousHighestBidderId = currentHighest?.bidder_id;
 
-    if (existingBid) {
-      // User is updating their max_bid - only allow increasing
-      const existingMaxBid = Math.round(parseFloat(existingBid.max_bid));
-      if (maxBidAmount <= existingMaxBid) {
-        throw new Error(
-          `You can only increase your maximum bid. Current max: ${existingMaxBid.toLocaleString("vi-VN")} VND`
-        );
-      }
-      // Update existing bid's max_bid
-      bidRecord = await Bid.updateMaxBid(existingBid.id, maxBidAmount);
-    } else {
-      // New bid - calculate initial amount
-      const initialAmount = minBid;
-      bidRecord = await Bid.add({
-        product_id,
-        bidder_id,
-        amount: initialAmount,
-        max_bid: maxBidAmount,
-      });
-    }
+    // 7. ALWAYS ADD NEW BID (History requirement: one user can bid many times)
+    // We don't update existing bids anymore. Every bid action is a new record.
+    const initialAmount = minBid;
+    bidRecord = await Bid.add({
+      product_id,
+      bidder_id,
+      amount: initialAmount,
+      max_bid: maxBidAmount,
+    });
 
     // 7. PROCESS AUTO-BID COMPETITION
     const competitionResult = await this.processAutoBidCompetition(
@@ -128,8 +117,8 @@ class BidService {
     if (activeBids.length === 1) {
       // Only one bidder - they win at start price or their current amount
       const winner = activeBids[0];
-      const currentAmount = Math.round(parseFloat(winner.amount));
-      const winningAmount = Math.max(startPrice, currentAmount);
+      // If only one bid exists, price matches start price
+      const winningAmount = startPrice;
 
       await Bid.updateAmount(winner.id, winningAmount);
       return {
@@ -143,7 +132,28 @@ class BidService {
     // Multiple bidders - determine winner
     // Winner is the one with highest max_bid (to break ties: earliest timestamp)
     const winner = activeBids[0];
-    const secondHighest = activeBids[1];
+
+    // Find second highest DISTINCT bidder
+    let secondHighest = null;
+    for (let i = 1; i < activeBids.length; i++) {
+      if (activeBids[i].bidder_id !== winner.bidder_id) {
+        secondHighest = activeBids[i];
+        break;
+      }
+    }
+
+    if (!secondHighest) {
+      // Only one distinct bidder (but maybe multiple bids from them)
+      // Price stays at startPrice (or minimum possible)
+      const winningAmount = startPrice;
+      await Bid.updateAmount(winner.id, winningAmount);
+      return {
+        winner: { ...winner, amount: winningAmount },
+        winningAmount,
+        price_holder: winner.bidder_id,
+        allBids: activeBids,
+      };
+    }
 
     // Use Math.round to ensure integer values (avoid floating point issues)
     const winnerMaxBid = Math.round(parseFloat(winner.max_bid));
@@ -161,8 +171,13 @@ class BidService {
     // Update winner's bid amount to the calculated price
     await Bid.updateAmount(winner.id, winningAmount);
 
-    // Update second place bid amount to their max (they lost)
-    await Bid.updateAmount(secondHighest.id, secondMaxBid);
+    // Update ALL other bids to their max_bid (to show they lost at their max)
+    // This includes the second place and any superseded bids
+    for (const bid of activeBids) {
+      if (bid.id !== winner.id) {
+        await Bid.updateAmount(bid.id, Math.round(parseFloat(bid.max_bid)));
+      }
+    }
 
     return {
       winner: { ...winner, amount: winningAmount },
@@ -231,7 +246,13 @@ class BidService {
   }
 
   static async getProductBids(product_id, status) {
-    return Bid.getByProduct(product_id, status);
+    const bids = await Bid.getByProduct(product_id, status);
+    const product = await ProductModel.findById(product_id);
+
+    return {
+      bids,
+      product: product
+    };
   }
 
   static async acceptBid(bid_id) {

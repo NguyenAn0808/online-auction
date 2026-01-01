@@ -477,9 +477,12 @@ export const productHelpers = {
       const response = await api.get(`/api/bids`, {
         params: { product_id: productId },
       });
-      const bids = response.data?.data || [];
+      const data = response.data?.data || {};
+      const bids = Array.isArray(data) ? data : (data.bids || []);
+      const product = data.product || null;
+
       // Map to expected format for BidHistory component
-      return bids.map((bid) => ({
+      const mappedBids = bids.map((bid) => ({
         id: bid.id,
         bidder_id: bid.bidder_id,
         amount: Number(bid.amount),
@@ -487,6 +490,8 @@ export const productHelpers = {
         status: bid.status || "pending",
         name: bid.bidder_name || "Anonymous Bidder",
       }));
+
+      return { bids: mappedBids, product };
     } catch (error) {
       console.error("Error fetching bid history:", error);
       return [];
