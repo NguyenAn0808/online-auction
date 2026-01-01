@@ -58,6 +58,7 @@ class ProductModel {
         p.name,
         p.description,
         p.start_price,
+        p.current_price,
         p.step_price,
         p.buy_now_price,
         p.start_time,
@@ -68,12 +69,21 @@ class ProductModel {
         p.specifications,
         p.created_at,
         p.updated_at,
-        p.price_holder,
+        p.price_holder AS highest_bidder_id,
+        u2.full_name AS price_holder_name,
+        COALESCE(bc.bid_count, 0) AS bid_count,
         c.name as category_name,
         pi.image_url as thumbnail
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_thumbnail = true
+      LEFT JOIN (
+        SELECT product_id, COUNT(*) AS bid_count
+        FROM bids
+        WHERE status != 'rejected'
+        GROUP BY product_id
+      ) bc ON bc.product_id = p.id
+      LEFT JOIN users u2 ON p.price_holder = u2.id
       WHERE p.status = 'active'
     `;
 

@@ -3,6 +3,8 @@
 import { useMemo, useEffect, useState } from "react";
 import Notification from "./Notification";
 import productService from "../services/productService";
+import userService from "../services/userService";
+import ratingService from "../services/ratingService";
 import {
   COLORS,
   TYPOGRAPHY,
@@ -32,27 +34,24 @@ const CURRENT_USER_NAME = (() => {
   }
 })();
 
-// Minimal usersData mock to prevent runtime errors in demo mode when user service is not wired.
-// Helper to format time ago
-function formatTimeAgo(dateString) {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 60)
-    return `${diffMins} minute${diffMins !== 1 ? "s" : ""} ago`;
-  if (diffHours < 24)
-    return `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`;
-  return `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
+// Helper to format timestamp as dd/mm/yyyy hh:mm
+function formatDateTime(dateString) {
+  const d = new Date(dateString);
+  const pad = (n) => String(n).padStart(2, "0");
+  const dd = pad(d.getDate());
+  const mm = pad(d.getMonth() + 1);
+  const yyyy = d.getFullYear();
+  const hh = pad(d.getHours());
+  const min = pad(d.getMinutes());
+  return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
 }
 
 function useBids(productId) {
   const [bids, setBids] = useState([]);
   const [productInfo, setProductInfo] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [bidderInfo, setBidderInfo] = useState({}); // Store bidder user info by bidder_id
+  const [bidderRatings, setBidderRatings] = useState({}); // Store bidder rating summary by bidder_id
 
   useEffect(() => {
     const fetchBids = async () => {
@@ -60,7 +59,7 @@ function useBids(productId) {
         setLoading(true);
         const result = await productService.getBidHistory(productId);
         // Handle both old array format (fallback) and new object format
-        const bidsList = Array.isArray(result) ? result : (result.bids || []);
+        const bidsList = Array.isArray(result) ? result : result.bids || [];
 
         if (result.product) {
           setProductInfo(result.product);
@@ -72,6 +71,40 @@ function useBids(productId) {
           status: bid.status || "pending",
         }));
         setBids(initial);
+
+        // Fetch bidder user info for each unique bidder_id
+        const uniqueBidderIds = [
+          ...new Set(initial.map((bid) => bid.bidder_id).filter(Boolean)),
+        ];
+        const bidderInfoMap = {};
+        const bidderRatingsMap = {};
+
+        await Promise.all(
+          uniqueBidderIds.map(async (bidderId) => {
+            try {
+              const userData = await userService.getUserById(bidderId);
+              bidderInfoMap[bidderId] = userData;
+            } catch (err) {
+              console.error(`Failed to load bidder info for ${bidderId}:`, err);
+              bidderInfoMap[bidderId] = null;
+            }
+            try {
+              const summary = await ratingService.getUserRatingEligibility(
+                bidderId
+              );
+              bidderRatingsMap[bidderId] = summary;
+            } catch (err) {
+              console.error(
+                `Failed to load bidder rating for ${bidderId}:`,
+                err
+              );
+              bidderRatingsMap[bidderId] = null;
+            }
+          })
+        );
+
+        setBidderInfo(bidderInfoMap);
+        setBidderRatings(bidderRatingsMap);
       } catch (error) {
         console.error("Error fetching bid history:", error);
         setBids([]);
@@ -82,30 +115,45 @@ function useBids(productId) {
     fetchBids();
   }, [productId]);
 
-  return [bids, setBids, loading, productInfo];
+  return [bids, setBids, loading, productInfo, bidderInfo, bidderRatings];
 }
 
-function maskName(fullName, userId) {
-  if (!fullName) return "-";
-  if (fullName === CURRENT_USER_NAME) return "You";
-  const parts = fullName.trim().split(" ");
-  if (parts.length > 1) {
-    const last = parts[parts.length - 1];
-    return `**** ${last}`;
+function maskName(fullName, userId, bidderUserData) {
+  // If we have bidder user data, use that for masking
+  const nameToMask =
+    bidderUserData?.fullName || bidderUserData?.full_name || fullName;
+
+  if (!nameToMask) return "-";
+  if (nameToMask === CURRENT_USER_NAME) return "You";
+
+  // Remove spaces and get the actual name string
+  const nameWithoutSpaces = nameToMask.trim().replace(/\s+/g, "");
+
+  // If name is less than 3 characters, mask completely
+  if (nameWithoutSpaces.length < 3) {
+    return "*".repeat(nameWithoutSpaces.length);
   }
-  // single name: show first char and mask rest
-  if (fullName.length <= 1) return "*";
-  return `${fullName.charAt(0)}***`;
+
+  // Always show "****" followed by last 3 characters
+  const last3 = nameWithoutSpaces.slice(-3);
+  return "****" + last3;
 }
 
 export default function BidHistory({ isSeller = false, productId = null }) {
   const { user } = useAuth();
-  const [localBids, setLocalBids, loading, productInfo] = useBids(productId);
+  const [
+    localBids,
+    setLocalBids,
+    loading,
+    productInfo,
+    bidderInfo,
+    bidderRatings,
+  ] = useBids(productId);
   const [blocklist, setBlocklist] = useState([]);
   const [showBlocklist, setShowBlocklist] = useState(false);
   const [isProcessing, setIsProcessing] = useState({});
 
-  // ✨ Real-time bid polling
+  // Real-time bid polling
   const { bids: realtimeBids, highestBid } = useBidPolling(productId);
 
   // Update local bids when new bids arrive from polling
@@ -138,6 +186,29 @@ export default function BidHistory({ isSeller = false, productId = null }) {
 
   const highest = sorted[0];
   const isCurrentUserHighest = highest && highest.bidder_id === currentUserId;
+
+  const getBidderRatingText = (bidderId) => {
+    const summary = bidderRatings?.[bidderId];
+    if (!summary) return null;
+    let percent = null;
+    if (typeof summary.rating_percentage === "number") {
+      percent = Math.round(summary.rating_percentage);
+    } else if (
+      summary.positive_ratings != null &&
+      summary.total_ratings != null
+    ) {
+      if (summary.total_ratings === 0) {
+        percent = 0;
+      } else {
+        percent = Math.round(
+          (summary.positive_ratings / summary.total_ratings) * 100
+        );
+      }
+    }
+    if (percent === 0) return "No ratings";
+    if (percent == null) return null;
+    return `${percent}%`;
+  };
 
   const handleAcceptBid = async (bidId) => {
     try {
@@ -229,7 +300,9 @@ export default function BidHistory({ isSeller = false, productId = null }) {
             Bidding history
           </h2>
           {productInfo && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "4px" }}
+            >
               {productInfo.price_holder_name && (
                 <p
                   style={{
@@ -238,7 +311,15 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                     margin: 0,
                   }}
                 >
-                  Held by: <span style={{ fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD, color: COLORS.MIDNIGHT_ASH }}>{productInfo.price_holder_name}</span>
+                  Held by:{" "}
+                  <span
+                    style={{
+                      fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                      color: COLORS.MIDNIGHT_ASH,
+                    }}
+                  >
+                    {productInfo.price_holder_name}
+                  </span>
                 </p>
               )}
             </div>
@@ -275,7 +356,9 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                 }}
               >
                 {productInfo?.current_price ? (
-                  <span>${Number(productInfo.current_price).toLocaleString("vi-VN")}</span>
+                  <span>
+                    ${Number(productInfo.current_price).toLocaleString("vi-VN")}
+                  </span>
                 ) : (
                   <span>${highest?.amount?.toFixed(2)}</span>
                 )}
@@ -397,7 +480,25 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                           color: COLORS.MIDNIGHT_ASH,
                         }}
                       >
-                        {maskName(bid.name)}{" "}
+                        {maskName(
+                          bid.name,
+                          bid.bidder_id,
+                          bidderInfo[bid.bidder_id]
+                        )}{" "}
+                        {(() => {
+                          const txt = getBidderRatingText(bid.bidder_id);
+                          return txt ? (
+                            <span
+                              style={{
+                                marginLeft: SPACING.S,
+                                fontSize: TYPOGRAPHY.SIZE_LABEL,
+                                color: COLORS.PEBBLE,
+                              }}
+                            >
+                              ({txt})
+                            </span>
+                          ) : null;
+                        })()}
                         {isHighest ? (
                           <span
                             style={{
@@ -448,7 +549,7 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                       color: COLORS.PEBBLE,
                     }}
                   >
-                    {formatTimeAgo(bid.timestamp)}
+                    {formatDateTime(bid.timestamp)}
                   </td>
 
                   {isSeller && (
@@ -602,7 +703,11 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                           fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
                         }}
                       >
-                        {maskName(blocked.bidder_id)}
+                        {maskName(
+                          null,
+                          blocked.bidder_id,
+                          bidderInfo[blocked.bidder_id]
+                        )}
                       </div>
                       <div
                         style={{

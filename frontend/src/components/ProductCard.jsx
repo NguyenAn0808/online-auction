@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import BiddingQuickView from "./BiddingQuickView";
 import watchlistService from "../services/watchlistService";
 import { useAuth } from "../context/AuthContext";
+import userService from "../services/userService";
 
 const ProductCard = ({ product, onWatchlistChange }) => {
   const { user } = useAuth();
@@ -17,7 +18,9 @@ const ProductCard = ({ product, onWatchlistChange }) => {
   const buyNowPrice = product?.buy_now_price || 0;
   const bidCount = product?.bid_count || 0;
   const highestBidder = product?.highest_bidder_id || "N/A";
-  const postedDate = product?.posted_date || product?.start_time;
+  const [highestBidderMasked, setHighestBidderMasked] = useState("N/A");
+  const postedDate =
+    product?.posted_date || product?.start_time || product?.created_at;
   const endTime = product?.end_time;
 
   const thumbnail =
@@ -41,6 +44,52 @@ const ProductCard = ({ product, onWatchlistChange }) => {
       }
     }
   }, [productId, user?.id]);
+
+  // Masking helper: always show **** + last 3; if current user, show "You"
+  const maskName = (name, id) => {
+    if (!name) return null;
+    if (
+      user &&
+      (id === user.id || name === user.fullName || name === user.username)
+    ) {
+      return "You";
+    }
+    const compact = String(name).trim().replace(/\s+/g, "");
+    if (compact.length < 3) return "*".repeat(compact.length);
+    return "****" + compact.slice(-3);
+  };
+
+  // Fetch and mask highest bidder's display name
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const id = product?.highest_bidder_id;
+        const direct = product?.price_holder_name; // may be provided by backend
+        if (!id && !direct) {
+          if (!cancelled) setHighestBidderMasked("N/A");
+          return;
+        }
+        let name = direct || null;
+        if (!name && id) {
+          try {
+            const u = await userService.getUserById(id);
+            name = u?.fullName || u?.full_name || u?.username || null;
+          } catch (e) {
+            name = null;
+          }
+        }
+        const masked = maskName(name, id) || "N/A";
+        if (!cancelled) setHighestBidderMasked(masked);
+      } catch (e) {
+        if (!cancelled) setHighestBidderMasked("N/A");
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [product?.highest_bidder_id, product?.price_holder_name, user?.id]);
 
   const requireAuth = (actionCallback) => {
     if (!user) {
@@ -69,11 +118,11 @@ const ProductCard = ({ product, onWatchlistChange }) => {
     return `${minutes}m`;
   };
 
-  // Format date
+  // Absolute date/time (vi-VN)
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-GB", {
+    return date.toLocaleDateString("en-US", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -83,11 +132,47 @@ const ProductCard = ({ product, onWatchlistChange }) => {
   const formatTime = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toLocaleTimeString("en-GB", {
+    return date.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
     });
   };
+
+  // Relative (past) like "x ngày trước" / "x giờ trước" when ending soon
+  const formatRelativeFromNowVi = (dateString) => {
+    if (!dateString) return "N/A";
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffMs = now - date;
+    if (diffMs < 0) return "Just posted";
+    const mins = Math.floor(diffMs / 60000);
+    const hours = Math.floor(diffMs / 3600000);
+    const days = Math.floor(diffMs / 86400000);
+    if (days > 0) return `${days} days ago`;
+    if (hours > 0) {
+      if (hours === 1) return `${hours} hour ago`;
+      return `${hours} hours ago`;
+    }
+    return `${mins} minutes ago`;
+  };
+
+  // Highlight new products within N minutes
+  const NEW_THRESHOLD_MINUTES = 60;
+  const isNew = (() => {
+    if (!postedDate) return false;
+    const now = new Date();
+    const posted = new Date(postedDate);
+    const diffMs = now - posted;
+    return diffMs >= 0 && diffMs <= NEW_THRESHOLD_MINUTES * 60 * 1000;
+  })();
+
+  // If the product ends in < 3 days, show posted time as relative
+  const isEndingSoon = (() => {
+    if (!endTime) return false;
+    const now = new Date();
+    const end = new Date(endTime);
+    return end - now <= 3 * 24 * 60 * 60 * 1000;
+  })();
 
   const handleCardClick = () => {
     if (productId) {
@@ -133,7 +218,9 @@ const ProductCard = ({ product, onWatchlistChange }) => {
 
   return (
     <div
-      className="product-card flex gap-4 cursor-pointer"
+      className={`product-card flex gap-4 cursor-pointer ${
+        isNew ? "ring-2 ring-amber-400 bg-amber-50" : ""
+      }`}
       onClick={handleCardClick}
     >
       {/* Product Image */}
@@ -143,6 +230,11 @@ const ProductCard = ({ product, onWatchlistChange }) => {
           alt={productName || "Product"}
           className="product-image"
         />
+        {isNew && (
+          <span className="absolute top-2 left-2 text-xs font-semibold px-2 py-1 rounded bg-red-500 text-white shadow">
+            New
+          </span>
+        )}
         {/* Watchlist Button */}
         <button
           onClick={handleWatchlistClick}
@@ -169,7 +261,7 @@ const ProductCard = ({ product, onWatchlistChange }) => {
         {/* Bid Info */}
         <div className="mb-3">
           <div className="mb-2">
-            <span className="text-sm text-pebble">Max bid: </span>
+            <span className="text-sm text-pebble">Current price: </span>
             <span className="text-base font-bold text-midnight">
               {currentPrice > 0
                 ? `${currentPrice.toLocaleString("vi-VN")} VND`
@@ -181,7 +273,7 @@ const ProductCard = ({ product, onWatchlistChange }) => {
             <div>
               <span className="text-sm text-pebble">Highest bid: </span>
               <span className="text-base font-medium text-midnight">
-                {highestBidder}
+                {highestBidderMasked}
               </span>
             </div>
             <div>
@@ -193,7 +285,9 @@ const ProductCard = ({ product, onWatchlistChange }) => {
             <div>
               <span className="text-sm text-pebble">Posted: </span>
               <span className="text-sm font-medium text-midnight">
-                {formatDate(postedDate)} at {formatTime(postedDate)}
+                {isEndingSoon
+                  ? formatRelativeFromNowVi(postedDate)
+                  : `${formatDate(postedDate)} ${formatTime(postedDate)}`}
               </span>
             </div>
             <div>

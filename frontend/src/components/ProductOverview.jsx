@@ -16,12 +16,18 @@ import {
   TabPanels,
 } from "@headlessui/react";
 import { StarIcon } from "@heroicons/react/20/solid";
-import { HeartIcon, MinusIcon, PlusIcon } from "@heroicons/react/24/outline";
+import {
+  HeartIcon,
+  MinusIcon,
+  PlusIcon,
+  PencilIcon,
+} from "@heroicons/react/24/outline";
 import BiddingQuickView from "./BiddingQuickView";
 import EditProductModal from "./EditProductModal";
 import EditDescriptionModal from "./EditDescriptionModal";
 import { productService } from "../services/productService";
 import watchlistService from "../services/watchlistService";
+import userService from "../services/userService";
 import {
   COLORS,
   TYPOGRAPHY,
@@ -65,6 +71,7 @@ export default function ProductOverview({ productId: propProductId }) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isEditDescOpen, setIsEditDescOpen] = useState(false);
   const [descriptionHistory, setDescriptionHistory] = useState([]);
+  const [sellerInfo, setSellerInfo] = useState(null);
 
   // ✨ Real-time polling hooks
   const { auctionData, loading: auctionLoading } = useAuctionPolling(productId);
@@ -107,6 +114,17 @@ export default function ProductOverview({ productId: propProductId }) {
         setLoading(true);
         const data = await productService.getProductById(productId);
         setProduct(data);
+
+        // Fetch seller information
+        if (data.seller_id) {
+          try {
+            const seller = await userService.getUserById(data.seller_id);
+            setSellerInfo(seller);
+          } catch (err) {
+            console.error("Failed to load seller info", err);
+            // Continue even if seller fetch fails
+          }
+        }
 
         // Check watchlist status
         setInWatchlist(watchlistService.isInWatchlist(productId));
@@ -267,8 +285,12 @@ export default function ProductOverview({ productId: propProductId }) {
   // Category info
   const categoryName = product.category_name || "Uncategorized";
 
-  // Seller info (mock for now as backend doesn't return seller details yet)
-  const sellerName = product.seller_name || "Seller";
+  // Seller info
+  const sellerName =
+    sellerInfo?.fullName ||
+    sellerInfo?.full_name ||
+    product.seller_id ||
+    "Seller";
   const sellerRating = product.seller_rating || null;
 
   // Auction status
@@ -402,6 +424,7 @@ export default function ProductOverview({ productId: propProductId }) {
                   color: COLORS.MIDNIGHT_ASH,
                 }}
               >
+                {`Current price: `}
                 {currentPrice.toLocaleString("vi-VN", {
                   style: "currency",
                   currency: "VND",
@@ -502,7 +525,9 @@ export default function ProductOverview({ productId: propProductId }) {
                       color: COLORS.PEBBLE,
                     }}
                   >
-                    {sellerRating ? `Rating: ${sellerRating}` : "Seller"}
+                    {sellerRating
+                      ? `Rating: ${sellerRating}`
+                      : "No ratings yet"}
                   </div>
                 </div>
               </div>
@@ -587,7 +612,7 @@ export default function ProductOverview({ productId: propProductId }) {
             </div>
 
             <div className="mt-6 space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-left gap-2">
                 <h3
                   style={{
                     fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
@@ -598,13 +623,10 @@ export default function ProductOverview({ productId: propProductId }) {
                   Description
                 </h3>
                 {(user?.id === product.seller_id || user?.role === "admin") && (
-                  <button
-                    className="btn-secondary"
+                  <PencilIcon
+                    className="size-5 text-gray-500 hover:text-gray-700 cursor-pointer"
                     onClick={openEditDesc}
-                    type="button"
-                  >
-                    Edit
-                  </button>
+                  />
                 )}
               </div>
 

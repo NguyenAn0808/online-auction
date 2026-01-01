@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import productService from "../services/productService";
+import userService from "../services/userService";
 import { Pencil, Trash2, Check, X } from "lucide-react";
 import {
   COLORS,
@@ -13,10 +14,33 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import QA_API from "../services/qaService";
 
+// Fallback for demo/dev: provide current user name from localStorage
+const CURRENT_USER_NAME = (() => {
+  try {
+    return localStorage.getItem("userName") || null;
+  } catch (e) {
+    return null;
+  }
+})();
+
+function maskName(fullName, userId, userData) {
+  const nameToMask = userData?.fullName || userData?.full_name || fullName;
+  if (!nameToMask) return "-";
+  if (CURRENT_USER_NAME && nameToMask === CURRENT_USER_NAME) return "You";
+
+  const nameWithoutSpaces = nameToMask.trim().replace(/\s+/g, "");
+  if (nameWithoutSpaces.length < 3) {
+    return "*".repeat(nameWithoutSpaces.length);
+  }
+  const last3 = nameWithoutSpaces.slice(-3);
+  return "****" + last3;
+}
+
 export default function QuestionsHistory({ productId, product }) {
   const { user } = useAuth();
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [userInfoById, setUserInfoById] = useState({});
 
   // State for Asking
   const [questionText, setQuestionText] = useState("");
@@ -42,7 +66,33 @@ export default function QuestionsHistory({ productId, product }) {
       setLoading(true);
       const response = await QA_API.getQuestions(productId);
       if (response.data.success) {
-        setQuestions(response.data.data);
+        const list = response.data.data;
+        setQuestions(list);
+
+        // Collect unique user IDs from questions and answers
+        const ids = new Set();
+        list.forEach((q) => {
+          if (q.userId) ids.add(q.userId);
+          if (Array.isArray(q.answers)) {
+            q.answers.forEach((a) => {
+              if (a.userId) ids.add(a.userId);
+            });
+          }
+        });
+
+        const infoMap = {};
+        await Promise.all(
+          Array.from(ids).map(async (id) => {
+            try {
+              const info = await userService.getUserById(id);
+              infoMap[id] = info;
+            } catch (err) {
+              console.error("Failed to load user info", id, err);
+              infoMap[id] = null;
+            }
+          })
+        );
+        setUserInfoById(infoMap);
       }
     } catch (err) {
       console.error("Failed to load questions", err);
@@ -297,7 +347,16 @@ export default function QuestionsHistory({ productId, product }) {
                         color: COLORS.MIDNIGHT_ASH,
                       }}
                     >
-                      {item.askerName || "Bidder"}
+                      {item.userId === product?.seller_id
+                        ? userInfoById[item.userId]?.fullName ||
+                          userInfoById[item.userId]?.full_name ||
+                          item.askerName ||
+                          "Seller"
+                        : maskName(
+                            item.askerName || "Bidder",
+                            item.userId,
+                            userInfoById[item.userId]
+                          )}
                     </span>
 
                     <span
@@ -463,7 +522,15 @@ export default function QuestionsHistory({ productId, product }) {
                               color: COLORS.MIDNIGHT_ASH,
                             }}
                           >
-                            Seller
+                            {answer.userId === product?.seller_id
+                              ? userInfoById[answer.userId]?.fullName ||
+                                userInfoById[answer.userId]?.full_name ||
+                                "Seller"
+                              : maskName(
+                                  null,
+                                  answer.userId,
+                                  userInfoById[answer.userId]
+                                )}
                           </span>
 
                           <span

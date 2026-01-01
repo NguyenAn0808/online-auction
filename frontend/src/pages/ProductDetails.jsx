@@ -40,7 +40,7 @@ const ProductDetails = () => {
   return (
     <>
       <Header />
-      <div style={{ backgroundColor: COLORS.WHISPER }}>
+      <div style={{ backgroundColor: COLORS.WHISPER }} key={productId}>
         <div
           style={{
             marginLeft: "auto",
@@ -56,7 +56,7 @@ const ProductDetails = () => {
           </div>
 
           {/* Product Features Section */}
-          <div
+          {/* <div
             style={{
               paddingTop: SPACING.XXL,
               paddingBottom: SPACING.XXL,
@@ -64,23 +64,17 @@ const ProductDetails = () => {
             }}
           >
             <ProductFeatures product={product} />
-          </div>
+          </div> */}
 
           {/* Similar Products Section */}
-          <div
-            style={{
-              paddingTop: SPACING.XXL,
-              paddingBottom: SPACING.XXL,
-              borderTop: `1px solid ${COLORS.MORNING_MIST}20`,
-            }}
-          >
+          <div className="b mx-auto max-w-2xl px-4 sm:px-6 lg:max-w-7xl lg:px-8">
             <SimiliarProductsList
               categoryId={product?.category_id}
               currentProductId={productId}
             />
           </div>
 
-          {/* Seller Feedback Section */}
+          {/* Seller Feedback Section
           <div
             style={{
               paddingTop: SPACING.XXL,
@@ -89,17 +83,11 @@ const ProductDetails = () => {
             }}
           >
             <SellerFeedback />
-          </div>
+          </div> */}
 
           {/* Bid History Section */}
           {user && (
-            <div
-              style={{
-                paddingTop: SPACING.XXL,
-                paddingBottom: SPACING.XXL,
-                borderTop: `1px solid ${COLORS.MORNING_MIST}20`,
-              }}
-            >
+            <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-24 lg:max-w-7xl lg:px-8">
               <BidHistory
                 productId={productId}
                 isSeller={user && product && user.id === product.seller_id}
@@ -108,13 +96,7 @@ const ProductDetails = () => {
           )}
 
           {/* Questions History Section */}
-          <div
-            style={{
-              paddingTop: SPACING.XXL,
-              paddingBottom: SPACING.XXL,
-              borderTop: `1px solid ${COLORS.MORNING_MIST}20`,
-            }}
-          >
+          <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-24 lg:max-w-7xl lg:px-8">
             <QuestionsHistory productId={productId} product={product} />
           </div>
         </div>

@@ -322,7 +322,8 @@ export const productHelpers = {
   getTopEndingProducts: async (limit = 5) => {
     try {
       const response = await productAPI.getProducts({
-        end_time_desc: true,
+        // Backend expects a `sort` string, not boolean flags
+        sort: "end_time_desc",
         limit,
         page: 1,
       });
@@ -343,8 +344,8 @@ export const productHelpers = {
   getTopBidProducts: async (limit = 5) => {
     try {
       const response = await productAPI.getProducts({
-        // Fallback or todo: bid_count sorting
-        bid_amount_desc: true,
+        // Backend doesn't support bid-count sorting yet; use newest as fallback
+        sort: "newest",
         limit,
         page: 1,
       });
@@ -363,7 +364,7 @@ export const productHelpers = {
   getTopPriceProducts: async (limit = 5) => {
     try {
       const response = await productAPI.getProducts({
-        price_desc: true,
+        sort: "price_desc",
         limit,
         page: 1,
       });
@@ -478,7 +479,7 @@ export const productHelpers = {
         params: { product_id: productId },
       });
       const data = response.data?.data || {};
-      const bids = Array.isArray(data) ? data : (data.bids || []);
+      const bids = Array.isArray(data) ? data : data.bids || [];
       const product = data.product || null;
 
       // Map to expected format for BidHistory component
