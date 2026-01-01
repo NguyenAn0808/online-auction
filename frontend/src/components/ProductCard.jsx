@@ -4,7 +4,7 @@ import BiddingQuickView from "./BiddingQuickView";
 import watchlistService from "../services/watchlistService";
 import { useAuth } from "../context/AuthContext";
 
-const ProductCard = ({ product }) => {
+const ProductCard = ({ product, onWatchlistChange }) => {
   const { user } = useAuth();
   const [isWatchlist, setIsWatchlist] = useState(false);
   const [showBidQuickView, setShowBidQuickView] = useState(false);
@@ -33,9 +33,11 @@ const ProductCard = ({ product }) => {
 
       // Then verify with backend if user is logged in
       if (user?.id) {
-        watchlistService.checkIsInWatchlist(user.id, productId).then((inWatchlist) => {
-          setIsWatchlist(inWatchlist);
-        });
+        watchlistService
+          .checkIsInWatchlist(user.id, productId)
+          .then((inWatchlist) => {
+            setIsWatchlist(inWatchlist);
+          });
       }
     }
   }, [productId, user?.id]);
@@ -117,8 +119,10 @@ const ProductCard = ({ product }) => {
       try {
         if (isWatchlist) {
           await watchlistService.removeFromWatchlist(user.id, productId);
+          onWatchlistChange?.(productId, false);
         } else {
           await watchlistService.addToWatchlist(user.id, productId);
+          onWatchlistChange?.(productId, true);
         }
         setIsWatchlist(!isWatchlist);
       } catch (error) {

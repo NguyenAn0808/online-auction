@@ -1,8 +1,10 @@
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import {
-  BookmarkSquareIcon,
-  CalendarDaysIcon,
-  LifebuoyIcon,
+  UserIcon,
+  StarIcon,
+  HeartIcon,
+  ShoppingBagIcon,
+  CurrencyDollarIcon,
   ArrowRightStartOnRectangleIcon,
 } from "@heroicons/react/24/outline";
 import {
@@ -28,50 +30,56 @@ export default function FlyoutMenu({ alignRight = false }) {
   const resources = [
     {
       name: "Summary",
-      description: "Go to your profile summary",
+      description: "Profile summary",
       href: userId ? `/summary/${userId}` : "/auth/signin",
-      icon: LifebuoyIcon,
+      icon: UserIcon,
     },
     {
       name: "Ratings",
-      description: "Performance reviews and ratings",
+      description: "Reviews and ratings",
       href: userId ? `/ratings/${userId}` : "/auth/signin",
-      icon: BookmarkSquareIcon,
+      icon: StarIcon,
     },
     {
       name: "Watchlist",
-      description: "See your watchlist and other saved items",
+      description: "Favorite items",
       href: userId ? `/watchlists/${userId}` : "/auth/signin",
-      icon: CalendarDaysIcon,
+      icon: HeartIcon,
     },
     {
       name: "Bids & Offers",
-      description: "Bids, won items, and transaction history",
+      description: "Your bidding activity",
       href: userId ? `/products/${userId}/bidding` : "/auth/signin",
-      icon: CalendarDaysIcon,
+      icon: ShoppingBagIcon,
+    },
+    {
+      name: "Seller Upgrade",
+      description: "Upgrade to seller account",
+      href: userId ? `/upgrade-requests` : "/auth/signin",
+      icon: CurrencyDollarIcon,
     },
   ];
   // Temporary placeholder recent transactions (top 3)
-  const recentTransactions = [
-    {
-      id: "tx_1",
-      title: "Won: Waxed Canvas Backpack",
-      date: "Nov 15",
-      datetime: "2025-11-15",
-    },
-    {
-      id: "tx_2",
-      title: "Purchased: Zip Tote Basket",
-      date: "Oct 30",
-      datetime: "2025-10-30",
-    },
-    {
-      id: "tx_3",
-      title: "Refunded: Classic Leather Satchel",
-      date: "Sep 8",
-      datetime: "2025-09-08",
-    },
-  ];
+  // const recentTransactions = [
+  //   {
+  //     id: "tx_1",
+  //     title: "Won: Waxed Canvas Backpack",
+  //     date: "Nov 15",
+  //     datetime: "2025-11-15",
+  //   },
+  //   {
+  //     id: "tx_2",
+  //     title: "Purchased: Zip Tote Basket",
+  //     date: "Oct 30",
+  //     datetime: "2025-10-30",
+  //   },
+  //   {
+  //     id: "tx_3",
+  //     title: "Refunded: Classic Leather Satchel",
+  //     date: "Sep 8",
+  //     datetime: "2025-09-08",
+  //   },
+  // ];
   // alignRight: when true, position the panel to the right of its container (for profile button)
   const containerStyle = alignRight
     ? {
@@ -100,8 +108,8 @@ export default function FlyoutMenu({ alignRight = false }) {
     <div style={containerStyle}>
       <div
         style={{
-          width: "100%",
-          maxWidth: "448px",
+          width: "320px",
+          maxWidth: "",
           overflow: "hidden",
           borderRadius: "24px",
           backgroundColor: COLORS.WHITE,
@@ -119,23 +127,22 @@ export default function FlyoutMenu({ alignRight = false }) {
                 display: "flex",
                 gap: SPACING.L,
                 borderRadius: BORDER_RADIUS.MEDIUM,
-                padding: SPACING.M,
+                padding: SPACING.S,
                 transition: "background-color 0.2s ease",
-                backgroundColor: COLORS.WHITE,
+                // backgroundColor: COLORS.WHITE,
                 position: "relative",
               }}
               className="group hover:bg-soft-cloud"
             >
               <div
                 style={{
-                  marginTop: "4px",
+                  // marginTop: "4px",
                   display: "flex",
-                  width: "44px",
-                  height: "44px",
+                  padding: SPACING.S,
                   alignItems: "center",
                   justifyContent: "center",
                   borderRadius: BORDER_RADIUS.MEDIUM,
-                  backgroundColor: COLORS.SOFT_CLOUD,
+                  // backgroundColor: COLORS.SOFT_CLOUD,
                   transition: "background-color 0.2s ease",
                 }}
                 className="group-hover:bg-white"
@@ -148,7 +155,6 @@ export default function FlyoutMenu({ alignRight = false }) {
                     color: COLORS.PEBBLE,
                     transition: "color 0.2s ease",
                   }}
-                  className="group-hover:text-midnight-ash"
                 />
               </div>
               <div>
@@ -183,7 +189,7 @@ export default function FlyoutMenu({ alignRight = false }) {
             </div>
           ))}
         </div>
-        <div
+        {/* <div
           style={{
             backgroundColor: COLORS.SOFT_CLOUD,
             paddingLeft: SPACING.XL,
@@ -277,61 +283,65 @@ export default function FlyoutMenu({ alignRight = false }) {
               </li>
             ))}
           </ul>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="group hover:bg-red-50" // Light red hover for logout
+        </div> */}
+        <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            width: "100%",
-            textAlign: "left",
-            border: "none",
             borderTop: `1px solid ${COLORS.MORNING_MIST}40`,
-            backgroundColor: COLORS.WHITE,
-            cursor: "pointer",
-            padding: SPACING.M,
-            gap: SPACING.L,
-            transition: "background-color 0.2s ease",
+            paddingLeft: SPACING.M,
+            paddingBlock: SPACING.S,
           }}
         >
-          <div
+          <button
+            type="button"
+            onClick={handleLogout}
             style={{
               display: "flex",
-              width: "44px",
-              height: "44px",
-              alignItems: "center",
-              justifyContent: "center",
+              gap: SPACING.L,
               borderRadius: BORDER_RADIUS.MEDIUM,
-              backgroundColor: COLORS.SOFT_CLOUD,
+              padding: SPACING.S,
               transition: "background-color 0.2s ease",
+              position: "relative",
+              width: "100%",
+              textAlign: "left",
+              backgroundColor: "transparent",
+              border: "none",
             }}
-            className="group-hover:bg-white"
+            className="group hover:bg-soft-cloud"
           >
-            <ArrowRightStartOnRectangleIcon
+            <div
               style={{
-                width: "24px",
-                height: "24px",
-                color: COLORS.PEBBLE,
-                transition: "color 0.2s ease",
+                display: "flex",
+                padding: SPACING.S,
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: BORDER_RADIUS.MEDIUM,
+                transition: "background-color 0.2s ease",
               }}
-              className="group-hover:text-red-600" // Turn red on hover
-            />
-          </div>
-          <div>
+              className="group-hover:bg-white"
+            >
+              <ArrowRightStartOnRectangleIcon
+                aria-hidden="true"
+                style={{
+                  width: "24px",
+                  height: "24px",
+                  color: COLORS.PEBBLE,
+                  transition: "color 0.2s ease",
+                }}
+                className="group-hover:text-red-600"
+              />
+            </div>
             <div
               style={{
                 fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
                 color: COLORS.MIDNIGHT_ASH,
-                fontSize: TYPOGRAPHY.SIZE_BODY,
-                transition: "color 0.2s ease",
+                textDecoration: "none",
               }}
-              className="group-hover:text-red-700"
+              className="group-hover:text-red-700 justify-center items-center flex"
             >
               Sign out
             </div>
-          </div>
-        </button>
+          </button>
+        </div>
       </div>
     </div>
   );

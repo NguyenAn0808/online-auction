@@ -3,11 +3,13 @@ import ShoppingCart from "./ShoppingCart";
 import FlyoutMenu from "./FlyoutMenu";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import Menu from "./Menu";
+import { Dialog, DialogBackdrop, DialogPanel } from "@headlessui/react";
+import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../context/AuthContext";
 import { COLORS, TYPOGRAPHY } from "../constants/designSystem";
 
 const Header = () => {
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
@@ -20,6 +22,8 @@ const Header = () => {
   const [showCart, setShowCart] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const profileRef = useRef(null);
+
+  const [showListingBlocked, setShowListingBlocked] = useState(false);
 
   const handleCartClick = () => {
     if (!user) {
@@ -52,12 +56,22 @@ const Header = () => {
   }, [showProfile]);
 
   const handleListing = () => {
+    if (!user) {
+      navigate("/auth/signin", { state: { from: location } });
+      return;
+    }
+
+    if (activeRole !== "seller" && activeRole !== "admin") {
+      setShowListingBlocked(true);
+      return;
+    }
+
     navigate("/seller/listing");
   };
 
   return (
     <header className="navbar">
-      <div className="container-max flex items-center justify-between gap-4">
+      <div className="container-max flex flex-wrap items-center justify-between gap-4">
         {/* Logo + Menu */}
         <div className="flex items-center gap-4">
           <Link to="/" className="navbar-logo">
@@ -69,8 +83,11 @@ const Header = () => {
         </div>
 
         {/* Search Bar, List Product Button, Cart, Profile */}
-        <div className="flex items-center gap-4">
-          <form onSubmit={handleSearch} className="search-bar w-64 md:w-80">
+        <div className="flex flex-wrap items-center gap-4 justify-end">
+          <form
+            onSubmit={handleSearch}
+            className="search-bar w-36 sm:w-64 md:w-80"
+          >
             <input
               type="text"
               placeholder="Search... "
@@ -79,14 +96,62 @@ const Header = () => {
             />
           </form>
 
-          {user?.role !== "bidder" && (
-            <button
-              onClick={handleListing}
-              className="btn-primary whitespace-nowrap"
-            >
-              List Product
-            </button>
-          )}
+          <button
+            onClick={handleListing}
+            className="btn-primary whitespace-nowrap"
+          >
+            List Product
+          </button>
+
+          <Dialog
+            open={!!user && activeRole === "bidder" && showListingBlocked}
+            onClose={() => setShowListingBlocked(false)}
+            className="relative z-50"
+          >
+            <DialogBackdrop
+              transition
+              className="fixed inset-0 bg-gray-500/75 transition-opacity data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in"
+            />
+
+            <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
+              <div className="flex min-h-full items-center justify-center p-6 text-center">
+                <DialogPanel
+                  transition
+                  className="relative w-full max-w-md transform overflow-hidden rounded-lg bg-white p-6 text-center shadow-2xl transition data-closed:translate-y-4 data-closed:opacity-0 data-enter:duration-300 data-enter:ease-out data-leave:duration-200 data-leave:ease-in data-closed:scale-95"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setShowListingBlocked(false)}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-500"
+                  >
+                    <span className="sr-only">Close</span>
+                    <XMarkIcon aria-hidden="true" className="size-6" />
+                  </button>
+
+                  <div className="text-lg font-semibold text-midnight-ash">
+                    Only seller can do listing.
+                  </div>
+                  <div className="mt-2 text-sm text-gray-600">
+                    <Link
+                      to="/"
+                      className="font-semibold text-midnight-ash hover:text-gray-600 transition-colors !underline"
+                      onClick={() => setShowListingBlocked(false)}
+                    >
+                      Return
+                    </Link>{" "}
+                    or{" "}
+                    <Link
+                      to="/upgrade-requests"
+                      className="font-semibold text-midnight-ash hover:text-gray-600 transition-colors !underline"
+                      onClick={() => setShowListingBlocked(false)}
+                    >
+                      Upgrade to Seller
+                    </Link>
+                  </div>
+                </DialogPanel>
+              </div>
+            </div>
+          </Dialog>
 
           <button
             className="p-2 rounded-full transition btn-icon"

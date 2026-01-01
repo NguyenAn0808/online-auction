@@ -31,7 +31,7 @@ export default function Sidebar() {
       icon: ShoppingBagIcon,
     },
     {
-      name: "Selling Request",
+      name: "Seller Upgrade",
       to: `/upgrade-requests`,
       icon: CurrencyDollarIcon,
     },
