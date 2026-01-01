@@ -6,8 +6,12 @@ export default function ResetPassword() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  // Get email from URL (passed from ForgotPassword page)
-  const initialEmail = searchParams.get("email") || "";
+  // Get email from sessionStorage (passed from ForgotPassword page)
+  // Fallback to URL param for backward compatibility
+  const initialEmail =
+    sessionStorage.getItem("resetPasswordEmail") ||
+    searchParams.get("email") ||
+    "";
 
   const [email, setEmail] = useState(initialEmail);
   const [otp, setOTP] = useState("");
@@ -20,6 +24,11 @@ export default function ResetPassword() {
   useEffect(() => {
     const t = searchParams.get("otp") || searchParams.get("t") || "";
     if (t) setOTP(t);
+
+    // Clear the email from sessionStorage when component unmounts
+    return () => {
+      sessionStorage.removeItem("resetPasswordEmail");
+    };
   }, [searchParams]);
 
   const onSubmit = async (e) => {
@@ -33,7 +42,7 @@ export default function ResetPassword() {
 
     setLoading(true);
     try {
-      await api.post("/auth/reset-password", {
+      await api.post("/api/auth/reset-password", {
         email,
         otp,
         password,

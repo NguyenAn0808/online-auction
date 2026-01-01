@@ -25,9 +25,11 @@ export default function ForgotPassword() {
     }
     setLoading(true);
     try {
-      await api.post("/auth/forgot-password", { email });
+      await api.post("/api/auth/forgot-password", { email });
       setSuccess(true);
-      navigate(`/auth/reset-password?email=${encodeURIComponent(email)}`);
+      // Store email in sessionStorage instead of URL for better security
+      sessionStorage.setItem("resetPasswordEmail", email);
+      navigate("/auth/reset-password");
     } catch (err) {
       const msg =
         err?.response?.data?.message || err.message || "Request failed";
