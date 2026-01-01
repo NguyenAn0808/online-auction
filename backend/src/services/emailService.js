@@ -186,12 +186,35 @@ export const sendAuctionWinNotification = async (
 export const sendQuestionNotification = async (
   sellerEmail,
   productName,
-  question
+  question,
+  productId
 ) => {
+  const productUrl = `${
+    process.env.FRONTEND_URL || "http://localhost:5173"
+  }/products/${productId}`;
+
   return sendEmail(
     sellerEmail,
     `New Question for ${productName}`,
-    `<p><strong>Question:</strong> ${question}</p>`
+    `
+      <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+        <h2 style="color: #333;">New Question on Your Product</h2>
+        <p>You have received a new question for: <strong>${productName}</strong></p>
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 15px 0;">
+          <p style="margin: 0;"><strong>Question:</strong></p>
+          <p style="margin: 10px 0 0 0;">${question}</p>
+        </div>
+        <p>
+          <a href="${productUrl}" 
+             style="display: inline-block; background-color: #333; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin-top: 10px;">
+            View Product & Answer Question
+          </a>
+        </p>
+        <p style="color: #666; font-size: 12px; margin-top: 20px;">
+          Click the button above to view the product details and answer this question.
+        </p>
+      </div>
+    `
   );
 };
 
@@ -200,11 +223,25 @@ export const sendAnswerNotification = async (
   receiverEmail,
   productName,
   question,
-  answer
+  answer,
+  productId
 ) => {
   return sendEmail(
     receiverEmail,
     `Seller Replied: ${productName}`,
-    `<p><strong>Q:</strong> ${question}</p><p><strong>A:</strong> ${answer}</p>`
+    `
+      <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+        <h2 style="color: #333;">Seller Answered Your Question</h2>
+        <p>The seller has responded to a question on: <strong>${productName}</strong></p>
+        <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #666; margin: 15px 0;">
+          <p style="margin: 0; color: #666;"><strong>Your Question:</strong></p>
+          <p style="margin: 10px 0 0 0;">${question}</p>
+        </div>
+        <div style="background-color: #e8f5e9; padding: 15px; border-left: 4px solid #4caf50; margin: 15px 0;">
+          <p style="margin: 0; color: #2e7d32;"><strong>Seller's Answer:</strong></p>
+          <p style="margin: 10px 0 0 0;">${answer}</p>
+        </div>
+      </div>
+    `
   );
 };

@@ -28,7 +28,8 @@ export const createQuestion = async (req, res) => {
             await EmailService.sendQuestionNotification(
               seller.email,
               product.name,
-              questionText
+              questionText,
+              productId
             );
           }
         }

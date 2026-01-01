@@ -1,7 +1,7 @@
 "use client";
 import { useAuth } from "../context/AuthContext";
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import {
   Disclosure,
@@ -50,6 +50,7 @@ export default function ProductOverview({ productId: propProductId }) {
   const { user } = useAuth(); // Check if user is logged in
   const { productId: paramProductId } = useParams();
   const productId = propProductId || paramProductId;
+  const location = useLocation();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -69,7 +70,7 @@ export default function ProductOverview({ productId: propProductId }) {
   const { auctionData, loading: auctionLoading } = useAuctionPolling(productId);
   const { bids, highestBid, bidCount } = useBidPolling(productId);
   const { timeRemaining, hasEnded } = useAuctionCountdown(
-    auctionData?.end_time,
+    auctionData?.end_time || product?.end_time,
     () => {
       console.log("Auction ended!");
       setIsEnded(true);
@@ -179,7 +180,9 @@ export default function ProductOverview({ productId: propProductId }) {
 
   const requireAuth = (actionCallback) => {
     if (!user) {
-      navigate("/auth/signin", { state: { from: location } });
+      // Force full page navigation to signin
+      const currentPath = encodeURIComponent(location.pathname);
+      window.location.replace(`/auth/signin?from=${currentPath}`);
       return;
     }
     actionCallback();
@@ -693,12 +696,15 @@ export default function ProductOverview({ productId: propProductId }) {
                     <button
                       type="button"
                       onClick={() => {
-                        if (inWatchlist) {
-                          navigate("/watchlists"); // or specific user watchlist
-                          return;
-                        }
-                        watchlistService.addToWatchlist(product);
-                        setInWatchlist(true);
+                        requireAuth(() => {
+                          if (inWatchlist) {
+                            const userId = user.id;
+                            window.location.href = `/watchlists/${userId}`;
+                            return;
+                          }
+                          watchlistService.addToWatchlist(product);
+                          setInWatchlist(true);
+                        });
                       }}
                       style={{
                         backgroundColor: inWatchlist ? "#d1d5db" : COLORS.WHITE,

@@ -11,6 +11,7 @@ import { POLLING_INTERVALS } from "../config/polling.config";
 export const useAuctionPolling = (productId, enabled = true) => {
   const [auctionData, setAuctionData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   const fetchAuctionData = useCallback(async () => {
     if (!productId) return;
@@ -18,17 +19,21 @@ export const useAuctionPolling = (productId, enabled = true) => {
     try {
       const response = await api.get(`/products/${productId}`);
       setAuctionData(response.data);
+      setNotFound(false);
     } catch (err) {
+      if (err.response?.status === 404) {
+        setNotFound(true);
+      }
       console.error("Failed to fetch auction:", err);
     } finally {
       setLoading(false);
     }
   }, [productId]);
 
-  // Stop polling when auction ends
+  // Stop polling when auction ends or product not found
   const hasEnded = auctionData?.status === "ended";
 
-  usePolling(fetchAuctionData, POLLING_INTERVALS.AUCTION, enabled && !hasEnded);
+  usePolling(fetchAuctionData, POLLING_INTERVALS.AUCTION, enabled && !hasEnded && !notFound);
 
   return { auctionData, loading, refetch: fetchAuctionData };
 };

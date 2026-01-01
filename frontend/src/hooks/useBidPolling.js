@@ -11,6 +11,7 @@ import { POLLING_INTERVALS } from "../config/polling.config";
 export const useBidPolling = (productId, enabled = true) => {
   const [bids, setBids] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   const fetchBids = useCallback(async () => {
     if (!productId) return;
@@ -18,14 +19,18 @@ export const useBidPolling = (productId, enabled = true) => {
     try {
       const response = await api.get(`/bids/product/${productId}`);
       setBids(response.data || []);
+      setNotFound(false);
     } catch (err) {
+      if (err.response?.status === 404) {
+        setNotFound(true);
+      }
       console.error("Failed to fetch bids:", err);
     } finally {
       setLoading(false);
     }
   }, [productId]);
 
-  usePolling(fetchBids, POLLING_INTERVALS.BIDS, enabled);
+  usePolling(fetchBids, POLLING_INTERVALS.BIDS, enabled && !notFound);
 
   // Get highest bid
   const highestBid =

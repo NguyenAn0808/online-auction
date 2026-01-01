@@ -105,7 +105,13 @@ class Question {
   }
 
   static async findById(questionId) {
-    const query = `SELECT * FROM questions WHERE id = $1`;
+    const query = `
+      SELECT id, product_id as "productId", user_id as "userId",
+             question_text as "questionText",
+             created_at as "createdAt", updated_at as "updatedAt"
+      FROM questions 
+      WHERE id = $1
+    `;
     const result = await pool.query(query, [questionId]);
     return result.rows[0];
   }

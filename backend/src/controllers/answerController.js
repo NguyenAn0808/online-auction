@@ -38,30 +38,45 @@ export const createAnswer = async (req, res) => {
       questionId,
     });
 
-    // Send email to question asker about the answer
+    // Send email to all interested parties about the answer
     (async () => {
       try {
         const product = await ProductModel.findById(question.productId);
-
-        // Get all questions on this product
-        const allQuestionsOnProduct = await Question.findAllByProduct(
-          question.productId
-        );
-
-        const allAsker = new Set(allQuestionsOnProduct.map((q) => q.userId));
-
-        for (const askerId of allAsker) {
-          if (askerId !== userId) {
-            // Avoid sending email to self
-            const asker = await User.findById(askerId);
-
-            if (asker?.email) {
-              await EmailService.sendAnswerNotification(
-                asker.email,
-                product.name,
-                answerText
-              );
-            }
+        
+        // Collect all unique user IDs to notify
+        const userIdsToNotify = new Set();
+        
+        // 1. Add the person who asked this specific question
+        userIdsToNotify.add(question.userId);
+        
+        // 2. Get all bidders on this product
+        const Bid = (await import("../models/Bid.js")).default;
+        const allBids = await Bid.getByProduct(question.productId);
+        allBids.forEach(bid => {
+          if (bid.bidder_id) userIdsToNotify.add(bid.bidder_id);
+        });
+        
+        // 3. Get all users who asked questions on this product
+        const allQuestions = await Question.findAllByProduct(question.productId);
+        allQuestions.forEach(q => {
+          if (q.userId) userIdsToNotify.add(q.userId);
+        });
+        
+        // Remove the seller from the list
+        userIdsToNotify.delete(userId);
+        
+        // Send email to each unique user
+        for (const recipientUserId of userIdsToNotify) {
+          const recipient = await User.findById(recipientUserId);
+          
+          if (recipient?.email) {
+            await EmailService.sendAnswerNotification(
+              recipient.email,
+              product.name,
+              question.questionText,
+              answerText,
+              question.productId
+            );
           }
         }
       } catch (error) {
