@@ -29,17 +29,22 @@ function formatProductForCard(product, type = "bid") {
     product.images?.[0]?.src ||
     "/images/sample.jpg";
   const price =
-    product.final_price || product.current_price || product.finalPrice || product.start_price || 0;
-  const endTime = product.end_time || product.endTime
-    ? new Date(product.end_time || product.endTime).toLocaleDateString()
-    : null;
+    product.final_price ||
+    product.current_price ||
+    product.finalPrice ||
+    product.start_price ||
+    0;
+  const endTime =
+    product.end_time || product.endTime
+      ? new Date(product.end_time || product.endTime).toLocaleDateString()
+      : null;
 
   return {
     id: productId,
     name: productName,
     imageSrc,
     status: type === "won" ? "Won" : type === "lost" ? "Lost" : "Active",
-    amount: typeof price === 'number' ? price.toFixed(2) : price,
+    amount: typeof price === "number" ? price.toFixed(2) : price,
     endTime: endTime || "N/A",
     type,
     // Include extra data for won items (order info)
@@ -58,7 +63,9 @@ function formatWonOrderForCard(order) {
     imageSrc: order.productImage || "/images/sample.jpg",
     status: "Won",
     amount: order.final_price ? Number(order.final_price).toFixed(2) : "N/A",
-    endTime: order.endTime ? new Date(order.endTime).toLocaleDateString() : "N/A",
+    endTime: order.endTime
+      ? new Date(order.endTime).toLocaleDateString()
+      : "N/A",
     type: "won",
     sellerName: order.sellerName,
     orderStatus: order.status,
@@ -314,16 +321,40 @@ export default function BidsOffers() {
 
               {/* Transaction History Section */}
               <section>
-                <h2
+                <div
                   style={{
-                    fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
-                    fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
-                    color: COLORS.MIDNIGHT_ASH,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                     marginBottom: SPACING.M,
                   }}
                 >
-                  TRANSACTION HISTORY
-                </h2>
+                  <h2
+                    style={{
+                      fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
+                      fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+                      color: COLORS.MIDNIGHT_ASH,
+                    }}
+                  >
+                    TRANSACTION HISTORY
+                  </h2>
+                  {transactions.length > 0 && (
+                    <button
+                      onClick={() => navigate("/transactions")}
+                      style={{
+                        fontSize: TYPOGRAPHY.SIZE_LABEL,
+                        fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                        color: COLORS.DEEP_CHARCOAL,
+                        backgroundColor: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                      }}
+                    >
+                      View All
+                    </button>
+                  )}
+                </div>
 
                 {loadingTx ? (
                   <div className="text-gray-500">Loading transactions...</div>
@@ -410,8 +441,8 @@ export default function BidsOffers() {
                                 tx.status === "completed"
                                   ? "#16a34a"
                                   : tx.status === "cancelled"
-                                    ? "#dc2626"
-                                    : "#b45309",
+                                  ? "#dc2626"
+                                  : "#b45309",
                             }}
                           >
                             {tx.status || "Unknown"}

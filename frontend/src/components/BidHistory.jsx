@@ -125,7 +125,16 @@ function useBids(productId) {
     if (productId) fetchBids();
   }, [productId, refreshTrigger]);
 
-  return [bids, setBids, loading, productInfo, bidderInfo, bidderRatings, refresh, blockedBidders];
+  return [
+    bids,
+    setBids,
+    loading,
+    productInfo,
+    bidderInfo,
+    bidderRatings,
+    refresh,
+    blockedBidders,
+  ];
 }
 
 function maskName(fullName, userId, bidderUserData) {
@@ -158,33 +167,47 @@ export default function BidHistory({ isSeller = false, productId = null }) {
     productInfo,
     bidderInfo,
     bidderRatings,
-    , refresh, apiBlocklist] = useBids(productId);
-  const [blocklist, setBlocklist] = useState([]);
+    refresh,
+    apiBlocklist,
+  ] = useBids(productId);
 
-  // Sync blocklist from API
-  useEffect(() => {
-    if (apiBlocklist) {
-      setBlocklist(apiBlocklist);
-    }
-  }, [apiBlocklist]);
+  // Use apiBlocklist directly, but allow local additions for instant UI feedback
+  const [localBlocklistAdditions, setLocalBlocklistAdditions] = useState([]);
+  const blocklist = useMemo(() => {
+    const apiList = apiBlocklist || [];
+    // Merge API blocklist with any local additions (for instant feedback before refresh)
+    const combined = [...apiList];
+    localBlocklistAdditions.forEach((addition) => {
+      if (!combined.some((b) => b.bidder_id === addition.bidder_id)) {
+        combined.push(addition);
+      }
+    });
+    return combined;
+  }, [apiBlocklist, localBlocklistAdditions]);
+
   const [showBlocklist, setShowBlocklist] = useState(false);
   const [isProcessing, setIsProcessing] = useState({});
 
-  // Real-time bid polling
+  // Real-time bid polling - only use for notifications/updates, not to replace localBids
   const { bids: realtimeBids, highestBid } = useBidPolling(productId);
 
-  // Update local bids when new bids arrive from polling
+  // Monitor polling for NEW bids only (to trigger refresh if needed)
+  // Don't directly overwrite localBids as polling doesn't respect blocklist
   useEffect(() => {
-    if (realtimeBids && realtimeBids.length > 0) {
-      setLocalBids(
-        realtimeBids.map((bid) => ({
-          ...bid,
-          bidder_id: bid.bidder_id || bid.name || bid.id,
-          status: bid.status || "pending",
-        }))
-      );
+    if (!realtimeBids || realtimeBids.length === 0 || localBids.length === 0) {
+      return;
     }
-  }, [realtimeBids]);
+
+    // Check if polling has new bids that aren't in localBids
+    const hasNewBids = realtimeBids.some(
+      (rtBid) => !localBids.some((lb) => lb.id === rtBid.id)
+    );
+
+    // If there are genuinely new bids, refresh to get updated data with proper blocklist
+    if (hasNewBids) {
+      refresh();
+    }
+  }, [realtimeBids, localBids, refresh]);
 
   if (!user) {
     return null;
@@ -244,20 +267,41 @@ export default function BidHistory({ isSeller = false, productId = null }) {
   };
 
   const handleRejectBid = async (bidId) => {
-    if (!confirm("Reject all bids from this bidder and block them from this product?")) {
+    if (
+      !confirm(
+        "Reject all bids from this bidder and block them from this product?"
+      )
+    ) {
       return;
     }
     try {
       setIsProcessing((prev) => ({ ...prev, [bidId]: true }));
 
-      const targetBid = localBids.find(b => b.id === bidId);
+      const targetBid = localBids.find((b) => b.id === bidId);
       if (!targetBid) throw new Error("Bid not found");
 
       const bidderId = targetBid.bidder_id;
 
       await productService.rejectBidder(productId, bidderId);
 
+      // Immediately add to local blocklist for instant UI feedback
+      setLocalBlocklistAdditions((prev) => {
+        // Check if already in local additions
+        if (prev.some((b) => b.bidder_id === bidderId)) {
+          return prev;
+        }
+        return [
+          ...prev,
+          {
+            bidder_id: bidderId,
+            product_id: productId,
+            blocked_at: new Date().toISOString(),
+          },
+        ];
+      });
+
       // Force refresh of history and product info (price_holder etc)
+      // This will update apiBlocklist and clear localBlocklistAdditions won't be needed
       refresh();
 
       alert("Bidder rejected and blocked. Product price and winner updated.");
@@ -266,29 +310,6 @@ export default function BidHistory({ isSeller = false, productId = null }) {
       alert(error?.message || "Failed to reject bid");
     } finally {
       setIsProcessing((prev) => ({ ...prev, [bidId]: false }));
-    }
-  };
-
-  const handleUnblockBidder = async (bidderId) => {
-    if (!confirm("Unblock this bidder for this product?")) {
-      return;
-    }
-    try {
-      setIsProcessing((prev) => ({ ...prev, [bidderId]: true }));
-      await productService.unblockBidder(productId, bidderId);
-
-      // Update local state
-      setBlocklist((prev) => prev.filter((b) => b.bidder_id !== bidderId));
-
-      // Force refresh of history and product info
-      refresh();
-
-      alert("Bidder unblocked and bids restored successfully!");
-    } catch (error) {
-      console.error("Failed to unblock bidder:", error);
-      alert(error?.message || "Failed to unblock bidder");
-    } finally {
-      setIsProcessing((prev) => ({ ...prev, [bidderId]: false }));
     }
   };
 
@@ -737,26 +758,6 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                         {new Date(blocked.blocked_at).toLocaleString()}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleUnblockBidder(blocked.bidder_id)}
-                      disabled={!!isProcessing[blocked.bidder_id]}
-                      style={{
-                        padding: "6px 12px",
-                        borderRadius: BORDER_RADIUS.FULL,
-                        border: "none",
-                        backgroundColor: COLORS.MIDNIGHT_ASH,
-                        color: COLORS.WHITE,
-                        fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                        fontSize: TYPOGRAPHY.SIZE_LABEL,
-                        cursor: isProcessing[blocked.bidder_id]
-                          ? "not-allowed"
-                          : "pointer",
-                        opacity: isProcessing[blocked.bidder_id] ? 0.7 : 1,
-                      }}
-                    >
-                      {isProcessing[blocked.bidder_id] ? "..." : "Unblock"}
-                    </button>
                   </div>
                 ))
               )}
