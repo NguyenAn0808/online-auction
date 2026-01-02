@@ -91,6 +91,9 @@ export default function BidsOffers() {
   const [lostItems, setLostItems] = useState([]);
   const [myBids, setMyBids] = useState([]);
   const [loadingBids, setLoadingBids] = useState(false);
+  // Seller-specific state
+  const [sellerActiveProducts, setSellerActiveProducts] = useState([]);
+  const [loadingSellerProducts, setLoadingSellerProducts] = useState(false);
   const navigate = useNavigate();
 
   const handleViewAuction = (item) => {
@@ -222,6 +225,48 @@ export default function BidsOffers() {
     };
   }, []);
 
+  // Fetch seller's active products (only if user is a seller)
+  useEffect(() => {
+    let mounted = true;
+    async function fetchSellerProducts() {
+      if (user?.role !== "seller") {
+        setSellerActiveProducts([]);
+        return;
+      }
+      try {
+        setLoadingSellerProducts(true);
+        // Fetch products where seller_id matches current user
+        const res = await productService.getProducts({
+          seller_id: user.id,
+          limit: 100,
+        });
+        if (!mounted) return;
+        const allProducts = res.data || res.items || res || [];
+        const now = new Date();
+        // Filter only active products belonging to current user (seller_id match AND end_time > now)
+        const active = allProducts.filter((p) => {
+          // Ensure product belongs to current user
+          const isOwnProduct = p.seller_id === user.id;
+          if (!isOwnProduct) return false;
+          // Check if auction is still active
+          if (!p.end_time) return true; // assume active if no end_time
+          return new Date(p.end_time) > now;
+        });
+        setSellerActiveProducts(active);
+      } catch (err) {
+        console.error("Failed to load seller products:", err);
+        if (!mounted) return;
+        setSellerActiveProducts([]);
+      } finally {
+        if (mounted) setLoadingSellerProducts(false);
+      }
+    }
+    fetchSellerProducts();
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
+
   // Build active and lost lists from user's bids with product details
   useEffect(() => {
     async function buildBidLists() {
@@ -324,18 +369,171 @@ export default function BidsOffers() {
                 gap: SPACING.XL,
               }}
             >
-              {/* Bidding Section */}
+              {/* ========== SELLER SECTION ========== */}
+              {user?.role === "seller" && (
+                <section>
+                  <h2
+                    style={{
+                      fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
+                      fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+                      color: COLORS.MIDNIGHT_ASH,
+                      marginBottom: SPACING.S,
+                    }}
+                  >
+                    🏪 YOUR ACTIVE LISTINGS
+                  </h2>
+                  <p
+                    style={{
+                      fontSize: TYPOGRAPHY.SIZE_LABEL,
+                      color: COLORS.PEBBLE,
+                      marginBottom: SPACING.M,
+                    }}
+                  >
+                    Products you are currently selling
+                  </p>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: SPACING.S,
+                    }}
+                  >
+                    {loadingSellerProducts ? (
+                      <div
+                        style={{
+                          borderRadius: BORDER_RADIUS.MEDIUM,
+                          border: `2px dashed ${COLORS.MORNING_MIST}`,
+                          backgroundColor: COLORS.WHITE,
+                          padding: SPACING.L,
+                          textAlign: "center",
+                          color: COLORS.PEBBLE,
+                        }}
+                      >
+                        Loading your listings...
+                      </div>
+                    ) : sellerActiveProducts.length === 0 ? (
+                      <div
+                        style={{
+                          borderRadius: BORDER_RADIUS.MEDIUM,
+                          border: `2px dashed ${COLORS.MORNING_MIST}`,
+                          backgroundColor: COLORS.WHITE,
+                          padding: SPACING.L,
+                          textAlign: "center",
+                          color: COLORS.PEBBLE,
+                        }}
+                      >
+                        No active listings. Start selling now!
+                      </div>
+                    ) : (
+                      sellerActiveProducts.map((product) => {
+                        const thumbnail =
+                          product.thumbnail ||
+                          product.images?.[0]?.image_url ||
+                          "/images/sample.jpg";
+                        const currentPrice =
+                          product.current_price || product.start_price || 0;
+                        const bidCount = product.bid_count || 0;
+                        return (
+                          <div
+                            key={product.id}
+                            onClick={() => navigate(`/products/${product.id}`)}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: SPACING.M,
+                              backgroundColor: COLORS.WHITE,
+                              border: `1px solid ${COLORS.MORNING_MIST}`,
+                              padding: SPACING.M,
+                              borderRadius: BORDER_RADIUS.MEDIUM,
+                              cursor: "pointer",
+                              transition: "box-shadow 0.2s",
+                            }}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.boxShadow = SHADOWS.CARD_HOVER)
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.boxShadow = "none")
+                            }
+                          >
+                            <img
+                              src={thumbnail}
+                              alt={product.name}
+                              style={{
+                                width: "64px",
+                                height: "64px",
+                                objectFit: "cover",
+                                borderRadius: BORDER_RADIUS.SMALL,
+                              }}
+                            />
+                            <div style={{ flex: 1 }}>
+                              <div
+                                style={{
+                                  fontSize: TYPOGRAPHY.SIZE_BODY,
+                                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                                  color: COLORS.MIDNIGHT_ASH,
+                                }}
+                              >
+                                {product.name}
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: TYPOGRAPHY.SIZE_LABEL,
+                                  color: COLORS.PEBBLE,
+                                  marginTop: "4px",
+                                }}
+                              >
+                                {bidCount} bid{bidCount !== 1 ? "s" : ""}
+                              </div>
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <div
+                                style={{
+                                  fontSize: TYPOGRAPHY.SIZE_BODY,
+                                  fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+                                  color: COLORS.MIDNIGHT_ASH,
+                                }}
+                              >
+                                {Number(currentPrice).toLocaleString("vi-VN")} VND
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: TYPOGRAPHY.SIZE_LABEL,
+                                  color: "#16a34a",
+                                  marginTop: "4px",
+                                }}
+                              >
+                                Active
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {/* ========== BUYER BIDDING ACTIVITY SECTION ========== */}
               <section>
                 <h2
                   style={{
                     fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
                     fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
                     color: COLORS.MIDNIGHT_ASH,
+                    marginBottom: SPACING.S,
+                  }}
+                >
+                  🛒 YOUR BIDDING ACTIVITY
+                </h2>
+                <p
+                  style={{
+                    fontSize: TYPOGRAPHY.SIZE_LABEL,
+                    color: COLORS.PEBBLE,
                     marginBottom: SPACING.M,
                   }}
                 >
-                  ONGOING
-                </h2>
+                  Auctions you are currently participating in
+                </p>
                 <div
                   style={{
                     display: "flex",
@@ -381,18 +579,33 @@ export default function BidsOffers() {
                 </div>
               </section>
 
-              {/* Transaction History Section */}
+              {/* ========== TRANSACTION HISTORY SECTION ========== */}
+              {/*
+                NOTE: If "Won Money" shows "N/A" in this section, the fix must be applied
+                within the backend API or transactionService that provides the price data.
+                The `current_price` or `final_price` field needs to be populated correctly
+                in the transaction/order response from the server.
+              */}
               <section>
                 <h2
                   style={{
                     fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
                     fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
                     color: COLORS.MIDNIGHT_ASH,
+                    marginBottom: SPACING.S,
+                  }}
+                >
+                  📋 TRANSACTION HISTORY
+                </h2>
+                <p
+                  style={{
+                    fontSize: TYPOGRAPHY.SIZE_LABEL,
+                    color: COLORS.PEBBLE,
                     marginBottom: SPACING.M,
                   }}
                 >
-                  TRANSACTION HISTORY
-                </h2>
+                  Your completed and pending transactions
+                </p>
 
                 {loadingTx ? (
                   <div className="text-gray-500">Loading transactions...</div>
@@ -467,8 +680,8 @@ export default function BidsOffers() {
                             }}
                           >
                             $
-                            {tx.current_price
-                              ? Number(tx.current_price).toFixed(2)
+                            {tx.final_price
+                              ? Number(tx.final_price).toFixed(2)
                               : "N/A"}
                           </div>
                           <div
@@ -492,18 +705,27 @@ export default function BidsOffers() {
                 )}
               </section>
 
-              {/* Won Items Section */}
+              {/* ========== WON ITEMS SECTION ========== */}
               <section>
                 <h2
                   style={{
                     fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
                     fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
                     color: COLORS.MIDNIGHT_ASH,
+                    marginBottom: SPACING.S,
+                  }}
+                >
+                  🏆 WON ITEMS
+                </h2>
+                <p
+                  style={{
+                    fontSize: TYPOGRAPHY.SIZE_LABEL,
+                    color: COLORS.PEBBLE,
                     marginBottom: SPACING.M,
                   }}
                 >
-                  WON ITEMS
-                </h2>
+                  Auctions you have won
+                </p>
                 <div
                   style={{
                     display: "flex",
@@ -549,18 +771,27 @@ export default function BidsOffers() {
                 </div>
               </section>
 
-              {/* Didn't Win Section */}
+              {/* ========== DIDN'T WIN SECTION ========== */}
               <section>
                 <h2
                   style={{
                     fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
                     fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
                     color: COLORS.MIDNIGHT_ASH,
+                    marginBottom: SPACING.S,
+                  }}
+                >
+                  ❌ DIDN'T WIN
+                </h2>
+                <p
+                  style={{
+                    fontSize: TYPOGRAPHY.SIZE_LABEL,
+                    color: COLORS.PEBBLE,
                     marginBottom: SPACING.M,
                   }}
                 >
-                  NOT WIN
-                </h2>
+                  Auctions that ended without your winning bid
+                </p>
                 <div
                   style={{
                     display: "flex",
