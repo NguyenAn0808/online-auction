@@ -125,7 +125,16 @@ function useBids(productId) {
     if (productId) fetchBids();
   }, [productId, refreshTrigger]);
 
-  return [bids, setBids, loading, productInfo, bidderInfo, bidderRatings, refresh, blockedBidders];
+  return [
+    bids,
+    setBids,
+    loading,
+    productInfo,
+    bidderInfo,
+    bidderRatings,
+    refresh,
+    blockedBidders,
+  ];
 }
 
 function maskName(fullName, userId, bidderUserData) {
@@ -158,7 +167,10 @@ export default function BidHistory({ isSeller = false, productId = null }) {
     productInfo,
     bidderInfo,
     bidderRatings,
-    , refresh, apiBlocklist] = useBids(productId);
+    ,
+    refresh,
+    apiBlocklist,
+  ] = useBids(productId);
   const [blocklist, setBlocklist] = useState([]);
 
   // Sync blocklist from API
@@ -244,13 +256,17 @@ export default function BidHistory({ isSeller = false, productId = null }) {
   };
 
   const handleRejectBid = async (bidId) => {
-    if (!confirm("Reject all bids from this bidder and block them from this product?")) {
+    if (
+      !confirm(
+        "Reject all bids from this bidder and block them from this product?"
+      )
+    ) {
       return;
     }
     try {
       setIsProcessing((prev) => ({ ...prev, [bidId]: true }));
 
-      const targetBid = localBids.find(b => b.id === bidId);
+      const targetBid = localBids.find((b) => b.id === bidId);
       if (!targetBid) throw new Error("Bid not found");
 
       const bidderId = targetBid.bidder_id;
@@ -317,7 +333,7 @@ export default function BidHistory({ isSeller = false, productId = null }) {
           >
             Bidding history
           </h2>
-          {productInfo && (
+          {/* {productInfo && (
             <div
               style={{ display: "flex", flexDirection: "column", gap: "4px" }}
             >
@@ -341,7 +357,7 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                 </p>
               )}
             </div>
-          )}
+          )} */}
           <p
             style={{
               fontSize: TYPOGRAPHY.SIZE_LABEL,
@@ -375,10 +391,11 @@ export default function BidHistory({ isSeller = false, productId = null }) {
               >
                 {productInfo?.current_price ? (
                   <span>
-                    ${Number(productInfo.current_price).toLocaleString("vi-VN")}
+                    {Number(productInfo.current_price).toLocaleString("vi-VN")}{" "}
+                    VND
                   </span>
                 ) : (
-                  <span>${highest?.amount?.toFixed(2)}</span>
+                  <span>{highest?.amount?.toFixed(2)} VND</span>
                 )}
               </span>
             </div>

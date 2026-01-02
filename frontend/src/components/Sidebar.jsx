@@ -36,7 +36,7 @@ export default function Sidebar() {
     ...(userRole === "bidder"
       ? [
           {
-            name: "Selling Request",
+            name: "Seller Upgrade",
             to: `/upgrade-requests`,
             icon: CurrencyDollarIcon,
           },

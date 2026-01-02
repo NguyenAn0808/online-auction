@@ -326,7 +326,8 @@ export const cancelOrder = async (req, res) => {
         reviewer_id: sellerId, // Seller rates
         target_user_id: order.buyer_id, // Buyer gets rated
         score: -1,
-        comment: `Order Cancelled: ${reason || "Người thắng không thanh toán"}`,
+        // Fixed auto-rating comment per requirement
+        comment: "Người thắng không thanh toán.",
       });
       console.log(`Auto-rated buyer ${order.buyer_id} with -1`);
     } catch (ratingError) {

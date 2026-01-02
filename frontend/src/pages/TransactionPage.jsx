@@ -19,6 +19,7 @@ import { useAuth } from "../context/AuthContext";
 import * as TransactionService from "../services/transactionService"; // Legacy service (deprecated)
 import { STATUS } from "../services/transactionService"; // Legacy status constants (deprecated)
 import orderService, { ORDER_STATUS } from "../services/orderService"; // Use OpenAPI service
+import { ratingService } from "../services/ratingService";
 import CancelOrderModal from "../components/CancelOrderModal";
 import { productService } from "../services/productService";
 const DELIVERY_METHODS = [
@@ -92,7 +93,25 @@ export default function TransactionPage() {
   const handleCancelSubmit = async (reason) => {
     try {
       // Use OpenAPI endpoint: POST /orders/{order_id}/cancel
-      await orderService.cancelOrder(orderId, reason);
+      const cancelled = await orderService.cancelOrder(orderId, reason);
+
+      // Auto rate buyer -1 with fixed comment
+      try {
+        const targetBuyerId = cancelled?.buyer_id || tx?.buyer_id;
+        const productId =
+          cancelled?.product_id || tx?.product_id || productDetails?.id;
+        if (user?.id && targetBuyerId && productId) {
+          await ratingService.createRating({
+            user_id: targetBuyerId,
+            reviewer_id: user.id,
+            product_id: productId,
+            is_positive: false,
+            comment: "Người thắng không thanh toán.",
+          });
+        }
+      } catch (rateErr) {
+        console.error("Auto-rating on cancel failed:", rateErr);
+      }
 
       setCancelModalOpen(false);
 
@@ -273,8 +292,26 @@ export default function TransactionPage() {
     try {
       const res = await orderService.cancelOrder(orderId, reason);
       if (res) {
+        // Auto rate buyer -1 with fixed comment
+        try {
+          const targetBuyerId = res?.buyer_id || tx?.buyer_id;
+          const productId =
+            res?.product_id || tx?.product_id || productDetails?.id;
+          if (user?.id && targetBuyerId && productId) {
+            await ratingService.createRating({
+              user_id: targetBuyerId,
+              reviewer_id: user.id,
+              product_id: productId,
+              is_positive: false,
+              comment: "Người thắng không thanh toán.",
+            });
+          }
+        } catch (rateErr) {
+          console.error("Auto-rating on cancel failed:", rateErr);
+        }
+
         setTx(res);
-        showToast("Order cancelled.");
+        showToast("Order cancelled and buyer rated -1.");
       }
     } catch (err) {
       console.error("Cancel order error:", err);

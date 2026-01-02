@@ -6,6 +6,13 @@ const router = express.Router();
 
 router.post("/", authenticate, BidController.addBid);
 router.get("/", BidController.getProductBids);
+router.get("/user", authenticate, async (req, res, next) => {
+  try {
+    await BidController.getBidsByUser(req, res);
+  } catch (e) {
+    next(e);
+  }
+});
 router.patch(
   "/:bid_id/accept",
   authenticate,

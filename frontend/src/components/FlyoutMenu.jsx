@@ -8,6 +8,7 @@ import {
   ArrowRightStartOnRectangleIcon,
   BookmarkSquareIcon,
   LifebuoyIcon,
+  Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
 import {
   COLORS,
@@ -29,10 +30,27 @@ export default function FlyoutMenu({ alignRight = false }) {
     navigate("/auth/signin");
   };
   const userId = user?.id;
-  const isAdmin = user?.role === "admin";
-  const isBidder = user?.role === "bidder";
+  const isAdmin = user?.role === "admin" || user?.roles?.includes?.("admin");
+  const isBidder = user?.role === "bidder" || user?.roles?.includes?.("bidder");
 
   const resources = [
+    // Admin-only quick entry
+    ...(isAdmin
+      ? [
+          {
+            name: "Admin Dashboard",
+            description: "Manage system",
+            href: "/admin",
+            icon: Cog6ToothIcon,
+          },
+          {
+            name: "View Storefront",
+            description: "See public site",
+            href: "/?view=storefront",
+            icon: UserIcon,
+          },
+        ]
+      : []),
     {
       name: "Summary",
       description: "Profile summary",

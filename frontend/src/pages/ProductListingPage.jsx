@@ -16,6 +16,7 @@ const ProductListingPage = () => {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const productsPerPage = 5;
 
   const searchParams = new URLSearchParams(location.search);
   const searchTerm = searchParams.get("search") || null;
@@ -50,7 +51,7 @@ const ProductListingPage = () => {
     fetchCategories();
   }, []);
 
-  // Fetch products from backend API
+  // Fetch products from backend API (fetch all, paginate client-side)
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -58,8 +59,8 @@ const ProductListingPage = () => {
 
         // Build query params from URL search params
         const params = {
-          page: currentPage,
-          limit: 3,
+          // fetch a large batch to approximate "all"
+          limit: 1000,
         };
 
         if (categoryId) params.category_id = categoryId;
@@ -79,17 +80,11 @@ const ProductListingPage = () => {
         // }
 
         const response = await productService.getProducts(params);
-
-        setProducts(response.items || []);
-
-        // Calculate total pages from backend pagination data
-        if (response.pagination) {
-          const totalItems = response.pagination.total || 0;
-          const itemsPerPage = response.pagination.limit || 5;
-          setTotalPages(Math.ceil(totalItems / itemsPerPage) || 1);
-        } else {
-          setTotalPages(1);
-        }
+        const allItems = response.items || response.data || response || [];
+        const items = Array.isArray(allItems) ? allItems : [];
+        setProducts(items);
+        setTotalPages(Math.ceil(items.length / productsPerPage) || 1);
+        setCurrentPage(1);
       } catch (error) {
         console.error("Error fetching products list:", error);
         setProducts([]);
@@ -100,22 +95,19 @@ const ProductListingPage = () => {
     };
 
     fetchProducts();
-  }, [
-    categoryId,
-    searchTerm,
-    sortPriceAsc,
-    sortPriceDesc,
-    sortEndTimeDesc,
-    currentPage,
-  ]);
+  }, [categoryId, searchTerm, sortPriceAsc, sortPriceDesc, sortEndTimeDesc]);
 
   // Get category name for display
   const getCategoryName = () => {
     return activeCategory ? activeCategory.name : "";
   };
 
-  // Products are already paginated by backend
-  const currentProducts = products;
+  // Client-side pagination
+  const startIndex = (currentPage - 1) * productsPerPage;
+  const currentProducts = products.slice(
+    startIndex,
+    startIndex + productsPerPage
+  );
 
   return (
     <div className="min-h-screen bg-whisper">

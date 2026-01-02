@@ -55,6 +55,7 @@ export default function ProfilePage() {
   const [myBids, setMyBids] = useState([]);
   const [wonItems, setWonItems] = useState([]);
   const [myProducts, setMyProducts] = useState([]);
+  const [soldOrders, setSoldOrders] = useState([]);
 
   useEffect(() => {
     if (user) {
@@ -156,6 +157,28 @@ export default function ProfilePage() {
       setLoading(false);
     }
   }
+
+  // Fetch orders where current user is seller (sold items)
+  useEffect(() => {
+    async function fetchSold() {
+      if (!user?.id || activeTab !== "products" || user?.role !== "seller")
+        return;
+      try {
+        setLoading(true);
+        const res = await listOrders();
+        const orders = Array.isArray(res) ? res : [];
+        const sold = orders.filter(
+          (o) => o.seller_id === user.id && o.status !== "cancelled"
+        );
+        setSoldOrders(sold);
+      } catch (err) {
+        console.error("Failed to fetch sold items:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchSold();
+  }, [activeTab, user]);
 
   async function handleUpdatePersonalInfo(e) {
     e.preventDefault();
@@ -633,6 +656,53 @@ export default function ProfilePage() {
           {activeTab === "products" && user?.role === "seller" && (
             <div>
               <h2 className="text-xl font-semibold mb-4">My Products</h2>
+              {/* Active Listings (còn hạn) */}
+              <h3 className="text-lg font-semibold mb-2 mt-2">
+                Active Listings
+              </h3>
+              {loading ? (
+                <p className="text-gray-500">Loading...</p>
+              ) : (
+                (() => {
+                  const now = new Date();
+                  const activeProducts = (myProducts || []).filter((p) => {
+                    const end = p.end_time ? new Date(p.end_time) : null;
+                    if (end) return end > now;
+                    return (p.status || "").toLowerCase() === "active";
+                  });
+                  if (activeProducts.length === 0) {
+                    return <p className="text-gray-500">No active listings</p>;
+                  }
+                  return (
+                    <div className="space-y-3">
+                      {activeProducts.map((product) => (
+                        <div
+                          key={product.id}
+                          onClick={() => navigate(`/products/${product.id}`)}
+                          className="border rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="font-medium">{product.name}</p>
+                              <p className="text-sm text-gray-500">
+                                Ends:{" "}
+                                {product.end_time
+                                  ? new Date(
+                                      product.end_time
+                                    ).toLocaleDateString()
+                                  : "Unknown"}
+                              </p>
+                            </div>
+                            <p className="text-lg font-bold text-green-700">
+                              {formatPrice(product.current_price)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()
+              )}
               {loading ? (
                 <p className="text-gray-500">Loading...</p>
               ) : myProducts.length === 0 ? (
@@ -657,6 +727,39 @@ export default function ProfilePage() {
                         </div>
                         <p className="text-lg font-bold text-green-700">
                           {formatPrice(product.current_price)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Sold Items (Orders with winners) */}
+              <h2 className="text-xl font-semibold mt-8 mb-4">Sold Items</h2>
+              {loading ? (
+                <p className="text-gray-500">Loading...</p>
+              ) : soldOrders.length === 0 ? (
+                <p className="text-gray-500">You have no sold items yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {soldOrders.map((order) => (
+                    <div
+                      key={order.id}
+                      onClick={() => navigate(`/transactions/${order.id}`)}
+                      className="border rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-medium">
+                            {order.productName || "Product"}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            Winner: {order.buyerName || order.buyer_id} •
+                            Status: {order.status}
+                          </p>
+                        </div>
+                        <p className="text-lg font-bold text-green-700">
+                          {formatPrice(order.final_price)}
                         </p>
                       </div>
                     </div>

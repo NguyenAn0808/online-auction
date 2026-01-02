@@ -8,6 +8,7 @@ import EditProductModal from "../components/EditProductModal";
 import { formatCurrency, formatTimeLeft } from "../utils/formatters";
 import { productService } from "../services/productService";
 import { categoryService } from "../services/categoryService";
+import userService from "../services/userService";
 
 const ProductManagementPage = () => {
   const location = useLocation();
@@ -28,6 +29,10 @@ const ProductManagementPage = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
   const navigate = useNavigate();
+  const [sellerName, setSellerName] = useState("");
+  const [sellerNames, setSellerNames] = useState({});
+  const [selectedProductDetails, setSelectedProductDetails] = useState(null);
+  const [descriptionHistory, setDescriptionHistory] = useState([]);
 
   // Sync state to URL query params
   const updateUrl = (overrides = {}) => {
@@ -71,7 +76,7 @@ const ProductManagementPage = () => {
     fetchCategories();
   }, []);
 
-  // Fetch products (API call with mock fallback)
+  // Fetch products (fetch all, paginate client-side)
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -79,8 +84,8 @@ const ProductManagementPage = () => {
 
         // Build API params
         const params = {
-          page: currentPage,
-          limit: productsPerPage,
+          // request a large limit to retrieve all matching items
+          limit: 1000,
         };
 
         if (categoryId) params.category_id = categoryId;
@@ -113,19 +118,11 @@ const ProductManagementPage = () => {
 
         // Call API
         const response = await productService.getProducts(params);
-        const items = response.data || response.items || response;
-        setProducts(Array.isArray(items) ? items : []);
-
-        if (response.pagination) {
-          setTotalPages(response.pagination.totalPages || 1);
-        } else {
-          setTotalPages(
-            response.totalPages ||
-              response.total_pages ||
-              Math.ceil((items?.length || 0) / productsPerPage) ||
-              1
-          );
-        }
+        const allItems = response.data || response.items || response || [];
+        const items = Array.isArray(allItems) ? allItems : [];
+        setProducts(items);
+        setTotalPages(Math.ceil(items.length / productsPerPage) || 1);
+        setCurrentPage(1);
       } catch (error) {
         console.error("Error fetching products list:", error);
         setProducts([]);
@@ -135,7 +132,116 @@ const ProductManagementPage = () => {
       }
     };
     fetchProducts();
-  }, [categoryId, appliedSearch, sortBy, filterBy, currentPage, categories]);
+  }, [categoryId, appliedSearch, sortBy, filterBy, categories]);
+
+  // Helper: get thumbnail URL
+  const getThumbnail = (p) => {
+    if (!p) return "/images/sample.jpg";
+    return (
+      p.thumbnail ||
+      (Array.isArray(p.images)
+        ? p.images.find((img) => img?.is_thumbnail)?.image_url ||
+          p.images[0]?.image_url
+        : null) ||
+      "/images/sample.jpg"
+    );
+  };
+
+  // Helper: sanitize basic HTML (strip script tags)
+  const sanitizeHtml = (html) => {
+    if (!html) return "";
+    try {
+      return String(html)
+        .replace(/<\s*script[^>]*>.*?<\s*\/\s*script\s*>/gis, "")
+        .replace(/on[a-zA-Z]+\s*=\s*"[^"]*"/g, "");
+    } catch (e) {
+      return String(html);
+    }
+  };
+
+  // Helper: category name
+  const getCategoryName = (id) => {
+    const c = categories.find((x) => x.id === id);
+    return c ? c.name : "Unknown";
+  };
+
+  // Helper: collect all image URLs (thumbnail + images[])
+  const getImageUrls = (p) => {
+    if (!p) return [];
+    const raw = Array.isArray(p.images) ? p.images : [];
+    const urls = raw
+      .map((img) => (typeof img === "string" ? img : img?.image_url))
+      .filter(Boolean);
+    if (p.thumbnail && !urls.includes(p.thumbnail)) urls.unshift(p.thumbnail);
+    return urls;
+  };
+
+  // Format description date (DD/MM/YYYY)
+  const formatDescriptionDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
+  // Load seller full name for selected product
+  useEffect(() => {
+    const loadSeller = async () => {
+      const sid = selectedProduct?.seller_id;
+      if (!sid) {
+        setSellerName("");
+        return;
+      }
+      try {
+        const u = await userService.getUserById(sid);
+        setSellerName(u?.fullName || u?.full_name || u?.username || sid);
+      } catch (e) {
+        setSellerName(sid);
+      }
+    };
+    loadSeller();
+  }, [selectedProduct?.seller_id]);
+
+  // Load full product details and description history when opening modal
+  useEffect(() => {
+    const loadDetails = async () => {
+      if (!selectedProduct?.id) {
+        setSelectedProductDetails(null);
+        setDescriptionHistory([]);
+        return;
+      }
+      try {
+        const full = await productService.getProductById(selectedProduct.id);
+        setSelectedProductDetails(full || selectedProduct);
+      } catch (e) {
+        setSelectedProductDetails(selectedProduct);
+      }
+      try {
+        const history = await productService.getDescriptionHistory(
+          selectedProduct.id
+        );
+        setDescriptionHistory(history || []);
+      } catch (err) {
+        // Fallback to current description
+        if (selectedProduct?.description) {
+          setDescriptionHistory([
+            {
+              id: "initial",
+              content: selectedProduct.description,
+              created_at:
+                selectedProduct.created_at || new Date().toISOString(),
+              type: "initial",
+            },
+          ]);
+        } else {
+          setDescriptionHistory([]);
+        }
+      }
+    };
+    loadDetails();
+  }, [selectedProduct?.id]);
 
   // Handle Search Input Enter
   const handleSearchKeyDown = (e) => {
@@ -156,17 +262,16 @@ const ProductManagementPage = () => {
     try {
       await productService.updateProduct(productId, data);
 
-      // Refresh products list
-      const params = {
-        page: currentPage,
-        limit: productsPerPage,
-      };
+      // Refresh products list (fetch all)
+      const params = { limit: 1000 };
       if (categoryId) params.category_id = categoryId;
       if (appliedSearch) params.search = appliedSearch;
 
       const response = await productService.getProducts(params);
-      const items = response.data || response.items || response;
-      setProducts(Array.isArray(items) ? items : []);
+      const allItems = response.data || response.items || response || [];
+      const items = Array.isArray(allItems) ? allItems : [];
+      setProducts(items);
+      setTotalPages(Math.ceil(items.length / productsPerPage) || 1);
 
       alert("Product updated successfully!");
     } catch (error) {
@@ -184,17 +289,16 @@ const ProductManagementPage = () => {
     try {
       await productService.deleteProduct(productId);
 
-      // Refresh products list
-      const params = {
-        page: currentPage,
-        limit: productsPerPage,
-      };
+      // Refresh products list (fetch all)
+      const params = { limit: 1000 };
       if (categoryId) params.category_id = categoryId;
       if (appliedSearch) params.search = appliedSearch;
 
       const response = await productService.getProducts(params);
-      const items = response.data || response.items || response;
-      setProducts(Array.isArray(items) ? items : []);
+      const allItems = response.data || response.items || response || [];
+      const items = Array.isArray(allItems) ? allItems : [];
+      setProducts(items);
+      setTotalPages(Math.ceil(items.length / productsPerPage) || 1);
 
       alert("Product deleted successfully!");
     } catch (error) {
@@ -213,6 +317,57 @@ const ProductManagementPage = () => {
     startIndex,
     startIndex + productsPerPage
   );
+
+  // Fetch seller full names for visible products (cache in map)
+  useEffect(() => {
+    const loadNames = async () => {
+      try {
+        const ids = Array.from(
+          new Set(
+            currentProducts
+              .map((p) => p?.seller_id)
+              .filter((id) => id && !sellerNames[id])
+          )
+        );
+        if (ids.length === 0) return;
+        const results = await Promise.all(
+          ids.map(async (id) => {
+            try {
+              const u = await userService.getUserById(id);
+              return [
+                id,
+                u?.fullName || u?.full_name || u?.username || String(id),
+              ];
+            } catch (e) {
+              return [id, String(id)];
+            }
+          })
+        );
+        const next = { ...sellerNames };
+        results.forEach(([id, name]) => (next[id] = name));
+        setSellerNames(next);
+      } catch (e) {
+        // ignore
+      }
+    };
+    loadNames();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentProducts]);
+
+  // Responsive time-left similar to ProductCard
+  const getTimeLeft = (endTime) => {
+    if (!endTime) return "N/A";
+    const now = new Date();
+    const end = new Date(endTime);
+    const diff = end - now;
+    if (diff <= 0) return "Ended";
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
@@ -323,11 +478,7 @@ const ProductManagementPage = () => {
                 {/* Image */}
                 <div className="w-36 h-36 bg-gradient-to-br from-gray-100 to-gray-200 flex-shrink-0 rounded-lg overflow-hidden shadow-sm">
                   <img
-                    src={
-                      product.images && product.images[0]
-                        ? product.images[0]
-                        : "/images/sample.jpg"
-                    }
+                    src={getThumbnail(product)}
                     alt={product.name}
                     className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
                   />
@@ -345,9 +496,10 @@ const ProductManagementPage = () => {
                           Current
                         </span>
                         <span className="text-lg font-bold text-pebble">
-                          {formatCurrency(
-                            product.current_price || product.start_price
-                          )}
+                          {Number(
+                            product.current_price || product.start_price || 0
+                          ).toLocaleString("vi-VN")}{" "}
+                          VND
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -355,7 +507,9 @@ const ProductManagementPage = () => {
                           Seller
                         </span>
                         <span className="text-gray-700 font-medium">
-                          ****{product.seller_id ? "Khoa" : "Unknown"}
+                          {sellerNames[product.seller_id] ||
+                            product.seller_id ||
+                            "Unknown"}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -363,7 +517,7 @@ const ProductManagementPage = () => {
                           Time left
                         </span>
                         <span className="text-gray-700 font-medium">
-                          {formatTimeLeft(product.end_time)}
+                          {getTimeLeft(product.end_time)}
                         </span>
                       </div>
                     </div>
@@ -374,19 +528,19 @@ const ProductManagementPage = () => {
                 <div className="flex flex-col items-end justify-center gap-2.5 min-w-[110px]">
                   <button
                     onClick={() => setSelectedProduct(product)}
-                    className="w-full px-4 py-2 bg-morning-mist text-midnight-ash rounded-lg text-sm font-semibold hover:!bg-gray-300 transition-all"
+                    className="w-full !px-4 !py-2 btn-primary !rounded-lg !text-sm font-semibold hover:!bg-gray-700 transition-all"
                   >
                     Details
                   </button>
                   <button
                     onClick={() => handleEditProduct(product)}
-                    className="w-full px-4 py-2 bg-whisper text-pebble rounded-lg text-sm font-semibold hover:bg-soft-cloud transition-all"
+                    className="w-full !px-4 !py-2 btn-secondary !rounded-lg !text-sm font-semibold hover:!bg-gray-200 transition-all"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handleDeleteProduct(product.id)}
-                    className="w-full px-4 py-2 bg-red-50 border-2 border-red-200 text-red-600 rounded-lg text-sm font-semibold hover:bg-red-100 hover:border-red-300 transition-all"
+                    className="w-full !px-4 !py-2 bg-red-100 text-red-700 !border !border-red-200 text-sm rounded-lg hover:!bg-red-200 font-medium transition-all"
                   >
                     Remove
                   </button>
@@ -441,18 +595,36 @@ const ProductManagementPage = () => {
         size="xl"
       >
         {selectedProduct && (
-          <div>
-            {/* Product Image */}
+          <div className="relative p-4">
+            {/* Product Images */}
             <div className="mb-6">
-              <img
-                src={
-                  selectedProduct.images && selectedProduct.images[0]
-                    ? selectedProduct.images[0]
-                    : "/images/sample.jpg"
-                }
-                alt={selectedProduct.name}
-                className="w-full max-h-80 object-cover rounded-lg"
-              />
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                {getImageUrls(selectedProductDetails || selectedProduct)
+                  .length > 0 ? (
+                  getImageUrls(selectedProductDetails || selectedProduct).map(
+                    (url, idx) => (
+                      <div
+                        key={idx}
+                        className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-lg overflow-hidden bg-gray-100"
+                      >
+                        <img
+                          src={url}
+                          alt={`${selectedProduct.name} ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )
+                  )
+                ) : (
+                  <div className="w-32 h-32 rounded-lg overflow-hidden bg-gray-100">
+                    <img
+                      src="/images/sample.jpg"
+                      alt={selectedProduct.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Product Information */}
@@ -460,10 +632,10 @@ const ProductManagementPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500">
-                    Product ID
+                    Product
                   </label>
-                  <p className="text-gray-900 font-mono text-sm mt-1">
-                    {selectedProduct.id}
+                  <p className="text-gray-900 font-semibold mt-1">
+                    {selectedProduct.name}
                   </p>
                 </div>
 
@@ -491,21 +663,49 @@ const ProductManagementPage = () => {
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-500">
-                  Product Name
-                </label>
-                <p className="text-gray-900 font-semibold mt-1">
-                  {selectedProduct.name}
-                </p>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-gray-500">
-                  Description
-                </label>
-                <p className="text-gray-900 mt-1 whitespace-pre-wrap">
-                  {selectedProduct.description || "No description available"}
-                </p>
+                <div className="flex items-center justify-left gap-2">
+                  <label className="text-sm font-medium text-gray-500">
+                    Description
+                  </label>
+                </div>
+                <div className="space-y-3 mt-2">
+                  {descriptionHistory.length > 0 ? (
+                    descriptionHistory.map((desc) => (
+                      <div
+                        key={desc.id}
+                        className="p-3 rounded-lg border border-gray-200 bg-white"
+                      >
+                        <div className="flex items-center gap-2 mb-2 text-gray-500 text-sm">
+                          <span>✏️</span>
+                          <span className="font-semibold">
+                            {formatDescriptionDate(desc.created_at)}
+                          </span>
+                          {desc.type === "initial" && (
+                            <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">
+                              Initial
+                            </span>
+                          )}
+                        </div>
+                        <div
+                          className="text-gray-900 text-sm leading-relaxed"
+                          dangerouslySetInnerHTML={{
+                            __html: sanitizeHtml(desc.content),
+                          }}
+                        />
+                      </div>
+                    ))
+                  ) : (
+                    <div
+                      className="p-3 rounded-lg border border-gray-200 bg-white text-sm text-gray-900"
+                      dangerouslySetInnerHTML={{
+                        __html: sanitizeHtml(
+                          selectedProduct.description ||
+                            "No description available"
+                        ),
+                      }}
+                    />
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -577,7 +777,7 @@ const ProductManagementPage = () => {
                     Time Left
                   </label>
                   <p className="text-gray-900 font-medium mt-1">
-                    {formatTimeLeft(selectedProduct.end_time)}
+                    {getTimeLeft(selectedProduct.end_time)}
                   </p>
                 </div>
 
@@ -594,19 +794,19 @@ const ProductManagementPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500">
-                    Seller ID
+                    Seller
                   </label>
-                  <p className="text-gray-900 font-mono text-sm mt-1">
-                    {selectedProduct.seller_id || "N/A"}
+                  <p className="text-gray-900 text-sm mt-1">
+                    {sellerName || "N/A"}
                   </p>
                 </div>
 
                 <div>
                   <label className="text-sm font-medium text-gray-500">
-                    Category ID
+                    Category
                   </label>
-                  <p className="text-gray-900 font-mono text-sm mt-1">
-                    {selectedProduct.category_id || "N/A"}
+                  <p className="text-gray-900 text-sm mt-1">
+                    {getCategoryName(selectedProduct.category_id)}
                   </p>
                 </div>
 
@@ -645,13 +845,13 @@ const ProductManagementPage = () => {
                 </div>
               </div>
 
-              {selectedProduct.highest_bidder_id && (
+              {selectedProduct.price_holder_name && (
                 <div>
                   <label className="text-sm font-medium text-gray-500">
-                    Highest Bidder ID
+                    Highest Bidder
                   </label>
-                  <p className="text-gray-900 font-mono text-sm mt-1">
-                    {selectedProduct.highest_bidder_id}
+                  <p className="text-gray-900 text-sm mt-1">
+                    {selectedProduct.price_holder_name}
                   </p>
                 </div>
               )}
@@ -683,6 +883,14 @@ const ProductManagementPage = () => {
 
             {/* Action Buttons */}
             <div className="flex justify-end gap-3 mt-6 pt-6 border-t">
+              {/* Close button */}
+              <button
+                onClick={() => setSelectedProduct(null)}
+                aria-label="Close"
+                className="top-2 right-2 p-2 px-4 rounded-lg hover:bg-gray-100 !border transition-all"
+              >
+                Cancel
+              </button>
               <button className="px-6 py-2 !bg-red-600 text-white rounded-lg font-medium !hover:bg-red-700 transition-colors">
                 Remove Product
               </button>

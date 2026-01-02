@@ -14,7 +14,8 @@ class BidController {
       if (!product_id || !max_bid) {
         return res.status(400).json({
           success: false,
-          message: "Missing required fields: product_id and max_bid are required",
+          message:
+            "Missing required fields: product_id and max_bid are required",
         });
       }
 
@@ -29,12 +30,15 @@ class BidController {
       return res.status(201).json({ success: true, data: bid });
     } catch (error) {
       // Return 400 for validation errors, 500 for server errors
-      const statusCode = error.message.includes("must be at least") ||
+      const statusCode =
+        error.message.includes("must be at least") ||
         error.message.includes("can only increase") ||
         error.message.includes("denied by the seller")
-        ? 400
-        : 500;
-      return res.status(statusCode).json({ success: false, message: error.message });
+          ? 400
+          : 500;
+      return res
+        .status(statusCode)
+        .json({ success: false, message: error.message });
     }
   }
 
@@ -46,6 +50,25 @@ class BidController {
           .status(400)
           .json({ success: false, message: "Missing product_id" });
       const bids = await BidService.getProductBids(product_id, status);
+      return res.status(200).json({ success: true, data: bids });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  /**
+   * Get bids by current authenticated user
+   * GET /api/bids/user
+   */
+  static async getBidsByUser(req, res) {
+    try {
+      const bidder_id = req.user?.id;
+      if (!bidder_id) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Unauthorized" });
+      }
+      const bids = await BidService.getBidsByUser(bidder_id);
       return res.status(200).json({ success: true, data: bids });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message });

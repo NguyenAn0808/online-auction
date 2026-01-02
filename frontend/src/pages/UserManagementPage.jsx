@@ -11,17 +11,17 @@ const UserManagementPage = () => {
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
   const [roleFilter, setRoleFilter] = useState("all");
-  const [verifyFilter, setVerifyFilter] = useState("all");
+  // Removed verification filter
   const [selectedUser, setSelectedUser] = useState(null);
   const [showRoleMenu, setShowRoleMenu] = useState(false);
-  const [showVerifyMenu, setShowVerifyMenu] = useState(false);
+  // Removed verification menu
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [showOrderMenu, setShowOrderMenu] = useState(false);
   const itemsPerPage = 10;
 
   useEffect(() => {
     fetchUsers();
-  }, [currentPage, sortBy, sortOrder, roleFilter, verifyFilter]);
+  }, [currentPage, sortBy, sortOrder, roleFilter]);
 
   const fetchUsers = async () => {
     try {
@@ -39,12 +39,20 @@ const UserManagementPage = () => {
         params.role = roleFilter;
       }
 
-      if (verifyFilter !== "all") {
-        params.isVerified = verifyFilter;
-      }
-
       const response = await userService.getAllUsers(params);
-      setUsers(response.data);
+      const normalized = Array.isArray(response.data)
+        ? response.data.map((u) => ({
+            ...u,
+            fullname:
+              u.fullname ||
+              u.full_name ||
+              u.fullName ||
+              [u.first_name, u.last_name].filter(Boolean).join(" ") ||
+              u.username ||
+              "Unknown",
+          }))
+        : [];
+      setUsers(normalized);
       setTotalPages(response.pagination.totalPages);
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -95,6 +103,14 @@ const UserManagementPage = () => {
       day: "2-digit",
     });
   };
+
+  const getDisplayName = (user) =>
+    user.fullname ||
+    user.full_name ||
+    user.fullName ||
+    [user.first_name, user.last_name].filter(Boolean).join(" ") ||
+    user.username ||
+    "Unknown";
 
   const headerCell = (label, field, extraClass = "") => (
     <th
@@ -163,7 +179,6 @@ const UserManagementPage = () => {
               <button
                 onClick={() => {
                   setShowRoleMenu(!showRoleMenu);
-                  setShowVerifyMenu(false);
                   setShowSortMenu(false);
                   setShowOrderMenu(false);
                 }}
@@ -238,81 +253,12 @@ const UserManagementPage = () => {
               )}
             </div>
 
-            {/* Verification Filter */}
-            <div className="relative">
-              <button
-                onClick={() => {
-                  setShowVerifyMenu(!showVerifyMenu);
-                  setShowRoleMenu(false);
-                  setShowSortMenu(false);
-                  setShowOrderMenu(false);
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
-              >
-                <span className="font-medium text-md">
-                  Verification:{" "}
-                  {verifyFilter === "all"
-                    ? "All"
-                    : verifyFilter === "true"
-                    ? "Verified"
-                    : "Unverified"}
-                </span>
-              </button>
-              {showVerifyMenu && (
-                <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10 divide-y">
-                  <button
-                    onClick={() => {
-                      setVerifyFilter("all");
-                      setCurrentPage(1);
-                      setShowVerifyMenu(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-gray-50 ${
-                      verifyFilter === "all"
-                        ? "bg-blue-50 text-blue-700 font-medium"
-                        : ""
-                    }`}
-                  >
-                    All
-                  </button>
-                  <button
-                    onClick={() => {
-                      setVerifyFilter("true");
-                      setCurrentPage(1);
-                      setShowVerifyMenu(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-gray-50 ${
-                      verifyFilter === "true"
-                        ? "bg-blue-50 text-blue-700 font-medium"
-                        : ""
-                    }`}
-                  >
-                    Verified
-                  </button>
-                  <button
-                    onClick={() => {
-                      setVerifyFilter("false");
-                      setCurrentPage(1);
-                      setShowVerifyMenu(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-gray-50 ${
-                      verifyFilter === "false"
-                        ? "bg-blue-50 text-blue-700 font-medium"
-                        : ""
-                    }`}
-                  >
-                    Unverified
-                  </button>
-                </div>
-              )}
-            </div>
-
             {/* Sort By */}
             <div className="relative">
               <button
                 onClick={() => {
                   setShowSortMenu(!showSortMenu);
                   setShowRoleMenu(false);
-                  setShowVerifyMenu(false);
                   setShowOrderMenu(false);
                 }}
                 className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
@@ -392,7 +338,6 @@ const UserManagementPage = () => {
                 onClick={() => {
                   setShowOrderMenu(!showOrderMenu);
                   setShowRoleMenu(false);
-                  setShowVerifyMenu(false);
                   setShowSortMenu(false);
                 }}
                 className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
@@ -446,7 +391,6 @@ const UserManagementPage = () => {
               {headerCell("Full Name", "fullname")}
               {headerCell("Email", "email")}
               {headerCell("Role", "role")}
-              {headerCell("Verified", "isVerified", "w-32")}
               <th className="px-3 py-2 text-center text-sm font-semibold text-gray-700">
                 Actions
               </th>
@@ -459,7 +403,7 @@ const UserManagementPage = () => {
                   {(currentPage - 1) * itemsPerPage + idx + 1}
                 </td>
                 <td className="px-3 py-2 font-medium text-gray-900">
-                  {user.fullname}
+                  {getDisplayName(user)}
                 </td>
                 <td className="px-3 py-2 text-gray-700">{user.email}</td>
                 <td className="px-3 py-2">
@@ -471,28 +415,15 @@ const UserManagementPage = () => {
                     {user.role}
                   </span>
                 </td>
-                <td className="px-3 py-2 w-32">
-                  <div className="w-24 mx-auto flex justify-center">
-                    {user.isVerified ? (
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200 inline-block w-full text-center">
-                        Verified
-                      </span>
-                    ) : (
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 border border-yellow-200 inline-block w-full text-center">
-                        Unverified
-                      </span>
-                    )}
-                  </div>
-                </td>
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-2 justify-center">
                     <button
                       onClick={() => setSelectedUser(user)}
-                      className="px-3 py-1 border border-gray-300 rounded-md text-xs font-medium hover:bg-gray-100"
+                      className="!px-3 !py-1 btn-secondary !text-xs font-medium hover:bg-gray-100"
                     >
                       Details
                     </button>
-                    <button className="px-3 py-1 border border-red-300 text-red-600 rounded-md text-xs font-medium hover:bg-red-50">
+                    <button className="!px-3 !py-1 bg-red-100 text-red-700 !border !border-red-200 text-xs rounded-[6px] hover:!bg-red-200 font-medium">
                       Delete
                     </button>
                   </div>
@@ -536,17 +467,13 @@ const UserManagementPage = () => {
             <div className="space-y-3 text-sm">
               <div>
                 <span className="font-medium">Full Name:</span>{" "}
-                {selectedUser.fullname}
+                {getDisplayName(selectedUser)}
               </div>
               <div>
                 <span className="font-medium">Email:</span> {selectedUser.email}
               </div>
               <div>
                 <span className="font-medium">Role:</span> {selectedUser.role}
-              </div>
-              <div>
-                <span className="font-medium">Verified:</span>{" "}
-                {selectedUser.isVerified ? "Yes" : "No"}
               </div>
               <div>
                 <span className="font-medium">Birthdate:</span>{" "}

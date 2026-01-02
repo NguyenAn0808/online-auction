@@ -369,13 +369,24 @@ export const productHelpers = {
    */
   getTopBidProducts: async (limit = 5) => {
     try {
+      // Backend doesn't sort by bid count; fetch a large batch then sort client-side
       const response = await productAPI.getProducts({
-        // Backend doesn't support bid-count sorting yet; use newest as fallback
-        sort: "newest",
-        limit,
+        // keep results to active products; rely on default filters
+        limit: 1000,
         page: 1,
       });
-      return response.items || [];
+      const items = response.items || response.data || [];
+      const arr = Array.isArray(items) ? items : [];
+      // Sort by bid_count desc, then by end_time asc as a tie-breaker
+      arr.sort((a, b) => {
+        const bcA = Number(a.bid_count || 0);
+        const bcB = Number(b.bid_count || 0);
+        if (bcB !== bcA) return bcB - bcA;
+        const ea = a.end_time ? new Date(a.end_time).getTime() : Infinity;
+        const eb = b.end_time ? new Date(b.end_time).getTime() : Infinity;
+        return ea - eb;
+      });
+      return arr.slice(0, limit);
     } catch (error) {
       console.error("Error fetching top bid products:", error);
       return [];

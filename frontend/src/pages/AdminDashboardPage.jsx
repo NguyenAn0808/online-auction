@@ -29,8 +29,9 @@ const AdminDashboardPage = () => {
           productAPI.getProducts({ status: "ended", page: 1, limit: 100 }),
         ]);
 
-        const activeItems = activeRes.items || [];
-        const endedItems = endedRes.items || [];
+        const getItems = (res) => res.items || res.data || res.products || [];
+        const activeItems = getItems(activeRes);
+        const endedItems = getItems(endedRes);
 
         const activeAuctions = activeItems.length;
         const endedAuctions = endedItems.length;
@@ -45,19 +46,24 @@ const AdminDashboardPage = () => {
           page: 1,
           limit: 1000,
         });
-        const users = usersRes.data || [];
-        const totalUsers = usersRes.pagination?.totalItems || users.length;
-        const sellers = users.filter((u) => u.role === "seller").length;
-        const bidders = users.filter((u) => u.role === "bidder").length;
+        const usersData = usersRes.data || usersRes.items || [];
+        const totalUsers = usersRes.pagination?.totalItems || usersData.length;
+        const sellers = usersData.filter((u) => u.role === "seller").length;
+        const bidders = usersData.filter((u) => u.role === "bidder").length;
 
-        // Fetch pending upgrades count
-        const upgradesRes = await upgradeRequestService.getAllRequests({
-          status: "pending",
-          page: 1,
-          limit: 1,
-        });
-        const pendingUpgrades =
-          upgradesRes.pagination?.total || upgradesRes.data?.length || 0;
+        // Pending upgrades count (safe try)
+        let pendingUpgrades = 0;
+        try {
+          const upgradesRes = await upgradeRequestService.getAllRequests({
+            status: "pending",
+            page: 1,
+            limit: 1,
+          });
+          pendingUpgrades =
+            upgradesRes.pagination?.total || upgradesRes.data?.length || 0;
+        } catch (e) {
+          pendingUpgrades = 0;
+        }
 
         setStats({
           totalProducts:
@@ -72,11 +78,15 @@ const AdminDashboardPage = () => {
           totalRevenue: revenue,
         });
 
-        // Recent products: fetch a page and sort by createdAt
+        // Recent products: fetch a page and sort by createdAt/created_at
         const allRes = await productAPI.getProducts({ page: 1, limit: 50 });
-        const allItems = allRes.items || [];
+        const allItems = getItems(allRes);
         const recent = [...allItems]
-          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          .sort(
+            (a, b) =>
+              new Date(b.createdAt || b.created_at) -
+              new Date(a.createdAt || a.created_at)
+          )
           .slice(0, 5);
         setRecentProducts(recent);
       } catch (err) {
@@ -139,7 +149,9 @@ const AdminDashboardPage = () => {
                     {product.bid_count || 0} bids
                   </span>
                   <span className="text-xs text-gray-500">
-                    {new Date(product.createdAt).toLocaleDateString("vi-VN")}
+                    {new Date(
+                      product.createdAt || product.created_at
+                    ).toLocaleDateString("vi-VN")}
                   </span>
                 </div>
               </div>

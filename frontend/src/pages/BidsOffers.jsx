@@ -10,6 +10,8 @@ import { listTransactions } from "../services/transactionService";
 import { winListService } from "../services/winListService";
 import { ratingService } from "../services/ratingService";
 import { ORDER_STATUS } from "../services/orderService";
+import { productService } from "../services/productService";
+import api from "../services/api";
 import {
   COLORS,
   TYPOGRAPHY,
@@ -29,17 +31,22 @@ function formatProductForCard(product, type = "bid") {
     product.images?.[0]?.src ||
     "/images/sample.jpg";
   const price =
-    product.final_price || product.current_price || product.finalPrice || product.start_price || 0;
-  const endTime = product.end_time || product.endTime
-    ? new Date(product.end_time || product.endTime).toLocaleDateString()
-    : null;
+    product.final_price ||
+    product.current_price ||
+    product.finalPrice ||
+    product.start_price ||
+    0;
+  const endTime =
+    product.end_time || product.endTime
+      ? new Date(product.end_time || product.endTime).toLocaleDateString()
+      : null;
 
   return {
     id: productId,
     name: productName,
     imageSrc,
     status: type === "won" ? "Won" : type === "lost" ? "Lost" : "Active",
-    amount: typeof price === 'number' ? price.toFixed(2) : price,
+    amount: typeof price === "number" ? price.toFixed(2) : price,
     endTime: endTime || "N/A",
     type,
     // Include extra data for won items (order info)
@@ -58,7 +65,9 @@ function formatWonOrderForCard(order) {
     imageSrc: order.productImage || "/images/sample.jpg",
     status: "Won",
     amount: order.final_price ? Number(order.final_price).toFixed(2) : "N/A",
-    endTime: order.endTime ? new Date(order.endTime).toLocaleDateString() : "N/A",
+    endTime: order.endTime
+      ? new Date(order.endTime).toLocaleDateString()
+      : "N/A",
     type: "won",
     sellerName: order.sellerName,
     orderStatus: order.status,
@@ -78,6 +87,8 @@ export default function BidsOffers() {
   const [wonItems, setWonItems] = useState([]);
   const [loadingWon, setLoadingWon] = useState(false);
   const [lostItems, setLostItems] = useState([]);
+  const [myBids, setMyBids] = useState([]);
+  const [loadingBids, setLoadingBids] = useState(false);
   const navigate = useNavigate();
 
   const handleViewAuction = (item) => {
@@ -185,61 +196,104 @@ export default function BidsOffers() {
     };
   }, []);
 
-  // Process transactions to determine active bids and lost items
+  // Fetch user's bids to determine ongoing auctions
   useEffect(() => {
-    if (!transactions.length) {
-      setActiveBids([]);
-      setLostItems([]);
-      return;
+    let mounted = true;
+    async function fetchUserBids() {
+      try {
+        setLoadingBids(true);
+        const res = await api.get("/api/bids/user");
+        if (!mounted) return;
+        const bids = res.data?.data || res.data || [];
+        setMyBids(Array.isArray(bids) ? bids : []);
+      } catch (err) {
+        console.error("Failed to load user bids:", err);
+        if (!mounted) return;
+        setMyBids([]);
+      } finally {
+        if (mounted) setLoadingBids(false);
+      }
+    }
+    fetchUserBids();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Build active and lost lists from user's bids with product details
+  useEffect(() => {
+    async function buildBidLists() {
+      if (!myBids.length) {
+        setActiveBids([]);
+        setLostItems([]);
+        return;
+      }
+
+      // Gather unique product IDs from bids
+      const productIds = Array.from(
+        new Set(
+          myBids
+            .map((b) => b.product_id || b.productId || b.product?.id)
+            .filter(Boolean)
+        )
+      );
+
+      // Fetch product details to get end_time and names
+      let productMap = {};
+      try {
+        const results = await Promise.all(
+          productIds.map((pid) =>
+            productService
+              .getProductById(pid)
+              .then((p) => ({ pid, p }))
+              .catch(() => ({ pid, p: null }))
+          )
+        );
+        results.forEach(({ pid, p }) => {
+          productMap[pid] = p;
+        });
+      } catch (e) {
+        console.warn("Failed to load some product details", e);
+      }
+
+      const now = new Date();
+      const active = [];
+      const lost = [];
+
+      productIds.forEach((pid) => {
+        const product = productMap[pid] || {};
+        const endTime = product.end_time ? new Date(product.end_time) : null;
+        const isActive = endTime ? endTime > now : true; // assume active if missing end_time
+        const won = wonItems.some((w) => w.id === pid);
+        const name = product.name || product.productName || "Unnamed Product";
+        const thumbnail =
+          product.thumbnail ||
+          product.productImage ||
+          product.images?.[0]?.image_url ||
+          "/images/sample.jpg";
+
+        const card = formatProductForCard(
+          {
+            _id: pid,
+            id: pid,
+            name,
+            thumbnail,
+            end_time: product.end_time,
+            current_price: product.current_price,
+          },
+          isActive ? "bid" : "lost"
+        );
+
+        if (isActive && !won) active.push(card);
+        if (!isActive && !won) lost.push(card);
+      });
+
+      setActiveBids(active);
+      setLostItems(lost);
     }
 
-    const now = new Date();
-    const active = [];
-    const lost = [];
-
-    transactions.forEach((tx) => {
-      const product = tx.product || {};
-      const productId = product._id || product.id;
-      const productName = product.name || "Unnamed Product";
-      const endTime = product.end_time ? new Date(product.end_time) : null;
-      const isActive = endTime && endTime > now;
-      const isCompleted =
-        tx.status === ORDER_STATUS.COMPLETED ||
-        tx.status === ORDER_STATUS.PENDING_RATING;
-      const isWon = wonItems.some((item) => item.id === productId);
-
-      if (isActive && !isCompleted && !isWon) {
-        // Active bid - auction still ongoing
-        active.push(
-          formatProductForCard(
-            {
-              ...product,
-              _id: productId,
-              id: productId,
-              name: productName,
-            },
-            "bid"
-          )
-        );
-      } else if (!isActive && !isWon && isCompleted) {
-        // Lost item - auction ended, user didn't win
-        lost.push(
-          formatProductForCard(
-            {
-              ...product,
-              _id: productId,
-              id: productId,
-              name: productName,
-            },
-            "lost"
-          )
-        );
-      }
-    });
-
-    setActiveBids(active);
-    setLostItems(lost);
-  }, [transactions, wonItems]);
+    buildBidLists();
+  }, [myBids, wonItems]);
 
   return (
     <div style={{ backgroundColor: COLORS.WHISPER, minHeight: "100vh" }}>
@@ -287,7 +341,20 @@ export default function BidsOffers() {
                     gap: SPACING.S,
                   }}
                 >
-                  {activeBids.length === 0 ? (
+                  {loadingBids ? (
+                    <div
+                      style={{
+                        borderRadius: BORDER_RADIUS.MEDIUM,
+                        border: `2px dashed ${COLORS.MORNING_MIST}`,
+                        backgroundColor: COLORS.WHITE,
+                        padding: SPACING.L,
+                        textAlign: "center",
+                        color: COLORS.PEBBLE,
+                      }}
+                    >
+                      Loading your bids...
+                    </div>
+                  ) : activeBids.length === 0 ? (
                     <div
                       style={{
                         borderRadius: BORDER_RADIUS.MEDIUM,
@@ -410,8 +477,8 @@ export default function BidsOffers() {
                                 tx.status === "completed"
                                   ? "#16a34a"
                                   : tx.status === "cancelled"
-                                    ? "#dc2626"
-                                    : "#b45309",
+                                  ? "#dc2626"
+                                  : "#b45309",
                             }}
                           >
                             {tx.status || "Unknown"}

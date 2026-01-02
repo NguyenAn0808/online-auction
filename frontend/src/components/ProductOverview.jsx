@@ -23,7 +23,6 @@ import {
   PencilIcon,
 } from "@heroicons/react/24/outline";
 import BiddingQuickView from "./BiddingQuickView";
-import EditProductModal from "./EditProductModal";
 import EditDescriptionModal from "./EditDescriptionModal";
 import { productService } from "../services/productService";
 import watchlistService from "../services/watchlistService";
@@ -53,6 +52,15 @@ function formatDescriptionDate(dateString) {
   });
 }
 
+// Mask display name: show **** + last 3 characters (no spaces)
+function maskDisplayName(name) {
+  if (!name || typeof name !== "string") return "-";
+  const trimmed = name.trim().replace(/\s+/g, "");
+  if (trimmed.length < 3) return "*".repeat(trimmed.length);
+  const last3 = trimmed.slice(-3);
+  return "****" + last3;
+}
+
 export default function ProductOverview({ productId: propProductId }) {
   const { user } = useAuth(); // Check if user is logged in
   const { productId: paramProductId } = useParams();
@@ -70,7 +78,6 @@ export default function ProductOverview({ productId: propProductId }) {
   const [showBidQuickView, setShowBidQuickView] = useState(false);
   const [isEnded, setIsEnded] = useState(false);
   const [isWinner, setIsWinner] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
   const [isEditDescOpen, setIsEditDescOpen] = useState(false);
   const [descriptionHistory, setDescriptionHistory] = useState([]);
   const [sellerInfo, setSellerInfo] = useState(null);
@@ -143,7 +150,11 @@ export default function ProductOverview({ productId: propProductId }) {
               setOrder(orderData);
 
               // Auto-redirect if user is buyer or seller
-              if (orderData && (orderData.buyer_id === user.id || orderData.seller_id === user.id)) {
+              if (
+                orderData &&
+                (orderData.buyer_id === user.id ||
+                  orderData.seller_id === user.id)
+              ) {
                 navigate(`/transactions/${orderData.id}`);
                 return;
               }
@@ -172,7 +183,8 @@ export default function ProductOverview({ productId: propProductId }) {
         // ALWAYS prioritize actual product table data over inferred highest bid
         current_price: auctionData.current_price ?? prev?.current_price,
         price_holder: auctionData.price_holder ?? prev?.price_holder,
-        price_holder_name: auctionData.price_holder_name ?? prev?.price_holder_name,
+        price_holder_name:
+          auctionData.price_holder_name ?? prev?.price_holder_name,
       }));
     }
   }, [auctionData]);
@@ -188,31 +200,8 @@ export default function ProductOverview({ productId: propProductId }) {
     setShowBidQuickView(true);
   };
   const closeBidQuickView = () => setShowBidQuickView(false);
-  const openEdit = () => setIsEditOpen(true);
-  const closeEdit = () => setIsEditOpen(false);
   const openEditDesc = () => setIsEditDescOpen(true);
   const closeEditDesc = () => setIsEditDescOpen(false);
-
-  const handleUpdateProduct = async (productId, data) => {
-    try {
-      const payload = {
-        name: data.name,
-        description: data.description,
-        start_price: data.start_price,
-        step_price: data.step_price,
-        buy_now_price: data.buy_now_price ?? null,
-        allow_unrated_bidder: !!data.allow_unrated_bidder,
-        auto_extend: !!data.auto_extend,
-      };
-      await productService.updateProduct(productId, payload);
-      alert("Product updated successfully!");
-      // Reload product to reflect changes
-      const updated = await productService.getProductById(productId);
-      setProduct(updated);
-    } catch (e) {
-      alert("Failed to update product");
-    }
-  };
 
   const requireAuth = (actionCallback) => {
     if (!user) {
@@ -266,21 +255,33 @@ export default function ProductOverview({ productId: propProductId }) {
     );
 
   // Show ended message for non-participants
-  if (isEnded && (!order || (order.buyer_id !== user?.id && order.seller_id !== user?.id))) {
+  if (
+    isEnded &&
+    (!order || (order.buyer_id !== user?.id && order.seller_id !== user?.id))
+  ) {
     return (
       <div style={{ backgroundColor: COLORS.WHISPER, minHeight: "100vh" }}>
         <div className="mx-auto max-w-2xl px-4 py-16 text-center">
           <div style={{ fontSize: "64px", marginBottom: SPACING.L }}>⏱️</div>
-          <h2 style={{ 
-            fontSize: TYPOGRAPHY.SIZE_HEADING_LG, 
-            fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
-            marginBottom: SPACING.M,
-            color: COLORS.MIDNIGHT_ASH
-          }}>
+          <h2
+            style={{
+              fontSize: TYPOGRAPHY.SIZE_HEADING_LG,
+              fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+              marginBottom: SPACING.M,
+              color: COLORS.MIDNIGHT_ASH,
+            }}
+          >
             Auction Ended
           </h2>
-          <p style={{ color: COLORS.PEBBLE, marginBottom: SPACING.XL, fontSize: TYPOGRAPHY.SIZE_BODY }}>
-            This auction has concluded. Only the buyer and seller can access the order details.
+          <p
+            style={{
+              color: COLORS.PEBBLE,
+              marginBottom: SPACING.XL,
+              fontSize: TYPOGRAPHY.SIZE_BODY,
+            }}
+          >
+            This auction has concluded. Only the buyer and seller can access the
+            order details.
           </p>
           <button
             onClick={() => navigate("/")}
@@ -292,7 +293,7 @@ export default function ProductOverview({ productId: propProductId }) {
               border: "none",
               cursor: "pointer",
               fontSize: TYPOGRAPHY.SIZE_BODY,
-              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD
+              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
             }}
           >
             Browse Other Auctions
@@ -428,28 +429,7 @@ export default function ProductOverview({ productId: propProductId }) {
                 {product.name}
               </h1>
 
-              {user?.role === "admin" && (
-                <button
-                  type="button"
-                  onClick={openEdit}
-                  style={{
-                    borderRadius: BORDER_RADIUS.FULL,
-                    border: `1px solid ${COLORS.MORNING_MIST}`,
-                    backgroundColor: COLORS.WHITE,
-                    padding: SPACING.XS,
-                    fontSize: TYPOGRAPHY.SIZE_BODY,
-                    color: COLORS.MIDNIGHT_ASH,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = COLORS.SOFT_CLOUD;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = COLORS.WHITE;
-                  }}
-                >
-                  Edit
-                </button>
-              )}
+              {/* Admin product edit button removed */}
             </div>
 
             {/* Category */}
@@ -491,14 +471,23 @@ export default function ProductOverview({ productId: propProductId }) {
                 <div
                   className="mt-2 text-sm font-medium"
                   style={{
-                    color: product.price_holder === user?.id ? "#16a34a" : "#2563eb",
-                    backgroundColor: product.price_holder === user?.id ? "#f0fdf4" : "#eff6ff",
+                    color:
+                      product.price_holder === user?.id ? "#16a34a" : "#2563eb",
+                    backgroundColor:
+                      product.price_holder === user?.id ? "#f0fdf4" : "#eff6ff",
                     padding: "4px 12px",
                     borderRadius: BORDER_RADIUS.FULL,
-                    display: "inline-block"
+                    display: "inline-block",
                   }}
                 >
-                  🏆 {product.price_holder === user?.id ? "You are currently winning!" : `${product.price_holder_name || "A bidder"} is currently winning`}
+                  🏆{" "}
+                  {product.price_holder === user?.id
+                    ? "You are currently winning!"
+                    : `${
+                        product.price_holder_name
+                          ? maskDisplayName(product.price_holder_name)
+                          : "A bidder"
+                      } is currently winning`}
                 </div>
               )}
               <div
@@ -843,15 +832,7 @@ export default function ProductOverview({ productId: propProductId }) {
         product={product}
       />
 
-      {/* Edit product modal */}
-      {isEditOpen && (
-        <EditProductModal
-          isOpen={isEditOpen}
-          onClose={closeEdit}
-          product={product}
-          onUpdate={handleUpdateProduct}
-        />
-      )}
+      {/* Edit product modal removed */}
 
       {/* Edit description modal */}
       {isEditDescOpen && (

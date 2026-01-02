@@ -233,9 +233,6 @@ const CategoryManagementPage = () => {
               <th className="px-3 py-2 text-left text-sm font-semibold text-gray-700">
                 Parent Category
               </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold text-gray-700">
-                Created At
-              </th>
               <th className="px-3 py-2 text-center text-sm font-semibold text-gray-700">
                 Actions
               </th>
@@ -253,20 +250,17 @@ const CategoryManagementPage = () => {
                 <td className="px-3 py-2 text-gray-700">
                   {getParentName(cat.parent_id)}
                 </td>
-                <td className="px-3 py-2 text-gray-700">
-                  {formatDate(cat.createdAt)}
-                </td>
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-2 justify-center">
                     <button
                       onClick={() => handleEdit(cat)}
-                      className="px-3 py-1 border border-blue-300 text-blue-600 rounded-md text-xs font-medium hover:bg-blue-50"
+                      className="!px-3 !py-1 btn-secondary !rounded-lg !text-xs font-semibold hover:!bg-gray-200 transition-all"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => handleDelete(cat)}
-                      className="px-3 py-1 border border-red-300 text-red-600 rounded-md text-xs font-medium hover:bg-red-50"
+                      className="!px-3 !py-1 bg-red-100 text-red-700 border border-red-200 !text-xs !rounded-lg hover:bg-red-200 font-medium transition-all"
                     >
                       Delete
                     </button>
@@ -277,7 +271,7 @@ const CategoryManagementPage = () => {
             {categories.length === 0 && (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={4}
                   className="px-3 py-8 text-center text-gray-500 text-sm"
                 >
                   No categories found.
