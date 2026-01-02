@@ -22,6 +22,11 @@ export default function Signup() {
   const [otp, setOtp] = useState("");
   const [recaptchaToken, setRecaptchaToken] = useState(null);
 
+  // Per-field validation errors
+  const [fieldErrors, setFieldErrors] = useState({});
+  // Track touched fields for showing errors only after interaction
+  const [touched, setTouched] = useState({});
+
   const siteKey =
     import.meta.env.VITE_RECAPTCHA_SITE_KEY ||
     "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"; // test key
@@ -33,16 +38,129 @@ export default function Signup() {
     setError("");
   }, [stage, fullName, email, password, otp]);
 
+  // Email validation helper with comprehensive checks
+  const validateEmail = (emailValue) => {
+    if (!emailValue) return "Email is required";
+    
+    // Trim whitespace
+    const trimmed = emailValue.trim();
+    
+    // Check for basic structure
+    if (!trimmed.includes("@")) return "Email must contain '@' symbol";
+    
+    const [localPart, domain] = trimmed.split("@");
+    
+    // Validate local part
+    if (!localPart || localPart.length === 0) return "Email username is missing";
+    if (localPart.length > 64) return "Email username is too long";
+    if (localPart.startsWith(".") || localPart.endsWith(".")) 
+      return "Email cannot start or end with a dot";
+    if (localPart.includes("..")) return "Email cannot contain consecutive dots";
+    
+    // Validate domain
+    if (!domain || domain.length === 0) return "Email domain is missing";
+    if (!domain.includes(".")) return "Email domain must contain a dot (e.g., gmail.com)";
+    if (domain.startsWith(".") || domain.endsWith(".")) 
+      return "Email domain cannot start or end with a dot";
+    if (domain.startsWith("-") || domain.endsWith("-")) 
+      return "Email domain cannot start or end with a hyphen";
+    
+    // Check domain extension
+    const domainParts = domain.split(".");
+    const tld = domainParts[domainParts.length - 1];
+    if (tld.length < 2) return "Email domain extension is invalid";
+    
+    // Comprehensive RFC 5322 regex for final validation
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+    if (!emailRegex.test(trimmed)) return "Please enter a valid email address";
+    
+    // Check for common typos in popular domains
+    const commonDomains = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com"];
+    const lowerDomain = domain.toLowerCase();
+    const typoSuggestions = {
+      "gmial.com": "gmail.com", "gmal.com": "gmail.com", "gamil.com": "gmail.com",
+      "gmail.co": "gmail.com", "gmai.com": "gmail.com",
+      "yaho.com": "yahoo.com", "yahooo.com": "yahoo.com",
+      "hotmal.com": "hotmail.com", "hotmai.com": "hotmail.com",
+      "outlok.com": "outlook.com", "outloo.com": "outlook.com"
+    };
+    if (typoSuggestions[lowerDomain]) {
+      return `Did you mean ${localPart}@${typoSuggestions[lowerDomain]}?`;
+    }
+    
+    return null; // Valid
+  };
+
+  // Real-time field validation
+  const validateField = (fieldName, value) => {
+    switch (fieldName) {
+      case "username":
+        if (!value) return "Username is required";
+        if (value.length < 3) return "Username must be at least 3 characters";
+        if (!/^[a-zA-Z0-9_]+$/.test(value)) return "Username can only contain letters, numbers, and underscores";
+        return null;
+      case "fullName":
+        if (!value) return "Full name is required";
+        if (value.length < 2) return "Name is too short";
+        return null;
+      case "phone":
+        if (!value) return "Phone number is required";
+        if (!/^[0-9+\-\s()]{8,15}$/.test(value)) return "Enter a valid phone number";
+        return null;
+      case "birthdate":
+        if (!value) return "Birthdate is required";
+        const age = (new Date() - new Date(value)) / (365.25 * 24 * 60 * 60 * 1000);
+        if (age < 18) return "You must be at least 18 years old";
+        if (age > 120) return "Please enter a valid birthdate";
+        return null;
+      case "email":
+        return validateEmail(value);
+      case "password":
+        if (!value) return "Password is required";
+        if (value.length < 6) return "Password must be at least 6 characters";
+        if (!/[A-Z]/.test(value)) return "Password should contain at least one uppercase letter";
+        if (!/[0-9]/.test(value)) return "Password should contain at least one number";
+        return null;
+      default:
+        return null;
+    }
+  };
+
+  // Handle field blur to show validation
+  const handleBlur = (fieldName, value) => {
+    setTouched((prev) => ({ ...prev, [fieldName]: true }));
+    const error = validateField(fieldName, value);
+    setFieldErrors((prev) => ({ ...prev, [fieldName]: error }));
+  };
+
+  // Handle field change with real-time validation for touched fields
+  const handleFieldChange = (fieldName, value, setter) => {
+    setter(value);
+    if (touched[fieldName]) {
+      const error = validateField(fieldName, value);
+      setFieldErrors((prev) => ({ ...prev, [fieldName]: error }));
+    }
+  };
+
   const validateForm = () => {
-    if (!username) return "Username is required";
-    if (!phone) return "Phone number is required";
-    if (!birthdate) return "Birthdate is required";
-    if (!fullName) return "Full name is required";
-    if (!email) return "Email is required";
-    const re = /^\S+@\S+\.\S+$/;
-    if (!re.test(email)) return "Enter a valid email";
-    if (!password) return "Password is required";
-    if (password.length < 6) return "Password must be at least 6 characters";
+    const fields = ["username", "fullName", "phone", "birthdate", "email", "password"];
+    const values = { username, fullName, phone, birthdate, email, password };
+    const newErrors = {};
+    let firstError = null;
+
+    for (const field of fields) {
+      const error = validateField(field, values[field]);
+      if (error) {
+        newErrors[field] = error;
+        if (!firstError) firstError = error;
+      }
+    }
+
+    // Mark all fields as touched
+    setTouched(fields.reduce((acc, f) => ({ ...acc, [f]: true }), {}));
+    setFieldErrors(newErrors);
+
+    if (firstError) return firstError;
     if (!recaptchaToken) return "Please complete the reCAPTCHA";
     return null;
   };
@@ -139,22 +257,31 @@ export default function Signup() {
                       htmlFor="username"
                       className="block text-sm font-medium text-gray-900"
                     >
-                      User name
+                      User name <span className="text-red-500">*</span>
                     </label>
                     <div className="mt-2">
                       <input
                         id="username"
                         name="username"
                         value={username}
-                        onChange={(e) => setUsername(e.target.value)}
+                        onChange={(e) => handleFieldChange("username", e.target.value, setUsername)}
+                        onBlur={(e) => handleBlur("username", e.target.value)}
                         autoComplete="username"
-                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base
-                        border border-gray-300
+                        className={`block w-full rounded-md bg-white px-3 py-1.5 text-base
+                        border ${touched.username && fieldErrors.username ? "border-red-500 ring-1 ring-red-500" : touched.username && !fieldErrors.username ? "border-green-500" : "border-gray-300"}
                         placeholder:text-gray-400
                         focus:border-midnight-ash focus:ring-1 focus:ring-midnight-ash
-                        sm:text-sm"
+                        sm:text-sm transition-colors`}
                       />
                     </div>
+                    {touched.username && fieldErrors.username && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {fieldErrors.username}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -162,22 +289,31 @@ export default function Signup() {
                       htmlFor="fullName"
                       className="block text-sm font-medium text-gray-900"
                     >
-                      Full name
+                      Full name <span className="text-red-500">*</span>
                     </label>
                     <div className="mt-2">
                       <input
                         id="fullName"
                         name="fullName"
                         value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
+                        onChange={(e) => handleFieldChange("fullName", e.target.value, setFullName)}
+                        onBlur={(e) => handleBlur("fullName", e.target.value)}
                         autoComplete="name"
-                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base
-                        border border-gray-300
+                        className={`block w-full rounded-md bg-white px-3 py-1.5 text-base
+                        border ${touched.fullName && fieldErrors.fullName ? "border-red-500 ring-1 ring-red-500" : touched.fullName && !fieldErrors.fullName ? "border-green-500" : "border-gray-300"}
                         placeholder:text-gray-400
                         focus:border-midnight-ash focus:ring-1 focus:ring-midnight-ash
-                        sm:text-sm"
+                        sm:text-sm transition-colors`}
                       />
                     </div>
+                    {touched.fullName && fieldErrors.fullName && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {fieldErrors.fullName}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -185,7 +321,7 @@ export default function Signup() {
                       htmlFor="phone"
                       className="block text-sm font-medium text-gray-900"
                     >
-                      Phone number
+                      Phone number <span className="text-red-500">*</span>
                     </label>
                     <div className="mt-2">
                       <input
@@ -193,15 +329,24 @@ export default function Signup() {
                         name="phone"
                         type="tel"
                         value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
+                        onChange={(e) => handleFieldChange("phone", e.target.value, setPhone)}
+                        onBlur={(e) => handleBlur("phone", e.target.value)}
                         autoComplete="tel"
-                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base
-                        border border-gray-300
+                        className={`block w-full rounded-md bg-white px-3 py-1.5 text-base
+                        border ${touched.phone && fieldErrors.phone ? "border-red-500 ring-1 ring-red-500" : touched.phone && !fieldErrors.phone ? "border-green-500" : "border-gray-300"}
                         placeholder:text-gray-400
                         focus:border-midnight-ash focus:ring-1 focus:ring-midnight-ash
-                        sm:text-sm"
+                        sm:text-sm transition-colors`}
                       />
                     </div>
+                    {touched.phone && fieldErrors.phone && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {fieldErrors.phone}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -232,7 +377,7 @@ export default function Signup() {
                       htmlFor="birthdate"
                       className="block text-sm font-medium text-gray-900"
                     >
-                      Birthdate
+                      Birthdate <span className="text-red-500">*</span>
                     </label>
                     <div className="mt-2">
                       <input
@@ -240,15 +385,24 @@ export default function Signup() {
                         name="birthdate"
                         type="date"
                         value={birthdate}
-                        onChange={(e) => setBirthdate(e.target.value)}
+                        onChange={(e) => handleFieldChange("birthdate", e.target.value, setBirthdate)}
+                        onBlur={(e) => handleBlur("birthdate", e.target.value)}
                         autoComplete="bday"
-                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base
-                        border border-gray-300
+                        className={`block w-full rounded-md bg-white px-3 py-1.5 text-base
+                        border ${touched.birthdate && fieldErrors.birthdate ? "border-red-500 ring-1 ring-red-500" : touched.birthdate && !fieldErrors.birthdate ? "border-green-500" : "border-gray-300"}
                         placeholder:text-gray-400
                         focus:border-midnight-ash focus:ring-1 focus:ring-midnight-ash
-                        sm:text-sm"
+                        sm:text-sm transition-colors`}
                       />
                     </div>
+                    {touched.birthdate && fieldErrors.birthdate && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {fieldErrors.birthdate}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -256,23 +410,40 @@ export default function Signup() {
                       htmlFor="email"
                       className="block text-sm font-medium text-gray-900"
                     >
-                      Email address
+                      Email address <span className="text-red-500">*</span>
                     </label>
-                    <div className="mt-2">
+                    <div className="mt-2 relative">
                       <input
                         id="email"
                         name="email"
                         type="email"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => handleFieldChange("email", e.target.value, setEmail)}
+                        onBlur={(e) => handleBlur("email", e.target.value)}
                         autoComplete="email"
-                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base
-                        border border-gray-300
+                        placeholder="you@example.com"
+                        className={`block w-full rounded-md bg-white px-3 py-1.5 text-base
+                        border ${touched.email && fieldErrors.email ? "border-red-500 ring-1 ring-red-500" : touched.email && !fieldErrors.email ? "border-green-500" : "border-gray-300"}
                         placeholder:text-gray-400
                         focus:border-midnight-ash focus:ring-1 focus:ring-midnight-ash
-                        sm:text-sm"
+                        sm:text-sm transition-colors`}
                       />
+                      {touched.email && !fieldErrors.email && (
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                          <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
                     </div>
+                    {touched.email && fieldErrors.email && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                        <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {fieldErrors.email}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -280,7 +451,7 @@ export default function Signup() {
                       htmlFor="password"
                       className="block text-sm font-medium text-gray-900"
                     >
-                      Password
+                      Password <span className="text-red-500">*</span>
                     </label>
                     <div className="mt-2">
                       <input
@@ -288,15 +459,32 @@ export default function Signup() {
                         name="password"
                         type="password"
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        onChange={(e) => handleFieldChange("password", e.target.value, setPassword)}
+                        onBlur={(e) => handleBlur("password", e.target.value)}
                         autoComplete="new-password"
-                        className="block w-full rounded-md bg-white px-3 py-1.5 text-base
-                        border border-gray-300
+                        className={`block w-full rounded-md bg-white px-3 py-1.5 text-base
+                        border ${touched.password && fieldErrors.password ? "border-red-500 ring-1 ring-red-500" : touched.password && !fieldErrors.password ? "border-green-500" : "border-gray-300"}
                         placeholder:text-gray-400
                         focus:border-midnight-ash focus:ring-1 focus:ring-midnight-ash
-                        sm:text-sm"
+                        sm:text-sm transition-colors`}
                       />
                     </div>
+                    {touched.password && fieldErrors.password && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                        <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {fieldErrors.password}
+                      </p>
+                    )}
+                    {touched.password && !fieldErrors.password && (
+                      <p className="mt-1 text-sm text-green-600 flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        Password strength: Good
+                      </p>
+                    )}
                   </div>
 
                   {siteKey && (
@@ -308,7 +496,16 @@ export default function Signup() {
                     </div>
                   )}
 
-                  {error && <div className="text-red-600 text-sm">{error}</div>}
+                  {error && (
+                    <div className="rounded-md bg-red-50 border border-red-200 p-3">
+                      <div className="flex items-start gap-2">
+                        <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                        <div className="text-sm text-red-700">{error}</div>
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <button

@@ -59,20 +59,27 @@ function formatProductForCard(product, type = "bid") {
 
 // Helper function to format won order data for BidOfferCard
 function formatWonOrderForCard(order) {
-  return {
+  console.log("[formatWonOrderForCard] Order data:", order);
+  
+  const formatted = {
     id: order.product_id,
     orderId: order.id,
-    name: order.productName || "Won Item",
-    imageSrc: order.productImage || "/images/sample.jpg",
+    name: order.productName || order.product?.name || "Won Item",
+    imageSrc: order.productImage || order.product?.images?.[0]?.image_url || "/images/sample.jpg",
     status: "Won",
     amount: order.final_price ? Number(order.final_price) : null,
     endTime: order.endTime
       ? new Date(order.endTime).toLocaleDateString()
       : "N/A",
     type: "won",
-    sellerName: order.sellerName,
+    sellerName: order.sellerName || order.seller?.full_name || order.seller?.name,
     orderStatus: order.status,
+    // Try multiple possible seller ID fields
+    sellerId: order.seller_id || order.sellerId || order.seller?.id || order.seller_id,
   };
+  
+  console.log("[formatWonOrderForCard] Formatted:", formatted);
+  return formatted;
 }
 
 export default function BidsOffers() {
@@ -107,34 +114,95 @@ export default function BidsOffers() {
   };
 
   const handleFeedback = (item) => {
+    // Check if order is ready for rating (Step 4+)
+    const isReadyForRating = item.orderStatus === 'await_rating' || item.orderStatus === 'completed' || 
+                            item.status === 'await_rating' || item.status === 'completed';
+    
+    if (!isReadyForRating) {
+      // Not ready for rating - navigate to transaction page to complete previous steps
+      navigate(`/transactions/${item.orderId}`);
+      return;
+    }
+    
+    // Check if user has already rated
+    const hasExistingRating = item.ratings?.buyer || item.ratings?.find?.(r => r.reviewer_id === user?.id);
+    
     setFeedbackModal({
       isOpen: true,
       item,
+      isEdit: !!hasExistingRating,
+      existingRating: hasExistingRating
     });
   };
 
   const handleSubmitFeedback = async (feedbackData) => {
     try {
-      if (!user?.id || !feedbackData.item?.id) {
+      // Get the item from feedbackModal state
+      const item = feedbackModal.item;
+      const { rating, comment } = feedbackData;
+      const isEdit = feedbackModal.isEdit;
+      
+      console.log("[handleSubmitFeedback] Item:", item);
+      console.log("[handleSubmitFeedback] FeedbackData:", feedbackData);
+      console.log("[handleSubmitFeedback] User:", user);
+      console.log("[handleSubmitFeedback] Is Edit:", isEdit);
+      
+      // Validate required data
+      if (!user?.id || !item?.id) {
         toast.error("Missing user or item information");
         return;
       }
+      
+      // Ensure sellerId is available
+      if (!item.sellerId) {
+        toast.error("Missing seller information. Unable to submit feedback.");
+        return;
+      }
+
+      // For edit mode, only allow comment updates (score cannot be changed)
+      if (isEdit) {
+        // In edit mode, we only update the comment
+        // Note: Backend should handle this as an update operation
+        console.log("[handleSubmitFeedback] Updating comment only (edit mode)");
+      }
 
       // Create rating using ratingService
-      await ratingService.createRating({
-        user_id: feedbackData.sellerId || feedbackData.item.sellerId,
-        reviewer_id: user.id,
-        product_id: feedbackData.item.id,
-        is_positive: feedbackData.rating > 0,
-        comment: feedbackData.comment || "",
-      });
+      const ratingData = {
+        product_id: item.id,              // The product ID
+        reviewer_id: user.id,            // The current user (buyer) giving the rating
+        target_user_id: item.sellerId,   // The seller being rated
+        score: isEdit ? feedbackModal.existingRating?.score : parseInt(rating), // Use existing score for edits
+        comment: comment || "",           // Comment text (always editable)
+      };
+      
+      console.log("[handleSubmitFeedback] Submitting rating data:", ratingData);
+      
+      await ratingService.createRating(ratingData);
 
-      toast.success("Feedback submitted successfully!");
+      toast.success(isEdit ? "Comment updated successfully!" : "Feedback submitted successfully!");
       closeFeedbackModal();
-      // Optionally refresh data
+      // Optionally refresh won items data
+      // fetchWonItems(); // Uncomment if you want to refresh the list
     } catch (error) {
       console.error("Error submitting feedback:", error);
-      toast.error("Failed to submit feedback. Please try again.");
+      
+      // Show detailed error information
+      if (error.response) {
+        console.error("API Error Response:", error.response.data);
+        console.error("Status:", error.response.status);
+        
+        // Show specific error message from API if available
+        const errorMessage = error.response.data?.message || 
+                           error.response.data?.error || 
+                           "Failed to submit feedback. Please try again.";
+        toast.error(errorMessage);
+      } else if (error.request) {
+        console.error("No response received:", error.request);
+        toast.error("Network error. Please check your connection.");
+      } else {
+        console.error("Error:", error.message);
+        toast.error("Failed to submit feedback. Please try again.");
+      }
     }
   };
 
@@ -178,10 +246,14 @@ export default function BidsOffers() {
         const data = await winListService.getWinList();
         if (!mounted) return;
 
+        console.log("[fetchWonItems] Raw API data:", data);
+
         // Format won orders for BidOfferCard
         const formatted = Array.isArray(data)
           ? data.map((order) => formatWonOrderForCard(order))
           : [];
+        
+        console.log("[fetchWonItems] Formatted items:", formatted);
         setWonItems(formatted);
       } catch (err) {
         if (err.response?.status === 404) {
@@ -738,7 +810,7 @@ export default function BidsOffers() {
                 in the transaction/order response from the server.
               */}
               <section>
-                <div
+                <h2
                   style={{
                     fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
                     fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
@@ -944,13 +1016,27 @@ export default function BidsOffers() {
                       You haven't won any items yet
                     </div>
                   ) : (
-                    wonItems.map((item) => (
-                      <BidOfferCard
-                        key={item.id}
-                        {...item}
-                        onFeedback={handleFeedback}
-                      />
-                    ))
+                    wonItems.map((item) => {
+                      // Determine feedback button label and action
+                      const isReadyForRating = item.orderStatus === 'await_rating' || item.orderStatus === 'completed' || 
+                                              item.status === 'await_rating' || item.status === 'completed';
+                      const hasExistingRating = item.ratings?.buyer || item.ratings?.find?.(r => r.reviewer_id === user?.id);
+                      
+                      let feedbackLabel = "Complete Order";
+                      if (isReadyForRating) {
+                        feedbackLabel = hasExistingRating ? "Edit Feedback" : "Leave Feedback";
+                      }
+                      
+                      return (
+                        <BidOfferCard
+                          key={item.id}
+                          {...item}
+                          onFeedback={() => handleFeedback(item)}
+                          feedbackLabel={feedbackLabel}
+                          feedbackDisabled={!isReadyForRating}
+                        />
+                      );
+                    })
                   )}
                 </div>
               </section>

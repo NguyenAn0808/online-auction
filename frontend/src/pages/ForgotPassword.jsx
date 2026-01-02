@@ -68,8 +68,7 @@ export default function ForgotPassword() {
                 Reset your password
               </h2>
               <p className="mt-2 text-sm text-gray-600">
-                Enter your email address and we will send you a link to reset
-                your password.
+                Enter your email address and we will send you an OTP to reset your password.
               </p>
             </div>
 
@@ -95,7 +94,7 @@ export default function ForgotPassword() {
                   Check your inbox
                 </h3>
                 <p className="mt-1 text-sm text-green-700">
-                  If that email is registered, we've sent a reset link.
+                  If that email is registered, we've sent a reset OTP.
                 </p>
                 <div className="mt-6">
                   <Link

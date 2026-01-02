@@ -55,11 +55,51 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
           id: order.id,
           buyerId: order.buyer_id || order.buyer?.id,
           sellerId: order.seller_id || order.seller?.id,
-          title: `Order #${order.id?.slice(0, 8) || "N/A"}`,
+          title: order.product?.name || `Order #${order.id?.slice(0, 8) || "N/A"}`,
           product_id: order.product_id || order.product?.id,
+          finalPrice: order.final_price || order.amount || 0,
+          status: order.status || "Pending",
+          productImage: order.product?.images?.[0]?.image_url || order.product?.image,
           unread: 0, // Will be calculated from messages
         }));
         setTransactions(mappedOrders);
+        
+        // Fetch product images for orders that have product_id but no image
+        const ordersWithoutImages = mappedOrders.filter(order => 
+          order.product_id && !order.productImage
+        );
+        
+        if (ordersWithoutImages.length > 0) {
+          const { productService } = await import("../services/productService");
+          
+          // Fetch product details for orders without images
+          const updatedOrders = await Promise.all(
+            ordersWithoutImages.map(async (order) => {
+              try {
+                const product = await productService.getProductById(order.product_id);
+                const productImage = product?.images?.[0]?.image_url || product?.image;
+                const productName = product?.name;
+                
+                return {
+                  ...order,
+                  productImage,
+                  title: productName || order.title,
+                };
+              } catch (err) {
+                console.warn(`Failed to fetch product ${order.product_id}:`, err);
+                return order;
+              }
+            })
+          );
+          
+          // Update transactions with fetched images
+          setTransactions(prev => 
+            prev.map(order => {
+              const updated = updatedOrders.find(u => u.id === order.id);
+              return updated || order;
+            })
+          );
+        }
       } catch (error) {
         console.error("Failed to load orders:", error);
         setTransactions([]);
@@ -114,6 +154,21 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
             })),
             buyerId: order?.buyerId,
             sellerId: order?.sellerId,
+            // Update product context when order is selected
+            productContext: {
+              name: order?.title || "Order Discussion",
+              price: order?.finalPrice ? `$${parseFloat(order.finalPrice).toLocaleString()}` : "$0.00",
+              image: order?.productImage,
+              status: order?.status || "Pending",
+            },
+          });
+          
+          // Update productContext state
+          setProductContext({
+            name: order?.title || "Order Discussion",
+            price: order?.finalPrice ? `$${parseFloat(order.finalPrice).toLocaleString()}` : "$0.00",
+            image: order?.productImage,
+            status: order?.status || "Pending",
           });
         } catch (error) {
           console.error("Failed to load messages:", error);
@@ -895,13 +950,26 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
                             : ""
                         }`}
                       >
-                        {/* Product Image Placeholder - replace with actual product image when available */}
-                        <div className="w-12 h-12 bg-[#F8F6F0] rounded-md flex items-center justify-center flex-shrink-0">
-                          <div className="w-8 h-8 bg-[#938A83]/20 rounded flex items-center justify-center">
-                            <span className="text-xs font-semibold text-[#938A83]">
-                              {initials.charAt(0)}
-                            </span>
-                          </div>
+                        {/* Product Image */}
+                        <div className="w-12 h-12 bg-[#F8F6F0] rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          {t.productImage ? (
+                            <img
+                              src={t.productImage}
+                              alt={t.title}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                // Fallback to placeholder if image fails to load
+                                e.target.style.display = 'none';
+                                e.target.parentElement.innerHTML = '<div class="w-8 h-8 bg-[#938A83]/20 rounded flex items-center justify-center"><span class="text-xs font-semibold text-[#938A83]">' + (t.title?.charAt(0) || '?') + '</span></div>';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-8 h-8 bg-[#938A83]/20 rounded flex items-center justify-center">
+                              <span className="text-xs font-semibold text-[#938A83]">
+                                {t.title?.charAt(0) || "?"}
+                              </span>
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex-1 min-w-0">
@@ -910,12 +978,18 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
                               {t.title || `Order ${t.id?.slice(0, 8)} || NA`}
                             </h5>
                             <span
-                              className={`text-xs px-2 py-1 rounded-full font-semibold ${
-                                status === "Shipped"
-                                  ? "bg-green-100 text-green-800"
-                                  : status === "Pending"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-blue-100 text-blue-800"
+                              className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                status === "Completed" || status === "completed"
+                                  ? "bg-green-100 text-green-700"
+                                  : status === "Shipped" || status === "shipped"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : status === "PendingDelivery" || status === "pending_delivery" || status === "Pending_Delivery"
+                                  ? "bg-purple-100 text-purple-700"
+                                  : status === "PendingSellerConfirmation" || status === "pending_seller_confirmation" || status === "Pending_Seller_Confirmation"
+                                  ? "bg-orange-100 text-orange-700"
+                                  : status === "PendingBidderPayment" || status === "pending_bidder_payment" || status === "Pending_Bidder_Payment"
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-yellow-100 text-yellow-700"
                               }`}
                             >
                               {status}
@@ -944,23 +1018,50 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
             {/* HEADER: Fix height, never shrink - only show when conversation selected */}
             {tx && (
               <div className="shrink-0 border-b border-[#B3BFB9]/20 p-4 bg-white z-10 flex items-center gap-4">
-                {/* Product Context */}
-                <div className="w-12 h-12 bg-[#F8F6F0] rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {/* Product Thumbnail */}
+                <div className="w-14 h-14 bg-[#F8F6F0] rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm">
                   {productContext?.image ? (
                     <img
                       src={productContext.image}
                       alt={productContext.name}
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback to placeholder if image fails to load
+                        e.target.style.display = 'none';
+                        e.target.parentElement.innerHTML = '<span class="text-sm text-[#938A83]">📦</span>';
+                      }}
                     />
                   ) : (
-                    <span className="text-xs text-[#938A83]">📦</span>
+                    <span className="text-sm text-[#938A83]">📦</span>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h5 className="text-sm font-semibold text-[#1F1F1F] truncate">
-                    {productContext?.name || "Order Discussion"}
-                  </h5>
-                  <p className="text-xs text-[#938A83]">
+                  {/* Product Name */}
+                  <div className="flex items-center gap-2 mb-1">
+                    <h5 className="text-base font-semibold text-[#1F1F1F] truncate">
+                      {productContext?.name || "Order Discussion"}
+                    </h5>
+                    {/* Status Badge */}
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        productContext?.status === "Completed" || productContext?.status === "completed"
+                          ? "bg-green-100 text-green-700"
+                          : productContext?.status === "Shipped" || productContext?.status === "shipped"
+                          ? "bg-blue-100 text-blue-700"
+                          : productContext?.status === "PendingDelivery" || productContext?.status === "pending_delivery" || productContext?.status === "Pending_Delivery"
+                          ? "bg-purple-100 text-purple-700"
+                          : productContext?.status === "PendingSellerConfirmation" || productContext?.status === "pending_seller_confirmation" || productContext?.status === "Pending_Seller_Confirmation"
+                          ? "bg-orange-100 text-orange-700"
+                          : productContext?.status === "PendingBidderPayment" || productContext?.status === "pending_bidder_payment" || productContext?.status === "Pending_Bidder_Payment"
+                          ? "bg-red-100 text-red-700"
+                          : "bg-yellow-100 text-yellow-700"
+                      }`}
+                    >
+                      {productContext?.status || "Pending"}
+                    </span>
+                  </div>
+                  {/* Final Price */}
+                  <p className="text-sm font-bold text-green-600">
                     {productContext?.price || "$0.00"}
                   </p>
                 </div>
@@ -1038,7 +1139,7 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
                         )}
 
                         <div
-                          className={`max-w-[75%] ${mine ? "text-right" : ""}`}
+                          className={`max-w-[75%] min-w-0 ${mine ? "text-right" : ""}`}
                         >
                           <div
                             className={`inline-block px-4 py-2 rounded-lg shadow-sm ${
@@ -1057,9 +1158,20 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
                                 </span>
                               </div>
                             )}
-                            <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                              {m.text}
-                            </div>
+                            <div
+                            className="
+                              text-sm
+                              leading-relaxed
+                              whitespace-pre-wrap
+                              break-words
+                              break-all
+                              overflow-hidden
+                              max-w-full
+                            "
+                          >
+                            {m.text}
+                          </div>
+
                             {mine && (
                               <div className="text-xs opacity-75 mt-1 text-right">
                                 {timeStr}

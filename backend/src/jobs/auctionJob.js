@@ -72,28 +72,13 @@ const finalizeAuction = async (product) => {
       }
 
       // STEP 5: Send chatbox welcome message with rich formatting
-      const welcomeMessage = `🎉 **Auction Ended Successfully!**
-
-**Product:** ${product.name}
-**Winner:** ${winnerUser?.full_name || "Winner"}
-**Final Price:** $${parseFloat(winner.amount).toLocaleString()}
-
-${productImage ? `![Product Image](${productImage})` : ""}
-
----
-
-**Dear ${winnerUser?.full_name || "Winner"},**
+      const welcomeMessage = `Dear ${winnerUser?.full_name || "Winner"},
 
 Congratulations on winning the auction! 🏆
-
-**Next Steps:**
+Next Steps:
 1. Please provide your shipping address
-2. Upload payment proof showing the transfer of **$${parseFloat(
-        winner.amount
-      ).toLocaleString()}**
-
-**Seller:** ${sellerUser?.full_name || "Seller"}
-
+2. Upload payment proof showing the transfer of ${parseFloat(winner.amount).toLocaleString()}
+Seller: ${sellerUser?.full_name || "Seller"}
 We look forward to completing this transaction successfully!`;
 
       await OrderMessage.create({

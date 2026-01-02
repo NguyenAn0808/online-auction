@@ -3,9 +3,15 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 const SortBar = ({ categoryName = "" }) => {
   const [showSortMenu, setShowSortMenu] = useState(false);
-  const [showFilterMenu, setShowFilterMenu] = useState(false);
+
+  // 🔕 FILTER STATE DISABLED
+  // const [showFilterMenu, setShowFilterMenu] = useState(false);
+
   const sortRef = useRef(null);
-  const filterRef = useRef(null);
+
+  // 🔕 FILTER REF DISABLED
+  // const filterRef = useRef(null);
+
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -19,19 +25,26 @@ const SortBar = ({ categoryName = "" }) => {
       ) {
         setShowSortMenu(false);
       }
-      if (
-        showFilterMenu &&
-        filterRef.current &&
-        !filterRef.current.contains(e.target)
-      ) {
-        setShowFilterMenu(false);
-      }
+
+      // 🔕 FILTER OUTSIDE CLICK HANDLING DISABLED
+      // if (
+      //   showFilterMenu &&
+      //   filterRef.current &&
+      //   !filterRef.current.contains(e.target)
+      // ) {
+      //   setShowFilterMenu(false);
+      // }
     };
-    if (showSortMenu || showFilterMenu) {
+
+    // 🔕 FILTER CONDITION REMOVED
+    if (showSortMenu) {
       document.addEventListener("mousedown", handler);
     }
+
     return () => document.removeEventListener("mousedown", handler);
-  }, [showSortMenu, showFilterMenu]);
+
+    // 🔕 DEPENDENCY UPDATED
+  }, [showSortMenu]);
 
   const searchParams = new URLSearchParams(location.search);
   const searchQuery = searchParams.get("search") || "";
@@ -51,12 +64,16 @@ const SortBar = ({ categoryName = "" }) => {
           {getResultsText()}
         </h2>
       </div>
+
       <div className="flex gap-3">
+        {/* ===== SORT BUTTON ===== */}
         <div className="relative">
           <button
             onClick={() => {
               setShowSortMenu((v) => !v);
-              setShowFilterMenu(false);
+
+              // 🔕 FILTER TOGGLE DISABLED
+              // setShowFilterMenu(false);
             }}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
@@ -76,6 +93,7 @@ const SortBar = ({ categoryName = "" }) => {
             </svg>
             <span className="font-medium">Sort by</span>
           </button>
+
           {showSortMenu && (
             <div
               ref={sortRef}
@@ -84,18 +102,20 @@ const SortBar = ({ categoryName = "" }) => {
               <SortOption label="Price: Low → High" param="price_asc" />
               <SortOption label="Price: High → Low" param="price_desc" />
               <SortOption label="End Time" param="end_time_desc" />
-              {/* <SortOption
-                label="Bid Amount: High → Low"
-                param="bid_amount_desc"
-              />
-              <SortOption
-                label="Bid Amount: Low → High"
-                param="bid_amount_asc"
-              /> */}
+
+              {/* Future sort options */}
+              {/*
+              <SortOption label="Bid Amount: High → Low" param="bid_amount_desc" />
+              <SortOption label="Bid Amount: Low → High" param="bid_amount_asc" />
+              */}
+
               <ClearSortOption />
             </div>
           )}
         </div>
+
+        {/* ===== FILTER BUTTON (DISABLED) ===== */}
+        {/*
         <div className="relative">
           <button
             onClick={() => {
@@ -120,6 +140,7 @@ const SortBar = ({ categoryName = "" }) => {
             </svg>
             <span className="font-medium">Filter by</span>
           </button>
+
           {showFilterMenu && (
             <div
               ref={filterRef}
@@ -127,34 +148,25 @@ const SortBar = ({ categoryName = "" }) => {
             >
               <h4 className="font-semibold mb-3">Price Range</h4>
               <div className="space-y-2 mb-4">
-                <input
-                  type="number"
-                  placeholder="Min price"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                />
-                <input
-                  type="number"
-                  placeholder="Max price"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                />
+                <input type="number" placeholder="Min price" />
+                <input type="number" placeholder="Max price" />
               </div>
+
               <h4 className="font-semibold mb-2">Status</h4>
               <div className="space-y-2 mb-4">
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" className="rounded" />
-                  <span>Active auctions</span>
+                <label>
+                  <input type="checkbox" /> Active auctions
                 </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" className="rounded" />
-                  <span>Buy Now available</span>
+                <label>
+                  <input type="checkbox" /> Buy Now available
                 </label>
               </div>
-              <button className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
-                Apply Filters
-              </button>
+
+              <button>Apply Filters</button>
             </div>
           )}
         </div>
+        */}
       </div>
     </div>
   );
@@ -162,17 +174,15 @@ const SortBar = ({ categoryName = "" }) => {
 
 export default SortBar;
 
-// ----- Helpers -----
+// ===== HELPERS =====
 const SortOption = ({ label, param }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
 
-  // Detect active state
   const isActive = params.has(param);
 
   const applySort = () => {
-    // Clear other sort params
     [
       "price_asc",
       "price_desc",
@@ -180,7 +190,8 @@ const SortOption = ({ label, param }) => {
       "bid_amount_asc",
       "bid_amount_desc",
     ].forEach((p) => params.delete(p));
-    params.set(param, "1"); // value placeholder
+
+    params.set(param, "1");
     navigate(`/products?${params.toString()}`);
   };
 
@@ -188,8 +199,9 @@ const SortOption = ({ label, param }) => {
     <button
       type="button"
       onClick={applySort}
-      className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors ${isActive ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50"
-        }`}
+      className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors ${
+        isActive ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50"
+      }`}
     >
       {label}
     </button>
@@ -200,6 +212,7 @@ const ClearSortOption = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
+
   const anyActive = [
     "price_asc",
     "price_desc",
@@ -216,6 +229,7 @@ const ClearSortOption = () => {
       "bid_amount_asc",
       "bid_amount_desc",
     ].forEach((p) => params.delete(p));
+
     navigate(`/products?${params.toString()}`);
   };
 
@@ -223,11 +237,12 @@ const ClearSortOption = () => {
     <button
       type="button"
       onClick={clear}
-      className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors ${anyActive
-        ? "hover:bg-red-50 text-red-600"
-        : "text-gray-400 cursor-default"
-        }`}
       disabled={!anyActive}
+      className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors ${
+        anyActive
+          ? "hover:bg-red-50 text-red-600"
+          : "text-gray-400 cursor-default"
+      }`}
     >
       Clear Sort
     </button>

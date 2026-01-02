@@ -268,7 +268,26 @@ export default function TransactionPage() {
   const handleCancelSubmit = async (reason) => {
     try {
       // Use OpenAPI endpoint: POST /orders/{order_id}/cancel
-      const cancelled = await orderService.cancelOrder(orderId, reason);
+      const FIXED_REASON = "Người thắng không chịu thanh toán.";
+      const cancelled = await orderService.cancelOrder(orderId, FIXED_REASON);
+
+      // Auto rate buyer -1 with fixed comment
+      try {
+        const targetBuyerId = cancelled?.buyer_id || tx?.buyer_id;
+        const productId =
+          cancelled?.product_id || tx?.product_id || productDetails?.id;
+        if (user?.id && targetBuyerId && productId) {
+          await ratingService.createRating({
+            user_id: targetBuyerId,
+            reviewer_id: user.id,
+            product_id: productId,
+            is_positive: false,
+            comment: "Người thắng không thanh toán.",
+          });
+        }
+      } catch (rateErr) {
+        console.error("Auto-rating on cancel failed:", rateErr);
+      }
 
       setCancelModalOpen(false);
 
@@ -304,18 +323,33 @@ export default function TransactionPage() {
       }
 
       try {
-        setLoading(true);
         // Use OpenAPI endpoint: GET /orders/{order_id}
         const apiResponse = await orderService.getOrderById(orderId);
         if (apiResponse) {
           setTx(apiResponse);
-          if (apiResponse.productName) {
-            setProductDetails({
-              name: apiResponse.productName,
-              id: apiResponse.product_id,
-              // Add image if available in apiResponse
-              thumbnail: apiResponse.productImage,
-            });
+
+          // Always fetch product details using product_id
+          if (apiResponse.product_id) {
+            try {
+              const product = await productService.getProductById(
+                apiResponse.product_id
+              );
+              setProductDetails({
+                name: product.name,
+                id: product.id,
+                thumbnail: product.images?.[0]?.image_url,
+                images: product.images,
+              });
+            } catch (productErr) {
+              console.error("Failed to fetch product details:", productErr);
+              // Fallback: set basic info from order if available
+              if (apiResponse.productName) {
+                setProductDetails({
+                  name: apiResponse.productName,
+                  id: apiResponse.product_id,
+                });
+              }
+            }
           }
         } else {
           // Handle case where API returns success but no data (rare)
@@ -678,56 +712,73 @@ export default function TransactionPage() {
                   />
                 )}
                 <div>
+                  {/* Product Name - Primary */}
                   <h1
                     style={{
-                      fontSize: "24px",
-                      fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                      fontSize: "26px",
+                      fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
                       color: COLORS.MIDNIGHT_ASH,
-                      marginBottom: SPACING.S,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
+                      marginBottom: "6px",
+                      lineHeight: "1.3",
                     }}
                   >
-                    {/* Show Product Name from TX or ProductDetails */}
-                    {tx?.productName ||
-                      productDetails?.name ||
-                      `Transaction #${orderId?.slice(0, 8)}`}
-
-                    {/* ID Badge */}
-                    <span
-                      style={{
-                        fontSize: "13px",
-                        fontWeight: "normal",
-                        backgroundColor: "#E5E7EB",
-                        padding: "2px 8px",
-                        borderRadius: "12px",
-                        color: "#374151",
-                      }}
-                    >
-                      #
-                      {productDetails?.id
-                        ? productDetails.id.slice(0, 8)
-                        : tx?.product_id?.slice(0, 8) || "..."}
-                    </span>
+                    {productDetails?.name || "Loading product..."}
                   </h1>
 
-                  <p
+                  {/* Transaction Info Row */}
+                  <div
                     style={{
-                      fontSize: TYPOGRAPHY.SIZE_LABEL,
-                      color: COLORS.PEBBLE,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                      flexWrap: "wrap",
                     }}
                   >
-                    Viewing as{" "}
+                    {/* Order ID Badge */}
                     <span
                       style={{
-                        fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                        color: COLORS.MIDNIGHT_ASH,
+                        fontSize: "12px",
+                        fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
+                        backgroundColor: COLORS.SOFT_CLOUD,
+                        padding: "4px 10px",
+                        borderRadius: "16px",
+                        color: COLORS.PEBBLE,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
                       }}
                     >
-                      {userRole === "buyer" ? "Bidder" : "Seller"}
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      Order #{orderId?.slice(0, 8) || "..."}
                     </span>
-                  </p>
+
+                    {/* Separator */}
+                    <span style={{ color: COLORS.MORNING_MIST }}>•</span>
+
+                    {/* Role Badge */}
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                        backgroundColor:
+                          userRole === "buyer" ? "#DBEAFE" : "#D1FAE5",
+                        color: userRole === "buyer" ? "#1D4ED8" : "#047857",
+                        padding: "4px 10px",
+                        borderRadius: "16px",
+                      }}
+                    >
+                      {userRole === "buyer" ? "🛒 Buyer" : "🏪 Seller"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -735,20 +786,48 @@ export default function TransactionPage() {
               {isSeller && !isCompleted && !isCancelled && (
                 <button
                   onClick={() => setCancelModalOpen(true)}
-                  className="bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-md text-sm font-medium hover:bg-red-100 transition-colors flex items-center gap-2"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "10px 16px",
+                    backgroundColor: "#FEF2F2",
+                    color: "#DC2626",
+                    border: "1px solid #FECACA",
+                    borderRadius: BORDER_RADIUS.MEDIUM,
+                    fontSize: "14px",
+                    fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#FEE2E2";
+                    e.currentTarget.style.borderColor = "#FCA5A5";
+                    e.currentTarget.style.transform = "translateY(-1px)";
+                    e.currentTarget.style.boxShadow =
+                      "0 4px 6px rgba(220, 38, 38, 0.15)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "#FEF2F2";
+                    e.currentTarget.style.borderColor = "#FECACA";
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow =
+                      "0 1px 2px rgba(0,0,0,0.05)";
+                  }}
                 >
                   <svg
-                    className="w-4 h-4"
-                    fill="none"
+                    width="18"
+                    height="18"
                     viewBox="0 0 24 24"
+                    fill="none"
                     stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M15 9l-6 6M9 9l6 6" />
                   </svg>
                   Cancel Transaction
                 </button>
