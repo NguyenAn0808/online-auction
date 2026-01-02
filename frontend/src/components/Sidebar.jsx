@@ -21,6 +21,8 @@ export default function Sidebar() {
   const storedUserStr = localStorage.getItem("user");
   const storedUser = storedUserStr ? JSON.parse(storedUserStr) : null;
   const userId = storedUser?.id || "buyer-1";
+  const userRole = storedUser?.role || "guest";
+
   const items = [
     { name: "Profile", to: `/summary/${userId}`, icon: UserIcon },
     { name: "Ratings", to: `/ratings/${userId}`, icon: StarIcon },
@@ -30,11 +32,16 @@ export default function Sidebar() {
       to: `/products/${userId}/bidding`,
       icon: ShoppingBagIcon,
     },
-    {
-      name: "Seller Upgrade",
-      to: `/upgrade-requests`,
-      icon: CurrencyDollarIcon,
-    },
+    // Only show Selling Request for bidders
+    ...(userRole === "bidder"
+      ? [
+          {
+            name: "Selling Request",
+            to: `/upgrade-requests`,
+            icon: CurrencyDollarIcon,
+          },
+        ]
+      : []),
   ];
 
   return (

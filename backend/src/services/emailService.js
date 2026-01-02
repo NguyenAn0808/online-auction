@@ -4,7 +4,7 @@ import config from "../config/settings.js";
 export const sendOTPEmail = async (email, otp, fullname, purpose) => {
   try {
     const mailOptions = {
-      from: `"Online Auction" <${config.SENDER_EMAIL}>`, // Use verified SENDER_EMAIL
+      from: `"Online Auction" <${config.SENDER_EMAIL}>`,
       to: email,
       subject: "Email Verification OTP for Online Auction",
       html: `<p>Dear ${fullname},</p><p>Your OTP for ${purpose} is: <strong>${otp}</strong></p>`,
@@ -14,7 +14,6 @@ export const sendOTPEmail = async (email, otp, fullname, purpose) => {
     const info = await transporter.sendMail(mailOptions);
     return { success: true, message: "OTP has been sent to your email" };
   } catch (error) {
-    console.error("❌ Error sending OTP email:", error);
     throw new Error("Failed to send OTP email");
   }
 };
@@ -22,17 +21,21 @@ export const sendOTPEmail = async (email, otp, fullname, purpose) => {
 export const sendEmail = async (email, subject, htmlContent) => {
   try {
     const mailOptions = {
-      from: `"Online Auction" <${config.SENDER_EMAIL}>`, // Use verified SENDER_EMAIL
+      from: `"Online Auction" <${config.SENDER_EMAIL}>`,
       to: email,
       subject: subject,
       html: htmlContent,
     };
 
-    await transporter.sendMail(mailOptions);
-    return { success: true, message: "Email sent successfully" };
+    const info = await transporter.sendMail(mailOptions);
+
+    return {
+      success: true,
+      message: "Email sent successfully",
+      messageId: info.messageId,
+    };
   } catch (error) {
-    console.error(`❌ Error sending email to ${email}:`, error);
-    return { success: false, error };
+    return { success: false, error: error.message };
   }
 };
 
@@ -117,7 +120,7 @@ export const sendBidRejectNotification = async (
   const subject = `[Notification] Access Revoked for ${productName}`;
   const html = `
     <div style="font-family: Arial, sans-serif; padding: 20px;">
-      <h3>Hello ${fullname},</h3>
+      <h3>Hello ${fullName},</h3>
       <p>The seller has revoked your right to bid on the product <strong>${productName}</strong>.</p>
       <p>All your previous bids on this item have been invalidated.</p>
     </div>
@@ -157,7 +160,7 @@ export const sendAuctionEndedNotificationToSeller = async (
       <p>Please contact the winner to arrange delivery.</p>
     </div>
   `;
-  return sendEmail(email, subject, html);
+  return sendEmail(sellerEmail, subject, html);
 };
 
 // Auction ends (To the winner bidder)

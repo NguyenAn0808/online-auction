@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PhotoIcon, UserCircleIcon } from "@heroicons/react/24/solid";
 import { ChevronDownIcon } from "@heroicons/react/16/solid";
 import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/outline";
+import { HandThumbUpIcon, HandThumbDownIcon } from "@heroicons/react/24/solid";
 import {
   COLORS,
   TYPOGRAPHY,
@@ -11,9 +12,11 @@ import {
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import * as TransactionService from "../services/transactionService";
+import { listOrders } from "../services/orderService";
 
 export default function BidderProfile() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const { signout } = useAuth();
   const navigate = useNavigate();
@@ -21,9 +24,122 @@ export default function BidderProfile() {
   const [errors, setErrors] = useState({});
   const [showSuccess, setShowSuccess] = useState(false);
 
+  // Ratings State
+  const [receivedRatings, setReceivedRatings] = useState([]);
+  const [givenRatings, setGivenRatings] = useState([]);
+  const [ratingStats, setRatingStats] = useState({
+    positive: 0,
+    negative: 0,
+    total: 0,
+  });
+  const [ratingModalOpen, setRatingModalOpen] = useState(false);
+  const [selectedRatingToUpdate, setSelectedRatingToUpdate] = useState(null);
+  const [newRatingScore, setNewRatingScore] = useState(null);
+  const [newRatingComment, setNewRatingComment] = useState("");
+  const [toast, setToast] = useState(null);
+  const [loadingRatings, setLoadingRatings] = useState(false);
+
+  // Fetch ratings on component mount
+  useEffect(() => {
+    if (user?.id) {
+      fetchRatings();
+    }
+  }, [user]);
+
   const handleGoToLogin = async () => {
     await signout();
     navigate("/auth/signin");
+  };
+
+  function showToast(message) {
+    setToast(message);
+    setTimeout(() => setToast(null), 3000);
+  }
+
+  async function fetchRatings() {
+    if (!user?.id) return;
+    try {
+      setLoadingRatings(true);
+      const [receivedRes, givenRes, statsRes] = await Promise.all([
+        api.get(`/api/ratings/${user.id}`),
+        api.get(`/api/ratings/${user.id}/given`),
+        api.get(`/api/ratings/${user.id}/score`),
+      ]);
+      setReceivedRatings(receivedRes.data.data || []);
+      setGivenRatings(givenRes.data.data || []);
+      setRatingStats(
+        statsRes.data.data || { positive: 0, negative: 0, total: 0 }
+      );
+    } catch (err) {
+      console.error("Failed to fetch ratings:", err);
+      showToast("Failed to load ratings");
+    } finally {
+      setLoadingRatings(false);
+    }
+  }
+
+  function openUpdateRatingModal(rating) {
+    setSelectedRatingToUpdate(rating);
+    setNewRatingScore(rating.score);
+    setNewRatingComment(rating.comment || "");
+    setRatingModalOpen(true);
+  }
+
+  async function handleUpdateRating() {
+    if (!selectedRatingToUpdate || !newRatingScore) {
+      showToast("Please select a rating");
+      return;
+    }
+
+    try {
+      await TransactionService.rateTransaction(
+        selectedRatingToUpdate.product_id,
+        newRatingScore,
+        newRatingComment
+      );
+      showToast("Rating updated successfully!");
+      setRatingModalOpen(false);
+      setSelectedRatingToUpdate(null);
+      fetchRatings();
+    } catch (err) {
+      console.error("Failed to update rating:", err);
+      showToast(err.response?.data?.message || "Failed to update rating");
+    }
+  }
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString("vi-VN");
+  };
+
+  const handlePersonalInfoSubmit = async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const fullName = form["full-name"].value;
+    const birthdate = form["birthdate"].value;
+    const email = form["email"].value;
+
+    setLoading(true);
+    try {
+      const response = await api.put(`/api/users/${user.id}`, {
+        fullName,
+        birthdate,
+        email: user?.googleId || user?.facebookId ? undefined : email,
+      });
+
+      if (response.data.success) {
+        // Update user context with new data
+        updateUser(response.data.data);
+        alert("Personal information updated successfully!");
+      }
+    } catch (error) {
+      console.error("Error updating personal info:", error);
+      alert(
+        error.response?.data?.message || "Failed to update personal information"
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -149,168 +265,6 @@ export default function BidderProfile() {
           </div>
         </div>
       )}
-      <div className="grid grid-cols-1 gap-x-8 gap-y-8 py-10 md:grid-cols-3">
-        <div className="px-4 sm:px-0">
-          <h2 className="text-base/7 font-semibold text-gray-900">Profile</h2>
-          <p className="mt-1 text-sm/6 text-gray-600">
-            This information will be displayed publicly so be careful what you
-            share.
-          </p>
-        </div>
-
-        <form className="bg-white ring-1 shadow-xs ring-gray-900/5 sm:rounded-xl md:col-span-2">
-          <div className="px-4 py-6 sm:p-8">
-            <div className="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
-              <div className="sm:col-span-4">
-                <label
-                  htmlFor="username"
-                  className="block text-sm/6 font-medium text-gray-900"
-                >
-                  Username
-                </label>
-                <div className="mt-2">
-                  <div className="flex items-center rounded-md bg-white pl-3 outline-1 -outline-offset-1 outline-gray-300">
-                    <div className="shrink-0 text-base text-gray-500 select-none sm:text-sm/6">
-                      workcation.com/
-                    </div>
-                    <input
-                      id="username"
-                      name="username"
-                      type="text"
-                      placeholder="janesmith"
-                      className="block min-w-0 grow py-1.5 pr-3 pl-1 text-base text-midnight-ashsh placeholder:text-pebble"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-span-full">
-                <label
-                  htmlFor="about"
-                  className="block text-sm/6 font-medium text-gray-900"
-                >
-                  About
-                </label>
-                <div className="mt-2">
-                  <textarea
-                    id="about"
-                    name="about"
-                    rows={3}
-                    className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400  sm:text-sm/6"
-                    defaultValue={""}
-                  />
-                </div>
-                <p className="mt-3 text-sm/6 text-gray-600">
-                  Write a few sentences about yourself.
-                </p>
-              </div>
-
-              <div className="col-span-full">
-                <label
-                  htmlFor="photo"
-                  className="block text-sm/6 font-medium text-gray-900"
-                >
-                  Photo
-                </label>
-                <div className="mt-2 flex items-center gap-x-3">
-                  <UserCircleIcon
-                    aria-hidden="true"
-                    className="size-12 text-gray-300"
-                  />
-                  <button
-                    type="button"
-                    style={{
-                      borderRadius: BORDER_RADIUS.FULL,
-                      backgroundColor: COLORS.WHITE,
-                      padding: `${SPACING.S} ${SPACING.L}`,
-                      fontSize: TYPOGRAPHY.SIZE_LABEL_LARGE,
-                      fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                      color: COLORS.MIDNIGHT_ASH,
-                      border: `1.5px solid ${COLORS.MORNING_MIST}`,
-                      cursor: "pointer",
-                      transition: "background-color 0.2s ease",
-                    }}
-                    className="hover:opacity-90"
-                  >
-                    Change
-                  </button>
-                </div>
-              </div>
-
-              <div className="col-span-full">
-                <label
-                  htmlFor="cover-photo"
-                  className="block text-sm/6 font-medium text-gray-900"
-                >
-                  Cover photo
-                </label>
-                <div className="mt-2 flex justify-center rounded-lg border border-dashed border-gray-900/25 px-6 py-10">
-                  <div className="text-center">
-                    <PhotoIcon
-                      aria-hidden="true"
-                      className="mx-auto size-12 text-gray-300"
-                    />
-                    <div className="mt-4 flex text-sm/6 text-gray-600">
-                      <label
-                        htmlFor="file-upload"
-                        className="relative cursor-pointer rounded-md bg-white font-semibold text-midnight-ashsh  hover:!underline hover:text-pebble "
-                      >
-                        <span>Upload a file</span>
-                        <input
-                          id="file-upload"
-                          name="file-upload"
-                          type="file"
-                          className="sr-only"
-                        />
-                      </label>
-                      <p className="pl-1">or drag and drop</p>
-                    </div>
-                    <p className="text-xs/5 text-gray-600">
-                      PNG, JPG, GIF up to 10MB
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center justify-end gap-x-6 border-t border-gray-900/10 px-4 py-4 sm:px-8">
-            <button
-              type="button"
-              style={{
-                fontSize: TYPOGRAPHY.SIZE_BODY,
-                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                color: COLORS.MIDNIGHT_ASH,
-                backgroundColor: "transparent",
-                border: "none",
-                cursor: "pointer",
-                borderRadius: BORDER_RADIUS.FULL,
-                padding: `${SPACING.S} ${SPACING.L}`,
-                transition: "opacity 0.2s ease",
-              }}
-              className="hover:opacity-70"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              style={{
-                borderRadius: BORDER_RADIUS.FULL,
-                backgroundColor: COLORS.MIDNIGHT_ASH,
-                padding: `${SPACING.S} ${SPACING.L}`,
-                fontSize: TYPOGRAPHY.SIZE_BODY,
-                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                color: COLORS.WHITE,
-                border: "none",
-                cursor: "pointer",
-                transition: "opacity 0.2s ease",
-              }}
-              className="hover:opacity-90"
-            >
-              Save
-            </button>
-          </div>
-        </form>
-      </div>
 
       <div className="grid grid-cols-1 gap-x-8 gap-y-8 py-10 md:grid-cols-3">
         <div className="px-4 sm:px-0">
@@ -318,44 +272,51 @@ export default function BidderProfile() {
             Personal Information
           </h2>
           <p className="mt-1 text-sm/6 text-gray-600">
-            Use a permanent address where you can receive mail.
+            Update your personal details.
           </p>
         </div>
 
-        <form className="bg-white ring-1 shadow-xs ring-gray-900/5 sm:rounded-xl md:col-span-2">
+        <form
+          className="bg-white ring-1 shadow-xs ring-gray-900/5 sm:rounded-xl md:col-span-2"
+          onSubmit={handlePersonalInfoSubmit}
+        >
           <div className="px-4 py-6 sm:p-8">
             <div className="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
-              <div className="sm:col-span-3">
+              <div className="sm:col-span-4">
                 <label
-                  htmlFor="first-name"
+                  htmlFor="full-name"
                   className="block text-sm/6 font-medium text-gray-900"
                 >
-                  First name
+                  Full name
                 </label>
                 <div className="mt-2">
                   <input
-                    id="first-name"
-                    name="first-name"
+                    id="full-name"
+                    name="full-name"
                     type="text"
-                    autoComplete="given-name"
+                    autoComplete="name"
+                    defaultValue={user?.fullName || ""}
                     className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 sm:text-sm/6"
                   />
                 </div>
               </div>
 
-              <div className="sm:col-span-3">
+              <div className="sm:col-span-4">
                 <label
-                  htmlFor="last-name"
+                  htmlFor="birthdate"
                   className="block text-sm/6 font-medium text-gray-900"
                 >
-                  Last name
+                  Birthday
                 </label>
                 <div className="mt-2">
                   <input
-                    id="last-name"
-                    name="last-name"
-                    type="text"
-                    autoComplete="family-name"
+                    id="birthdate"
+                    name="birthdate"
+                    type="date"
+                    autoComplete="bday"
+                    defaultValue={
+                      user?.birthdate ? user.birthdate.split("T")[0] : ""
+                    }
                     className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 sm:text-sm/6"
                   />
                 </div>
@@ -366,7 +327,7 @@ export default function BidderProfile() {
                   htmlFor="email"
                   className="block text-sm/6 font-medium text-gray-900"
                 >
-                  Email address
+                  Email contact
                 </label>
                 <div className="mt-2">
                   <input
@@ -374,105 +335,20 @@ export default function BidderProfile() {
                     name="email"
                     type="email"
                     autoComplete="email"
-                    className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 sm:text-sm/6"
+                    defaultValue={user?.email || ""}
+                    disabled={user?.googleId || user?.facebookId}
+                    className={`block w-full rounded-md px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 sm:text-sm/6 ${
+                      user?.googleId || user?.facebookId
+                        ? "bg-gray-100 cursor-not-allowed"
+                        : "bg-white"
+                    }`}
                   />
-                </div>
-              </div>
-
-              <div className="sm:col-span-3">
-                <label
-                  htmlFor="country"
-                  className="block text-sm/6 font-medium text-gray-900"
-                >
-                  Country
-                </label>
-                <div className="mt-2 grid grid-cols-1">
-                  <select
-                    id="country"
-                    name="country"
-                    autoComplete="country-name"
-                    className="col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pr-8 pl-3 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 sm:text-sm/6"
-                  >
-                    <option>United States</option>
-                    <option>Canada</option>
-                    <option>Mexico</option>
-                  </select>
-                  <ChevronDownIcon
-                    aria-hidden="true"
-                    className="pointer-events-none col-start-1 row-start-1 mr-2 size-5 self-center justify-self-end text-gray-500 sm:size-4"
-                  />
-                </div>
-              </div>
-
-              <div className="col-span-full">
-                <label
-                  htmlFor="street-address"
-                  className="block text-sm/6 font-medium text-gray-900"
-                >
-                  Street address
-                </label>
-                <div className="mt-2">
-                  <input
-                    id="street-address"
-                    name="street-address"
-                    type="text"
-                    autoComplete="street-address"
-                    className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 sm:text-sm/6"
-                  />
-                </div>
-              </div>
-
-              <div className="sm:col-span-2 sm:col-start-1">
-                <label
-                  htmlFor="city"
-                  className="block text-sm/6 font-medium text-gray-900"
-                >
-                  City
-                </label>
-                <div className="mt-2">
-                  <input
-                    id="city"
-                    name="city"
-                    type="text"
-                    autoComplete="address-level2"
-                    className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 sm:text-sm/6"
-                  />
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label
-                  htmlFor="region"
-                  className="block text-sm/6 font-medium text-gray-900"
-                >
-                  State / Province
-                </label>
-                <div className="mt-2">
-                  <input
-                    id="region"
-                    name="region"
-                    type="text"
-                    autoComplete="address-level1"
-                    className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 sm:text-sm/6"
-                  />
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label
-                  htmlFor="postal-code"
-                  className="block text-sm/6 font-medium text-gray-900"
-                >
-                  ZIP / Postal code
-                </label>
-                <div className="mt-2">
-                  <input
-                    id="postal-code"
-                    name="postal-code"
-                    type="text"
-                    autoComplete="postal-code"
-                    className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 sm:text-sm/6"
-                  />
+                  {(user?.googleId || user?.facebookId) && (
+                    <p className="mt-2 text-xs text-gray-500">
+                      Email cannot be changed for social login accounts
+                      (Google/Facebook)
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -661,6 +537,162 @@ export default function BidderProfile() {
           </p>
         </div>
       )}
+
+      {/* --- RATINGS SECTION --- */}
+      <div className="grid grid-cols-1 gap-x-8 gap-y-8 py-10 md:grid-cols-3">
+        <div className="px-4 sm:px-0">
+          <h2 className="text-base/7 font-semibold text-gray-900">
+            My Ratings
+          </h2>
+          <p className="mt-1 text-sm/6 text-gray-600">
+            View and manage ratings you've received and given.
+          </p>
+        </div>
+
+        <div className="bg-white ring-1 shadow-xs ring-gray-900/5 sm:rounded-xl md:col-span-2">
+          <div className="px-4 py-6 sm:p-8">
+            <div className="max-w-2xl space-y-8">
+              {/* Rating Stats */}
+              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-6">
+                <h3 className="text-lg font-semibold mb-4">
+                  Your Rating Score
+                </h3>
+                <div className="flex items-center gap-8">
+                  <div className="text-center">
+                    <p className="text-4xl font-bold text-indigo-600">
+                      {user?.rating_points || 0}
+                    </p>
+                    <p className="text-sm text-gray-600">Total Points</p>
+                  </div>
+                  <div className="flex gap-6">
+                    <div className="flex items-center gap-2">
+                      <HandThumbUpIcon className="h-6 w-6 text-green-600" />
+                      <div>
+                        <p className="text-2xl font-semibold text-green-600">
+                          {ratingStats.positive}
+                        </p>
+                        <p className="text-xs text-gray-500">Positive</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <HandThumbDownIcon className="h-6 w-6 text-red-600" />
+                      <div>
+                        <p className="text-2xl font-semibold text-red-600">
+                          {ratingStats.negative}
+                        </p>
+                        <p className="text-xs text-gray-500">Negative</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Received Ratings */}
+              <div>
+                <h4 className="text-base font-semibold mb-3">
+                  Ratings Received
+                </h4>
+                {loadingRatings ? (
+                  <p className="text-sm text-gray-500">Loading...</p>
+                ) : receivedRatings.length === 0 ? (
+                  <p className="text-sm text-gray-500">
+                    No ratings received yet
+                  </p>
+                ) : (
+                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                    {receivedRatings.slice(0, 5).map((rating) => (
+                      <div
+                        key={rating.id}
+                        className="border border-gray-200 rounded-lg p-3"
+                      >
+                        <div className="flex items-start gap-3">
+                          {rating.score === 1 ? (
+                            <HandThumbUpIcon className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                          ) : (
+                            <HandThumbDownIcon className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p
+                              className={`text-sm font-semibold ${
+                                rating.score === 1
+                                  ? "text-green-600"
+                                  : "text-red-600"
+                              }`}
+                            >
+                              {rating.score === 1 ? "+1" : "-1"}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {formatDate(rating.created_at)}
+                            </p>
+                            {rating.comment && (
+                              <p className="mt-1 text-sm text-gray-700 italic">
+                                "{rating.comment}"
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Given Ratings */}
+              <div>
+                <h4 className="text-base font-semibold mb-3">
+                  Ratings Given by You
+                </h4>
+                {loadingRatings ? (
+                  <p className="text-sm text-gray-500">Loading...</p>
+                ) : givenRatings.length === 0 ? (
+                  <p className="text-sm text-gray-500">
+                    You haven't rated anyone yet
+                  </p>
+                ) : (
+                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                    {givenRatings.slice(0, 5).map((rating) => (
+                      <div
+                        key={rating.id}
+                        className="border border-gray-200 rounded-lg p-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            {rating.score === 1 ? (
+                              <HandThumbUpIcon className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                            ) : (
+                              <HandThumbDownIcon className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {rating.target_user_name}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate">
+                                {rating.product_name} •{" "}
+                                {formatDate(rating.created_at)}
+                              </p>
+                              {rating.comment && (
+                                <p className="mt-1 text-sm text-gray-700 italic line-clamp-2">
+                                  "{rating.comment}"
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => openUpdateRatingModal(rating)}
+                            className="px-3 py-1 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors flex-shrink-0"
+                          >
+                            Update
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 gap-x-8 gap-y-8 py-10 md:grid-cols-3">
         <div className="px-4 sm:px-0">
@@ -911,6 +943,113 @@ export default function BidderProfile() {
           </div>
         </form>
       </div>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+          {toast}
+        </div>
+      )}
+
+      {/* Update Rating Modal */}
+      {ratingModalOpen && selectedRatingToUpdate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 className="text-2xl font-bold mb-4">Update Rating</h2>
+            <p className="text-sm text-gray-600 mb-6">
+              Update your rating for {selectedRatingToUpdate.target_user_name}
+            </p>
+
+            {/* Rating Buttons */}
+            <div className="flex gap-4 mb-6">
+              <button
+                onClick={() => setNewRatingScore(1)}
+                className={`flex-1 p-4 border-2 rounded-lg transition-all ${
+                  newRatingScore === 1
+                    ? "border-green-500 bg-green-50"
+                    : "border-gray-200 hover:border-green-300"
+                }`}
+              >
+                <div className="flex flex-col items-center gap-2">
+                  <HandThumbUpIcon
+                    className={`h-8 w-8 ${
+                      newRatingScore === 1 ? "text-green-600" : "text-gray-400"
+                    }`}
+                  />
+                  <span
+                    className={`font-medium ${
+                      newRatingScore === 1 ? "text-green-600" : "text-gray-600"
+                    }`}
+                  >
+                    Positive (+1)
+                  </span>
+                </div>
+              </button>
+              <button
+                onClick={() => setNewRatingScore(-1)}
+                className={`flex-1 p-4 border-2 rounded-lg transition-all ${
+                  newRatingScore === -1
+                    ? "border-red-500 bg-red-50"
+                    : "border-gray-200 hover:border-red-300"
+                }`}
+              >
+                <div className="flex flex-col items-center gap-2">
+                  <HandThumbDownIcon
+                    className={`h-8 w-8 ${
+                      newRatingScore === -1 ? "text-red-600" : "text-gray-400"
+                    }`}
+                  />
+                  <span
+                    className={`font-medium ${
+                      newRatingScore === -1 ? "text-red-600" : "text-gray-600"
+                    }`}
+                  >
+                    Negative (-1)
+                  </span>
+                </div>
+              </button>
+            </div>
+
+            {/* Comment */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Comment (Optional)
+              </label>
+              <textarea
+                value={newRatingComment}
+                onChange={(e) => setNewRatingComment(e.target.value)}
+                placeholder="Share your experience..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                rows="3"
+              />
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setRatingModalOpen(false);
+                  setSelectedRatingToUpdate(null);
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateRating}
+                disabled={!newRatingScore}
+                className={`flex-1 px-4 py-2 rounded-lg font-medium ${
+                  newRatingScore
+                    ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                }`}
+              >
+                Update Rating
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

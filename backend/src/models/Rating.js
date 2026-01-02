@@ -34,29 +34,57 @@ class Rating {
     try {
       await client.query("BEGIN");
 
-      // Insert rating
-      const insertQuery = `
-        INSERT INTO ratings (product_id, reviewer_id, target_user_id, score, comment)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING *
-      `;
-      const insertValues = [
-        product_id,
-        reviewer_id,
-        target_user_id,
-        score,
-        comment || "",
-      ];
-      const result = await client.query(insertQuery, insertValues);
+      // Check if rating already exists
+      const existingRating = await client.query(
+        `SELECT id, score FROM ratings 
+         WHERE product_id = $1 AND reviewer_id = $2 AND target_user_id = $3`,
+        [product_id, reviewer_id, target_user_id]
+      );
 
-      // Update target user's rating_points
+      let result;
+      let scoreDifference = score;
+
+      if (existingRating.rows.length > 0) {
+        // Update existing rating (allow re-rating)
+        const oldScore = existingRating.rows[0].score;
+        scoreDifference = score - oldScore; // Calculate the difference for user points
+
+        const updateQuery = `
+          UPDATE ratings 
+          SET score = $1, comment = $2, created_at = NOW()
+          WHERE id = $3
+          RETURNING *
+        `;
+        result = await client.query(updateQuery, [
+          score,
+          comment || "",
+          existingRating.rows[0].id,
+        ]);
+      } else {
+        // Insert new rating
+        const insertQuery = `
+          INSERT INTO ratings (product_id, reviewer_id, target_user_id, score, comment)
+          VALUES ($1, $2, $3, $4, $5)
+          RETURNING *
+        `;
+        const insertValues = [
+          product_id,
+          reviewer_id,
+          target_user_id,
+          score,
+          comment || "",
+        ];
+        result = await client.query(insertQuery, insertValues);
+      }
+
+      // Update target user's rating_points (with the score difference)
       const updateUserQuery = `
         UPDATE users 
         SET rating_points = rating_points + $1,
             updated_at = NOW()
         WHERE id = $2
       `;
-      await client.query(updateUserQuery, [score, target_user_id]);
+      await client.query(updateUserQuery, [scoreDifference, target_user_id]);
 
       await client.query("COMMIT");
       return result.rows[0];
@@ -71,6 +99,23 @@ class Rating {
   static async getUserRatings(target_user_id) {
     const query = `SELECT * FROM ratings WHERE target_user_id = $1 ORDER BY created_at DESC`;
     const result = await pool.query(query, [target_user_id]);
+    return result.rows;
+  }
+
+  static async getRatingsGivenByUser(reviewer_id) {
+    const query = `
+      SELECT 
+        r.*,
+        p.name as product_name,
+        u.full_name as target_user_name,
+        u.email as target_user_email
+      FROM ratings r
+      JOIN products p ON r.product_id = p.id
+      JOIN users u ON r.target_user_id = u.id
+      WHERE r.reviewer_id = $1
+      ORDER BY r.created_at DESC
+    `;
+    const result = await pool.query(query, [reviewer_id]);
     return result.rows;
   }
 

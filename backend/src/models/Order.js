@@ -9,12 +9,13 @@ class Order {
         buyer_id UUID NOT NULL REFERENCES users(id), -- The Winner
         seller_id UUID NOT NULL REFERENCES users(id), -- The Product Owner
         final_price DECIMAL(12, 2) NOT NULL,
-        payment_proof_image TEXT NOT NULL, -- URL to the image,
-        shipping_address TEXT NOT NULL,
+        payment_proof_image TEXT, -- URL to the image (nullable until buyer uploads)
+        shipping_address TEXT, -- Buyer's address (nullable until buyer provides)
         shipping_proof_image TEXT, -- URL to the image (nullable until seller confirms shipping)
         shipping_code TEXT,
         cancel_reason TEXT,
-        status VARCHAR(20) DEFAULT 'pending_verification' CHECK (status IN ('pending_verification', 'delivering', 'await_rating', 'completed', 'cancelled')),
+        notification_sent BOOLEAN DEFAULT FALSE, -- Flag to prevent duplicate emails
+        status VARCHAR(30) DEFAULT 'pending_payment' CHECK (status IN ('pending_payment', 'pending_verification', 'delivering', 'await_rating', 'completed', 'cancelled')),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(product_id) -- One order per product
@@ -22,6 +23,7 @@ class Order {
       
       CREATE INDEX IF NOT EXISTS idx_orders_buyer ON orders(buyer_id);
       CREATE INDEX IF NOT EXISTS idx_orders_seller ON orders(seller_id);
+      CREATE INDEX IF NOT EXISTS idx_orders_notification ON orders(notification_sent);
     `;
     try {
       await pool.query(query);
@@ -40,10 +42,16 @@ class Order {
     address,
   }) {
     const query = `
-    INSERT INTO orders (product_id, buyer_id, seller_id, final_price, payment_proof_image, shipping_address)
-      VALUES ($1, $2, $3, $4, $5, $6)
+    INSERT INTO orders (product_id, buyer_id, seller_id, final_price, payment_proof_image, shipping_address, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
     `;
+
+    // Set status to 'pending_payment' if no payment proof, else 'pending_verification'
+    const status =
+      !proofImage || proofImage === ""
+        ? "pending_payment"
+        : "pending_verification";
 
     const result = await pool.query(query, [
       productId,
@@ -52,6 +60,7 @@ class Order {
       finalPrice,
       proofImage,
       address,
+      status,
     ]);
     return result.rows[0];
   }
@@ -60,7 +69,7 @@ class Order {
     let query;
     const params = [userId];
 
-    // Base query parts to ensure we get the product image and names
+    // Base query parts to ensure we get the product image, names, and ratings
     const selectFields = `
       o.*,
       p.name as "productName",
@@ -72,7 +81,29 @@ class Order {
         LIMIT 1
       ) as "productImage",
       u_buyer.full_name as "buyerName",
-      u_seller.full_name as "sellerName"
+      u_seller.full_name as "sellerName",
+      (
+        SELECT json_build_object(
+          'score', r_buyer.score,
+          'comment', r_buyer.comment,
+          'created_at', r_buyer.created_at
+        )
+        FROM ratings r_buyer
+        WHERE r_buyer.product_id = p.id
+          AND r_buyer.reviewer_id = o.buyer_id
+        LIMIT 1
+      ) as "buyerRating",
+      (
+        SELECT json_build_object(
+          'score', r_seller.score,
+          'comment', r_seller.comment,
+          'created_at', r_seller.created_at
+        )
+        FROM ratings r_seller
+        WHERE r_seller.product_id = p.id
+          AND r_seller.reviewer_id = o.seller_id
+        LIMIT 1
+      ) as "sellerRating"
     `;
 
     const joins = `
@@ -101,7 +132,20 @@ class Order {
     }
 
     const result = await pool.query(query, params);
-    return result.rows;
+
+    // Transform the rating fields into a ratings object for easier frontend use
+    const transformedRows = result.rows.map((row) => {
+      const { buyerRating, sellerRating, ...rest } = row;
+      return {
+        ...rest,
+        ratings: {
+          buyer: buyerRating,
+          seller: sellerRating,
+        },
+      };
+    });
+
+    return transformedRows;
   }
 
   static async getOrdersByWinner(buyerId) {
@@ -244,7 +288,7 @@ class Order {
       SET 
         payment_proof_image = $1,
         shipping_address = $2,
-        status = 'pending_seller_confirmation', -- Reset status if needed
+        status = 'pending_verification', -- Buyer paid, waiting for seller to verify and ship
         updated_at = NOW()
       WHERE id = $3
       RETURNING *

@@ -963,7 +963,7 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
                   </p>
                 </div>
                 <a
-                  href={`/orders/${tx.id}`}
+                  href={`/transactions/${tx.id}`}
                   className="text-xs font-semibold text-[#1F1F1F] hover:text-[#1F1F1F]/80 underline decoration-dotted transition-colors"
                 >
                   View Order →

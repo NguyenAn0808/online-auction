@@ -40,7 +40,7 @@ const UserManagementPage = () => {
       }
 
       if (verifyFilter !== "all") {
-        params.is_verify = verifyFilter;
+        params.isVerified = verifyFilter;
       }
 
       const response = await userService.getAllUsers(params);
@@ -446,7 +446,7 @@ const UserManagementPage = () => {
               {headerCell("Full Name", "fullname")}
               {headerCell("Email", "email")}
               {headerCell("Role", "role")}
-              {headerCell("Verified", "is_verify", "w-32")}
+              {headerCell("Verified", "isVerified", "w-32")}
               <th className="px-3 py-2 text-center text-sm font-semibold text-gray-700">
                 Actions
               </th>
@@ -473,7 +473,7 @@ const UserManagementPage = () => {
                 </td>
                 <td className="px-3 py-2 w-32">
                   <div className="w-24 mx-auto flex justify-center">
-                    {user.is_verify ? (
+                    {user.isVerified ? (
                       <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200 inline-block w-full text-center">
                         Verified
                       </span>
@@ -546,7 +546,7 @@ const UserManagementPage = () => {
               </div>
               <div>
                 <span className="font-medium">Verified:</span>{" "}
-                {selectedUser.is_verify ? "Yes" : "No"}
+                {selectedUser.isVerified ? "Yes" : "No"}
               </div>
               <div>
                 <span className="font-medium">Birthdate:</span>{" "}

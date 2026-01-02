@@ -95,11 +95,15 @@ const router = createBrowserRouter(
           {/* Transactions */}
           {/* Note: Kept all variations found in source to ensure coverage */}
           <Route path="transactions" element={<TransactionHistory />} />
-          <Route path="transactions/create" element={<TransactionPage />} />
+          <Route path="transactions/:orderId" element={<TransactionPage />} />
           <Route
             path="transactions-old/:transactionId"
             element={<TransactionHistory />}
           />
+        </Route>
+
+        {/* BIDDER ONLY ROUTES */}
+        <Route element={<ProtectedRoute allowedRoles={["bidder"]} />}>
           <Route path="upgrade-requests" element={<SellingRequestPage />} />
         </Route>
 

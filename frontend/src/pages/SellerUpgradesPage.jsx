@@ -138,13 +138,35 @@ const SellerUpgradesPage = () => {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("en-GB", {
+    return new Date(dateString).toLocaleString("vi-VN", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
+      hour12: false,
     });
+  };
+
+  const getRemainingDays = (createdAt) => {
+    const created = new Date(createdAt);
+    const expiry = new Date(created.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days from creation
+    const now = new Date();
+    const remaining = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
+    return remaining;
+  };
+
+  const getRemainingDaysText = (days) => {
+    if (days < 0) return "Expired";
+    if (days === 0) return "Today";
+    if (days === 1) return "1 day left";
+    return `${days} days left`;
+  };
+
+  const getRemainingDaysColor = (days) => {
+    if (days < 0) return "text-red-600 font-medium";
+    if (days <= 2) return "text-orange-600 font-medium";
+    return "text-gray-700";
   };
 
   const getStatusBadge = (status) => {
@@ -294,6 +316,9 @@ const SellerUpgradesPage = () => {
                 Requested At
               </th>
               <th className="px-3 py-2 text-left text-sm font-semibold text-gray-700">
+                Remaining
+              </th>
+              <th className="px-3 py-2 text-left text-sm font-semibold text-gray-700">
                 Status
               </th>
               <th className="px-3 py-2 text-center text-sm font-semibold text-gray-700">
@@ -312,15 +337,24 @@ const SellerUpgradesPage = () => {
                   <td className="px-3 py-2">
                     <div>
                       <div className="font-medium text-gray-900">
-                        {user?.fullname || "Unknown"}
+                        {request.user_name || user?.fullName || "Unknown"}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {user?.email || "N/A"}
+                        {request.user_email || user?.email || "N/A"}
                       </div>
                     </div>
                   </td>
                   <td className="px-3 py-2 text-gray-700">
-                    {formatDate(request.request_date)}
+                    {formatDate(request.created_at)}
+                  </td>
+                  <td className="px-3 py-2">
+                    {request.status === "pending" ? (
+                      <span className={`text-xs ${getRemainingDaysColor(getRemainingDays(request.created_at))}`}>
+                        {getRemainingDaysText(getRemainingDays(request.created_at))}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">-</span>
+                    )}
                   </td>
                   <td className="px-3 py-2">
                     <span
@@ -335,7 +369,7 @@ const SellerUpgradesPage = () => {
                     <div className="flex items-center gap-2 justify-start">
                       <button
                         onClick={() => setSelectedRequest(request)}
-                        className="px-3 py-1 border border-gray-300 rounded-md text-xs font-medium hover:bg-gray-100"
+                        className="px-3 py-1 !bg-blue-600 text-white border border-blue-700 rounded-md text-xs font-medium !hover:bg-blue-700 shadow-sm"
                       >
                         Details
                       </button>
@@ -363,7 +397,7 @@ const SellerUpgradesPage = () => {
             {requests.length === 0 && (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={6}
                   className="px-3 py-8 text-center text-gray-500 text-sm"
                 >
                   No requests found.
@@ -405,12 +439,16 @@ const SellerUpgradesPage = () => {
                         Full Name:
                       </span>
                       <p className="text-gray-900">
-                        {user?.fullname || "Unknown"}
+                        {selectedRequest.user_name ||
+                          user?.fullName ||
+                          "Unknown"}
                       </p>
                     </div>
                     <div>
                       <span className="font-medium text-gray-700">Email:</span>
-                      <p className="text-gray-900">{user?.email || "N/A"}</p>
+                      <p className="text-gray-900">
+                        {selectedRequest.user_email || user?.email || "N/A"}
+                      </p>
                     </div>
                     <div>
                       <span className="font-medium text-gray-700">
@@ -447,9 +485,19 @@ const SellerUpgradesPage = () => {
                         Requested At:
                       </span>
                       <p className="text-gray-900">
-                        {formatDate(selectedRequest.request_date)}
+                        {formatDate(selectedRequest.created_at)}
                       </p>
                     </div>
+                    {selectedRequest.status === "pending" && (
+                      <div>
+                        <span className="font-medium text-gray-700">
+                          Remaining:
+                        </span>
+                        <p className={getRemainingDaysColor(getRemainingDays(selectedRequest.created_at))}>
+                          {getRemainingDaysText(getRemainingDays(selectedRequest.created_at))}
+                        </p>
+                      </div>
+                    )}
                     <div>
                       <span className="font-medium text-gray-700">Status:</span>
                       <p>
@@ -483,7 +531,7 @@ const SellerUpgradesPage = () => {
                     </p>
                   </div>
 
-                  {selectedRequest.process_date && (
+                  {selectedRequest.reviewed_at && (
                     <>
                       <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                         <div>
@@ -491,7 +539,7 @@ const SellerUpgradesPage = () => {
                             Processed At:
                           </span>
                           <p className="text-gray-900">
-                            {formatDate(selectedRequest.process_date)}
+                            {formatDate(selectedRequest.reviewed_at)}
                           </p>
                         </div>
                         <div>
@@ -499,7 +547,9 @@ const SellerUpgradesPage = () => {
                             Processed By:
                           </span>
                           <p className="text-gray-900">
-                            {admin?.fullname || "Unknown Admin"}
+                            {selectedRequest.admin_name ||
+                              admin?.fullName ||
+                              "Unknown Admin"}
                           </p>
                         </div>
                       </div>

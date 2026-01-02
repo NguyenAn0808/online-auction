@@ -28,6 +28,7 @@ import EditDescriptionModal from "./EditDescriptionModal";
 import { productService } from "../services/productService";
 import watchlistService from "../services/watchlistService";
 import userService from "../services/userService";
+import orderService from "../services/orderService";
 import {
   COLORS,
   TYPOGRAPHY,
@@ -61,6 +62,7 @@ export default function ProductOverview({ productId: propProductId }) {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [order, setOrder] = useState(null);
 
   const [inWatchlist, setInWatchlist] = useState(false);
   const navigate = useNavigate();
@@ -133,6 +135,22 @@ export default function ProductOverview({ productId: propProductId }) {
         if (data.end_time) {
           const ended = new Date(data.end_time) <= new Date();
           setIsEnded(ended);
+
+          // If ended, check if user is buyer or seller
+          if (ended && user) {
+            try {
+              const orderData = await orderService.getOrder(productId);
+              setOrder(orderData);
+
+              // Auto-redirect if user is buyer or seller
+              if (orderData && (orderData.buyer_id === user.id || orderData.seller_id === user.id)) {
+                navigate(`/transactions/${orderData.id}`);
+                return;
+              }
+            } catch (err) {
+              console.error("Failed to load order", err);
+            }
+          }
         }
       } catch (err) {
         console.error("Failed to load product", err);
@@ -246,6 +264,43 @@ export default function ProductOverview({ productId: propProductId }) {
     return (
       <div className="p-10 text-center">{error || "Product not found."}</div>
     );
+
+  // Show ended message for non-participants
+  if (isEnded && (!order || (order.buyer_id !== user?.id && order.seller_id !== user?.id))) {
+    return (
+      <div style={{ backgroundColor: COLORS.WHISPER, minHeight: "100vh" }}>
+        <div className="mx-auto max-w-2xl px-4 py-16 text-center">
+          <div style={{ fontSize: "64px", marginBottom: SPACING.L }}>⏱️</div>
+          <h2 style={{ 
+            fontSize: TYPOGRAPHY.SIZE_HEADING_LG, 
+            fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+            marginBottom: SPACING.M,
+            color: COLORS.MIDNIGHT_ASH
+          }}>
+            Auction Ended
+          </h2>
+          <p style={{ color: COLORS.PEBBLE, marginBottom: SPACING.XL, fontSize: TYPOGRAPHY.SIZE_BODY }}>
+            This auction has concluded. Only the buyer and seller can access the order details.
+          </p>
+          <button
+            onClick={() => navigate("/")}
+            style={{
+              backgroundColor: COLORS.MIDNIGHT_ASH,
+              color: COLORS.WHITE,
+              padding: `${SPACING.M} ${SPACING.XL}`,
+              borderRadius: BORDER_RADIUS.MEDIUM,
+              border: "none",
+              cursor: "pointer",
+              fontSize: TYPOGRAPHY.SIZE_BODY,
+              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD
+            }}
+          >
+            Browse Other Auctions
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Derive display values from backend data
   const currentPrice = Number(

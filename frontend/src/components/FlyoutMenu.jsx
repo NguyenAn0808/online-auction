@@ -6,6 +6,8 @@ import {
   ShoppingBagIcon,
   CurrencyDollarIcon,
   ArrowRightStartOnRectangleIcon,
+  BookmarkSquareIcon,
+  LifebuoyIcon,
 } from "@heroicons/react/24/outline";
 import {
   COLORS,
@@ -27,6 +29,9 @@ export default function FlyoutMenu({ alignRight = false }) {
     navigate("/auth/signin");
   };
   const userId = user?.id;
+  const isAdmin = user?.role === "admin";
+  const isBidder = user?.role === "bidder";
+
   const resources = [
     {
       name: "Summary",
@@ -52,12 +57,28 @@ export default function FlyoutMenu({ alignRight = false }) {
       href: userId ? `/products/${userId}/bidding` : "/auth/signin",
       icon: ShoppingBagIcon,
     },
-    {
-      name: "Seller Upgrade",
-      description: "Upgrade to seller account",
-      href: userId ? `/upgrade-requests` : "/auth/signin",
-      icon: CurrencyDollarIcon,
-    },
+    // Seller Upgrade link - only shown to bidder users
+    ...(isBidder
+      ? [
+          {
+            name: "Seller Upgrade",
+            description: "Upgrade to seller account",
+            href: "/upgrade-requests",
+            icon: CurrencyDollarIcon,
+          },
+        ]
+      : []),
+    // Admin Panel link - only shown to admin users
+    ...(isAdmin
+      ? [
+          {
+            name: "Admin Panel",
+            description: "Manage users, products, and settings",
+            href: "/admin",
+            icon: LifebuoyIcon,
+          },
+        ]
+      : []),
   ];
   // Temporary placeholder recent transactions (top 3)
   // const recentTransactions = [

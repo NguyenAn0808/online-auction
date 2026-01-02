@@ -32,6 +32,21 @@ export const getOrder = async (productId) => {
   }
 };
 
+/**
+ * Get order details by order ID
+ * @param {string} orderId - Order UUID
+ * @returns {Promise<Object>} Order details
+ */
+export const getOrderById = async (orderId) => {
+  try {
+    const response = await api.get(`/api/orders/${orderId}`);
+    return response.data?.data || response.data;
+  } catch (error) {
+    console.error("Error fetching order by ID:", error);
+    throw error;
+  }
+};
+
 export const createOrder = async (formData) => {
   try {
     const response = await api.post("/api/orders", formData, {
@@ -80,6 +95,29 @@ export const submitPayment = async (orderId, paymentData) => {
     return response.data;
   } catch (error) {
     console.error("Error submitting payment:", error);
+    throw error;
+  }
+};
+
+/**
+ * Update payment proof with file upload (multipart/form-data)
+ * POST /orders/{order_id}/payment-proof
+ * @param {string} orderId - Order UUID
+ * @param {FormData} formData - FormData with 'image' file and 'shippingAddress'
+ * @returns {Promise<Object>} Updated order
+ */
+export const updatePaymentProof = async (orderId, formData) => {
+  try {
+    const response = await api.post(
+      `/api/orders/${orderId}/payment-proof`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error updating payment proof:", error);
     throw error;
   }
 };
@@ -207,10 +245,12 @@ export const getWonItems = async () => {
 
 export default {
   getOrder,
+  getOrderById,
   listOrders,
   getWonItems,
   createOrder,
   submitPayment,
+  updatePaymentProof,
   submitShipment,
   confirmDelivery,
   cancelOrder,

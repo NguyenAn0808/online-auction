@@ -13,8 +13,20 @@ class RatingService {
     return Rating.getUserScoreAndCount(target_user_id);
   }
 
-  static async getUserRatingByReviewerAndProduct(target_user_id, reviewer_id, product_id) {
-    return Rating.getUserRatingByReviewerAndProduct(target_user_id, reviewer_id, product_id);
+  static async getUserRatingByReviewerAndProduct(
+    target_user_id,
+    reviewer_id,
+    product_id
+  ) {
+    return Rating.getUserRatingByReviewerAndProduct(
+      target_user_id,
+      reviewer_id,
+      product_id
+    );
+  }
+
+  static async getRatingsGivenByUser(reviewer_id) {
+    return Rating.getRatingsGivenByUser(reviewer_id);
   }
 }
 

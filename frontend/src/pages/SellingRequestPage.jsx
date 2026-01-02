@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Header from "../components/Header";
 import Tabs from "../components/Tabs";
 import Sidebar from "../components/Sidebar";
+import api from "../services/api";
 import {
   COLORS,
   TYPOGRAPHY,
@@ -12,6 +13,12 @@ import {
 
 export default function SellingRequestPage() {
   const [submitting, setSubmitting] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+
+  function handleFileChange(e) {
+    const files = Array.from(e.target.files || []);
+    setSelectedFiles(files);
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -28,15 +35,16 @@ export default function SellingRequestPage() {
 
     try {
       setSubmitting(true);
-      const res = await fetch(`/api/seller-requests`, {
-        method: "POST",
-        body: fd,
+      const res = await api.post(`/api/upgrade-requests`, fd, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       });
-      if (!res.ok) throw new Error("Failed to submit request");
-      alert("Request submitted. Admin will review it.");
+      alert("Request submitted successfully. Admin will review it.");
       form.reset();
+      setSelectedFiles([]); // Clear selected files
     } catch (err) {
-      alert(err.message);
+      alert(err.response?.data?.message || "Failed to submit request");
     } finally {
       setSubmitting(false);
     }
@@ -219,6 +227,7 @@ export default function SellingRequestPage() {
                             }}
                           >
                             <label
+                              htmlFor="documents-upload"
                               style={{
                                 position: "relative",
                                 cursor: "pointer",
@@ -227,12 +236,16 @@ export default function SellingRequestPage() {
                                 fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
                                 color: COLORS.MIDNIGHT_ASH,
                               }}
+                              className="hover:text-blue-600"
                             >
                               <span>Upload files</span>
                               <input
+                                id="documents-upload"
                                 name="documents"
                                 type="file"
                                 multiple
+                                accept="image/*,.pdf"
+                                onChange={handleFileChange}
                                 style={{ display: "none" }}
                               />
                             </label>
@@ -249,6 +262,34 @@ export default function SellingRequestPage() {
                           >
                             PNG, JPG, PDF up to 10MB each
                           </p>
+                          {selectedFiles.length > 0 && (
+                            <div
+                              style={{
+                                marginTop: SPACING.M,
+                                fontSize: TYPOGRAPHY.SIZE_LABEL_LARGE,
+                                color: COLORS.MIDNIGHT_ASH,
+                                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                              }}
+                            >
+                              {selectedFiles.length} file(s) selected:
+                              <ul
+                                style={{
+                                  marginTop: SPACING.S,
+                                  fontSize: TYPOGRAPHY.SIZE_LABEL,
+                                  color: COLORS.PEBBLE,
+                                  listStyle: "none",
+                                  padding: 0,
+                                }}
+                              >
+                                {selectedFiles.map((file, idx) => (
+                                  <li key={idx}>
+                                    {file.name} ({Math.round(file.size / 1024)}{" "}
+                                    KB)
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
