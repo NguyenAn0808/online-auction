@@ -270,24 +270,6 @@ export default function TransactionPage() {
       // Use OpenAPI endpoint: POST /orders/{order_id}/cancel
       const cancelled = await orderService.cancelOrder(orderId, reason);
 
-      // Auto rate buyer -1 with fixed comment
-      try {
-        const targetBuyerId = cancelled?.buyer_id || tx?.buyer_id;
-        const productId =
-          cancelled?.product_id || tx?.product_id || productDetails?.id;
-        if (user?.id && targetBuyerId && productId) {
-          await ratingService.createRating({
-            user_id: targetBuyerId,
-            reviewer_id: user.id,
-            product_id: productId,
-            is_positive: false,
-            comment: "Người thắng không thanh toán.",
-          });
-        }
-      } catch (rateErr) {
-        console.error("Auto-rating on cancel failed:", rateErr);
-      }
-
       setCancelModalOpen(false);
 
       // Update local state immediately to show CancelledView
@@ -296,7 +278,7 @@ export default function TransactionPage() {
       // Show success notification
       setNotification({
         type: "success",
-        message: "Order has been cancelled & Buyer rated -1 successfully!",
+        message: "Order has been cancelled.",
       });
       setTimeout(() => setNotification(null), 5000);
     } catch (error) {
@@ -465,26 +447,8 @@ export default function TransactionPage() {
     try {
       const res = await orderService.cancelOrder(orderId, reason);
       if (res) {
-        // Auto rate buyer -1 with fixed comment
-        try {
-          const targetBuyerId = res?.buyer_id || tx?.buyer_id;
-          const productId =
-            res?.product_id || tx?.product_id || productDetails?.id;
-          if (user?.id && targetBuyerId && productId) {
-            await ratingService.createRating({
-              user_id: targetBuyerId,
-              reviewer_id: user.id,
-              product_id: productId,
-              is_positive: false,
-              comment: "Người thắng không thanh toán.",
-            });
-          }
-        } catch (rateErr) {
-          console.error("Auto-rating on cancel failed:", rateErr);
-        }
-
         setTx(res);
-        showToast("Order cancelled and buyer rated -1.");
+        showToast("Order cancelled.");
       }
     } catch (err) {
       console.error("Cancel order error:", err);
@@ -786,7 +750,7 @@ export default function TransactionPage() {
                       d="M6 18L18 6M6 6l12 12"
                     />
                   </svg>
-                  Cancel Transaction & Rate -1
+                  Cancel Transaction
                 </button>
               )}
             </div>
