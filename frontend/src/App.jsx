@@ -50,7 +50,6 @@ import CategoryManagementPage from "./pages/CategoryManagementPage";
 import ProductManagementPage from "./pages/ProductManagementPage";
 import UserManagementPage from "./pages/UserManagementPage";
 import SellerUpgradesPage from "./pages/SellerUpgradesPage";
-import SystemSettingsPage from "./pages/SystemSettingsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 // Services
 import OAuthCallback from "./pages/OAuthCallback";
@@ -126,7 +125,6 @@ const router = createBrowserRouter(
           <Route path="products" element={<ProductManagementPage />} />
           <Route path="users" element={<UserManagementPage />} />
           <Route path="seller-upgrades" element={<SellerUpgradesPage />} />
-          <Route path="settings" element={<SystemSettingsPage />} />
         </Route>
       </Route>
     </>

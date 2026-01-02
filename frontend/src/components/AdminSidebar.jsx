@@ -90,18 +90,6 @@ const AdminSidebar = () => {
       >
         Seller upgrades
       </button>
-
-      {/* System settings */}
-      <button
-        onClick={() => handleNavigate("/admin/settings")}
-        className={`w-full text-left px-3 py-2 rounded-md transition hover:bg-gray-50 mt-1 ${
-          isActive("/admin/settings")
-            ? "!font-semibold !bg-gray-200 !text-gray-900"
-            : ""
-        }`}
-      >
-        System settings
-      </button>
     </div>
   );
 };

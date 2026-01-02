@@ -153,7 +153,7 @@ const Header = () => {
             </div>
           </Dialog>
 
-          <button
+          {/* <button
             className="p-2 rounded-full transition btn-icon"
             onClick={handleCartClick}
             aria-label="Toggle cart"
@@ -167,7 +167,7 @@ const Header = () => {
               <path d="M8 23C9.10457 23 10 22.1046 10 21C10 19.8954 9.10457 19 8 19C6.89543 19 6 19.8954 6 21C6 22.1046 6.89543 23 8 23Z" />
               <path d="M20 21C20 22.1046 19.1046 23 18 23C16.8954 23 16 22.1046 16 21C16 19.8954 16.8954 19 18 19C19.1046 19 20 19.8954 20 21Z" />
             </svg>
-          </button>
+          </button> */}
 
           <ShoppingCart open={showCart} setOpen={setShowCart} />
 

@@ -5,6 +5,7 @@ import { formatCurrency } from "../utils/formatters";
 import { productAPI } from "../services/productService";
 import userService from "../services/userService";
 import upgradeRequestService from "../services/upgradeRequestService";
+import settingsService from "../services/settingsService";
 
 const AdminDashboardPage = () => {
   const [stats, setStats] = useState({
@@ -19,6 +20,17 @@ const AdminDashboardPage = () => {
   });
 
   const [recentProducts, setRecentProducts] = useState([]);
+  const [settings, setSettings] = useState({
+    auto_extend_threshold_minutes: 5,
+    auto_extend_duration_minutes: 10,
+  });
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 3000);
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -99,8 +111,56 @@ const AdminDashboardPage = () => {
     load();
   }, []);
 
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const data = await settingsService.getAllSettings();
+      const formValues = {};
+      data.forEach((setting) => {
+        formValues[setting.key] = parseInt(setting.value);
+      });
+      setSettings(formValues);
+    } catch (error) {
+      console.error("Error fetching settings:", error);
+    }
+  };
+
+  const handleSettingChange = (key, value) => {
+    setSettings((prev) => ({
+      ...prev,
+      [key]: parseInt(value) || 0,
+    }));
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      setSavingSettings(true);
+      const promises = Object.keys(settings).map((key) =>
+        settingsService.updateSetting(key, settings[key])
+      );
+      await Promise.all(promises);
+      showToast("Settings updated successfully");
+      await fetchSettings();
+    } catch (error) {
+      console.error("Error updating settings:", error);
+      showToast("Failed to update settings");
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg">
+          {toast}
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
@@ -163,6 +223,90 @@ const AdminDashboardPage = () => {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Auto-Extend Settings */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h3 className="text-lg font-bold text-gray-900 mb-4">
+          Auto-Extend Auction Settings
+        </h3>
+        <p className="text-sm text-gray-600 mb-6">
+          Configure automatic auction extension when bids are placed near the
+          end time.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          {/* Threshold Minutes */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Time Threshold (minutes)
+            </label>
+            <p className="text-xs text-gray-500 mb-2">
+              Trigger auto-extend when bid placed within this many minutes
+              before auction end
+            </p>
+            <input
+              type="number"
+              min="1"
+              max="60"
+              value={settings.auto_extend_threshold_minutes || 5}
+              onChange={(e) =>
+                handleSettingChange(
+                  "auto_extend_threshold_minutes",
+                  e.target.value
+                )
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Extension Duration */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Extension Duration (minutes)
+            </label>
+            <p className="text-xs text-gray-500 mb-2">
+              Number of minutes to extend the auction when triggered
+            </p>
+            <input
+              type="number"
+              min="1"
+              max="120"
+              value={settings.auto_extend_duration_minutes || 10}
+              onChange={(e) =>
+                handleSettingChange(
+                  "auto_extend_duration_minutes",
+                  e.target.value
+                )
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        {/* Example */}
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-md mb-4">
+          <p className="text-sm text-blue-800">
+            <strong>Current rule:</strong> If a bid is placed within{" "}
+            <strong>
+              {settings.auto_extend_threshold_minutes || 5} minutes
+            </strong>{" "}
+            before auction end, extend by{" "}
+            <strong>
+              {settings.auto_extend_duration_minutes || 10} minutes
+            </strong>
+            .
+          </p>
+        </div>
+
+        {/* Save Button */}
+        <button
+          onClick={handleSaveSettings}
+          disabled={savingSettings}
+          className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
+        >
+          {savingSettings ? "Saving..." : "Save Settings"}
+        </button>
       </div>
     </div>
   );

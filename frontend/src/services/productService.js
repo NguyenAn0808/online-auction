@@ -518,6 +518,7 @@ export const productHelpers = {
       const data = response.data?.data || {};
       const bids = Array.isArray(data) ? data : data.bids || [];
       const product = data.product || null;
+      const blockedBidders = data.blockedBidders || [];
 
       // Map to expected format for BidHistory component
       const mappedBids = bids.map((bid) => ({
@@ -529,7 +530,19 @@ export const productHelpers = {
         name: bid.bidder_name || "Anonymous Bidder",
       }));
 
-      return { bids: mappedBids, product };
+      // Map blocked bidders to expected format
+      const mappedBlockedBidders = blockedBidders.map((blocked) => ({
+        bidder_id: blocked.user_id,
+        product_id: blocked.product_id,
+        blocked_at: blocked.created_at,
+        bidder_name: blocked.bidder_name,
+      }));
+
+      return {
+        bids: mappedBids,
+        product,
+        blockedBidders: mappedBlockedBidders,
+      };
     } catch (error) {
       console.error("Error fetching bid history:", error);
       return [];

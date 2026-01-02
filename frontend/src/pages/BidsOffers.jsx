@@ -587,7 +587,7 @@ export default function BidsOffers() {
                 in the transaction/order response from the server.
               */}
               <section>
-                <h2
+                <div
                   style={{
                     fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
                     fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
@@ -606,7 +606,22 @@ export default function BidsOffers() {
                 >
                   Your completed and pending transactions
                 </p>
-
+                {transactions.length > 0 && (
+                    <button
+                      onClick={() => navigate("/transactions")}
+                      style={{
+                        fontSize: TYPOGRAPHY.SIZE_LABEL,
+                        fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                        color: COLORS.DEEP_CHARCOAL,
+                        backgroundColor: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                      }}
+                    >
+                      View All
+                    </button>
+                  )}
                 {loadingTx ? (
                   <div className="text-gray-500">Loading transactions...</div>
                 ) : txError ? (
