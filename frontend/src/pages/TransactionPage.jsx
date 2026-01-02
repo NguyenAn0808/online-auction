@@ -52,9 +52,7 @@ function useMockAuth() {
 }
 
 export default function TransactionPage() {
-  const { transactionId } = useParams(); // The Order ID (if exists)
-  const [searchParams] = useSearchParams();
-  const productIdParam = searchParams.get("productId"); // If creating new order
+  const { orderId } = useParams(); // The Order ID
   const [ratingComment, setRatingComment] = useState("");
   const [selectedRating, setSelectedRating] = useState(null);
   const [isRatingSubmitted, setIsRatingSubmitted] = useState(false);
@@ -94,7 +92,6 @@ export default function TransactionPage() {
   const handleCancelSubmit = async (reason) => {
     try {
       // Use OpenAPI endpoint: POST /orders/{order_id}/cancel
-      const orderId = transactionId; // Assuming transactionId is orderId
       await orderService.cancelOrder(orderId, reason);
 
       setCancelModalOpen(false);
@@ -127,15 +124,8 @@ export default function TransactionPage() {
   // Load transaction
   useEffect(() => {
     async function loadData() {
-      // If no ID, we are likely creating a new order (Step 1)
-      if (!transactionId && productIdParam) {
-        const productData = await productService.getProductById(productIdParam);
-        setProductDetails(productData);
-        setLoading(false);
-        return;
-      }
-
-      if (!transactionId && !productIdParam) {
+      // Order ID is required
+      if (!orderId) {
         setLoading(false);
         navigate("/", { replace: true });
         return;
@@ -143,9 +133,8 @@ export default function TransactionPage() {
 
       try {
         setLoading(true);
-        // Use OpenAPI endpoint: GET /products/{product_id}/order
-        // Note: transactionId should be productId to get the order
-        const apiResponse = await orderService.getOrder(transactionId);
+        // Use OpenAPI endpoint: GET /orders/{order_id}
+        const apiResponse = await orderService.getOrderById(orderId);
         if (apiResponse) {
           setTx(apiResponse);
           if (apiResponse.productName) {
@@ -177,16 +166,17 @@ export default function TransactionPage() {
       }
     }
     loadData();
-  }, [transactionId, productIdParam, navigate]);
+  }, [orderId, navigate]);
 
   function showToast(message) {
     setToast(message);
     setTimeout(() => setToast(null), 3000);
   }
 
-  const isBuyer = !tx || (user && user.id === tx.buyer_id);
+  const isBuyer = tx && user && user.id === tx.buyer_id;
   const isSeller = tx && user && user.id === tx.seller_id;
   const userRole = isSeller ? "seller" : "buyer";
+
   // Use OpenAPI status enums instead of database status strings
   const isCompleted = tx?.status === ORDER_STATUS.COMPLETED;
   const isCancelled = tx?.status === ORDER_STATUS.CANCELLED;
@@ -194,8 +184,8 @@ export default function TransactionPage() {
   const isFormValid =
     formData.firstName && formData.address && formData.city && formData.phone;
   // STEP 1: CREATE ORDER (Buyer) - Submit Payment Proof
-  // NOTE: OpenAPI spec expects paymentProofUrl as URL string, not File.
-  // For now, converting File to data URL. Backend may need separate file upload endpoint.
+  // NOTE: Since the order is auto-created by the cron job when auction ends,
+  // we need to UPDATE the existing order with payment proof, not create a new one.
   async function handleCreateOrder() {
     if (!paymentProofFile)
       return showToast("Please upload payment proof image.");
@@ -205,50 +195,35 @@ export default function TransactionPage() {
     }
 
     try {
-      // 1. Get Product ID from URL param or existing transaction state
-      const pid = productIdParam || tx?.product_id || tx?.product?.id;
-      if (!pid) return showToast("Product ID missing.");
+      // 1. Get Order ID from existing transaction
+      const oid = tx?.id || orderId;
+      if (!oid) return showToast("Order ID missing.");
 
       // 2. Prepare Form Data (Backend expects multipart/form-data)
       const fullAddress = `${formData.address}, ${formData.city}, ${formData.region}, ${formData.country}. Phone: ${formData.phone}`;
 
       const payload = new FormData();
-      payload.append("productId", pid);
       payload.append("shippingAddress", fullAddress);
       payload.append("image", paymentProofFile); // Backend middleware checks for 'image' or 'file'
 
-      let res;
-
-      // 3. LOGIC FIX: Check if we are Creating (New) or Updating (Existing)
-      if (!tx || !tx.id) {
-        // CASE A: NEW ORDER -> Call createOrder (POST /api/orders)
-        // This skips the "Order not found" check entirely
-        res = await orderService.createOrder(payload);
-      } else {
-        // CASE B: EXISTING ORDER (Re-uploading proof) -> Call submitPayment
-        res = await orderService.submitPayment(tx.id, {
-          shippingAddress: fullAddress,
-          paymentProofUrl: await convertFileToUrl(paymentProofFile), // Or use FormData if submitPayment supports it
-        });
-      }
+      // 3. Update order with payment proof
+      const res = await orderService.updatePaymentProof(oid, payload);
 
       // 4. Handle Success
       if (res && (res.success || res.data)) {
         const newTx = res.data || res;
         setTx(newTx);
-        showToast("Order submitted successfully!");
-
-        // Navigate to the transaction ID to exit "creation mode"
-        navigate(`/transactions/${newTx.id}`, { replace: true });
+        showToast("Payment proof submitted successfully!");
       }
     } catch (err) {
       console.error(err);
       // Display backend error message if available
-      showToast(err.response?.data?.message || "Failed to submit order");
+      showToast(
+        err.response?.data?.message || "Failed to submit payment proof"
+      );
     }
   }
   // STEP 2: CONFIRM SHIPPING (Seller)
-  // Use OpenAPI endpoint: POST /orders/{order_id}/shipment-proof
   async function handleSellerConfirm(shippingData) {
     // shippingData comes from ShippingInvoiceForm ({ shippingCode, file })
     if (!tx) return;
@@ -260,26 +235,23 @@ export default function TransactionPage() {
         "Cannot ship: Buyer has not uploaded payment proof yet."
       );
     }
-    try {
-      // Convert File to data URL (temporary solution - backend should accept file uploads separately)
-      const shippingProofUrl = await new Promise((resolve, reject) => {
-        if (!shippingData.file) {
-          reject(new Error("Shipping proof file required"));
-          return;
-        }
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(shippingData.file);
-      });
 
-      // Submit shipment proof using OpenAPI endpoint
-      const res = await orderService.submitShipment(orderId, {
-        shippingProofUrl: shippingProofUrl, // Data URL - backend may need to handle this
-      });
+    if (!shippingData.shippingCode || !shippingData.file) {
+      return showToast("Please provide shipping code and proof image.");
+    }
+
+    try {
+      // Use the legacy transactionService which has the correct implementation
+      const res = await TransactionService.confirmShipping(
+        orderId,
+        shippingData.shippingCode,
+        shippingData.file
+      );
 
       if (res) {
-        setTx(res);
+        // Reload the order to get updated status
+        const updatedOrder = await orderService.getOrderById(orderId);
+        setTx(updatedOrder);
         showToast("Shipping confirmed! Order is now in transit.");
       }
     } catch (err) {
@@ -311,78 +283,113 @@ export default function TransactionPage() {
   }
 
   // STEP 3: CONFIRM RECEIPT (Buyer)
-  // Use OpenAPI endpoint: POST /orders/{order_id}/delivery-confirmation
   async function handleBuyerConfirmReceipt() {
     if (!tx) return;
     const orderId = tx._id || tx.id;
     if (!orderId) return showToast("Order ID missing.");
 
     try {
-      const res = await orderService.confirmDelivery(orderId);
-      if (res) {
-        setTx(res);
-        showToast("Receipt confirmed! Please rate the seller.");
-      }
+      await TransactionService.confirmReceipt(orderId);
+      // Reload the order to get updated status
+      const updatedOrder = await orderService.getOrderById(orderId);
+      setTx(updatedOrder);
+      showToast("Receipt confirmed! Please rate the seller.");
     } catch (err) {
       console.error("Delivery confirmation error:", err);
       showToast(err.response?.data?.message || "Failed to confirm receipt");
     }
   }
 
-  // STEP 4: SUBMIT RATING
+  // STEP 4: SUBMIT RATING (Allow re-rating)
   async function handleRatingSubmit() {
     if (!tx || !selectedRating) return;
+    const orderId = tx._id || tx.id;
     try {
       await TransactionService.rateTransaction(
-        tx.id,
+        orderId,
         selectedRating,
         ratingComment
       );
       setIsRatingSubmitted(true);
-      showToast("Rating submitted successfully! Transaction finalizing.");
-      // Refresh data to show "You rated" UI
-      // navigate("/transactions");
+
+      // Show appropriate message
+      showToast(
+        hasUserRated
+          ? "Rating updated successfully!"
+          : "Rating submitted successfully!"
+      );
+
+      // Reload order to check if both parties rated (status might be 'completed' now)
+      const updatedOrder = await orderService.getOrderById(orderId);
+      setTx(updatedOrder);
+
+      if (updatedOrder.status === "completed") {
+        showToast("Transaction completed! Both parties have rated.");
+      }
     } catch (err) {
+      console.error("Rating error:", err);
       showToast(err.response?.data?.message || "Failed to submit rating");
+    }
+  }
+
+  // SKIP RATING: Navigate to profile for later rating
+  async function handleSkipRating() {
+    if (!tx) return;
+    const orderId = tx._id || tx.id;
+
+    try {
+      // Navigate to profile
+      navigate(`/summary/${user.id}`);
+      showToast("You can rate this transaction later from your profile");
+    } catch (err) {
+      console.error("Skip rating error:", err);
+      showToast("Failed to skip rating");
     }
   }
 
   const currentStep = useMemo(() => {
     if (!tx) return 1; // Step 1: Creating Order
 
-    // Use OpenAPI status enums (source of truth: openapi.yaml)
+    // Map database status values to step numbers
     switch (tx.status) {
-      case ORDER_STATUS.PENDING_BIDDER_PAYMENT:
-        return 1; // Step 1: Buyer needs to submit payment
+      case "pending_payment":
+        return 1; // Step 1: Buyer needs to provide payment proof
 
-      case ORDER_STATUS.PENDING_SELLER_CONFIRMATION:
-        return 2; // Step 2: Seller needs to confirm payment and ship
+      case "pending_verification":
+        return 2; // Step 2: Seller needs to verify payment and ship
 
-      case ORDER_STATUS.PENDING_DELIVERY:
-        return 3; // Step 3: Product in transit, buyer waiting for delivery
+      case "delivering":
+        return 3; // Step 3: Package in transit, buyer waiting for delivery
 
-      case ORDER_STATUS.PENDING_RATING:
-        return 4; // Step 4: Awaiting ratings from buyer/seller
+      case "await_rating":
+        return 4; // Step 4: Buyer confirmed receipt, awaiting ratings
 
-      case ORDER_STATUS.COMPLETED:
+      case "completed":
         return 5; // Step 5: Transaction complete
 
-      case ORDER_STATUS.CANCELLED:
+      case "cancelled":
         return 0; // Cancelled transaction
 
+      // OpenAPI enum fallbacks (if backend switches to enum format)
+      case ORDER_STATUS.PENDING_BIDDER_PAYMENT:
+        return 1;
+
+      case ORDER_STATUS.PENDING_SELLER_CONFIRMATION:
+        return 2;
+
+      case ORDER_STATUS.PENDING_DELIVERY:
+        return 3;
+
+      case ORDER_STATUS.PENDING_RATING:
+        return 4;
+
+      case ORDER_STATUS.COMPLETED:
+        return 5;
+
+      case ORDER_STATUS.CANCELLED:
+        return 0;
+
       default:
-        // Fallback for legacy status values (if backend still returns DB strings)
-        if (
-          tx.status === "pending_verification" ||
-          tx.status === "delivering" ||
-          tx.status === "await_rating"
-        ) {
-          console.warn(
-            "Received legacy DB status value:",
-            tx.status,
-            "- Backend should return OpenAPI enum"
-          );
-        }
         return 1;
     }
   }, [tx]);
@@ -511,7 +518,7 @@ export default function TransactionPage() {
                     {/* Show Product Name from TX or ProductDetails */}
                     {tx?.productName ||
                       productDetails?.name ||
-                      `Transaction #${transactionId?.slice(0, 8)}`}
+                      `Transaction #${orderId?.slice(0, 8)}`}
 
                     {/* ID Badge */}
                     <span
@@ -761,16 +768,81 @@ export default function TransactionPage() {
 
               {/* STEP 1: SELLER WAITING */}
               {currentStep === 1 && isSeller && (
-                <div style={{ textAlign: "center", padding: SPACING.XXL }}>
-                  <div style={{ fontSize: "40px", marginBottom: SPACING.M }}>
-                    ⏳
-                  </div>
-                  <h3 style={{ fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD }}>
-                    Waiting for Buyer
+                <div style={{ padding: SPACING.L }}>
+                  <h3
+                    style={{
+                      fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                      marginBottom: SPACING.L,
+                      color: COLORS.MIDNIGHT_ASH,
+                    }}
+                  >
+                    Step 1 — Buyer Payment Information
                   </h3>
-                  <p style={{ color: COLORS.PEBBLE }}>
-                    The buyer is creating the order.
-                  </p>
+
+                  {tx?.payment_proof_image && tx?.shipping_address ? (
+                    <div
+                      style={{
+                        backgroundColor: COLORS.SOFT_CLOUD,
+                        padding: SPACING.L,
+                        borderRadius: BORDER_RADIUS.MEDIUM,
+                        marginBottom: SPACING.L,
+                      }}
+                    >
+                      <div style={{ marginBottom: SPACING.M }}>
+                        <p
+                          style={{
+                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                            marginBottom: SPACING.S,
+                          }}
+                        >
+                          <strong>Shipping Address:</strong>
+                        </p>
+                        <p style={{ color: COLORS.MIDNIGHT_ASH }}>
+                          {tx.shipping_address}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p
+                          style={{
+                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                            marginBottom: SPACING.S,
+                          }}
+                        >
+                          <strong>Payment Proof:</strong>
+                        </p>
+                        <a
+                          href={tx.payment_proof_image}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            color: "#2563EB",
+                            textDecoration: "underline",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: SPACING.S,
+                          }}
+                        >
+                          View Payment Proof Image →
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: "center", padding: SPACING.XXL }}>
+                      <div
+                        style={{ fontSize: "40px", marginBottom: SPACING.M }}
+                      >
+                        ⏳
+                      </div>
+                      <h3 style={{ fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD }}>
+                        Waiting for Buyer
+                      </h3>
+                      <p style={{ color: COLORS.PEBBLE }}>
+                        The buyer has not yet submitted payment proof and
+                        shipping address.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -908,8 +980,31 @@ export default function TransactionPage() {
                     }}
                   >
                     Step {currentStep} —{" "}
-                    {currentStep === 4 ? "Rate Experience" : "Finalized"}
+                    {currentStep === 4 ? "Rate Your Experience" : "Finalized"}
                   </h3>
+
+                  {/* Info banner for re-rating */}
+                  {!shouldShowFinalReceipt && hasUserRated && (
+                    <div
+                      style={{
+                        backgroundColor: "#FEF3C7",
+                        padding: SPACING.M,
+                        borderRadius: BORDER_RADIUS.MEDIUM,
+                        marginBottom: SPACING.L,
+                        border: "1px solid #FCD34D",
+                      }}
+                    >
+                      <p
+                        style={{
+                          color: "#92400E",
+                          fontSize: TYPOGRAPHY.SIZE_LABEL,
+                        }}
+                      >
+                        ℹ️ You have already rated this transaction. You can
+                        update your rating below.
+                      </p>
+                    </div>
+                  )}
 
                   {shouldShowFinalReceipt ? (
                     /* CONDITION 1: FINAL RECEIPT (Triggers if Step 5 OR if rating was just submitted/exists) */
@@ -1049,8 +1144,36 @@ export default function TransactionPage() {
                           transition: "all 0.3s ease",
                         }}
                       >
-                        Submit Rating
+                        {hasUserRated ? "Update Rating" : "Submit Rating"}
                       </button>
+
+                      {/* Skip Rating Button */}
+                      {!hasUserRated && (
+                        <button
+                          onClick={handleSkipRating}
+                          style={{
+                            width: "100%",
+                            padding: `${SPACING.M} ${SPACING.L}`,
+                            backgroundColor: "transparent",
+                            color: COLORS.MIDNIGHT_ASH,
+                            border: `2px solid ${COLORS.PEBBLE}`,
+                            borderRadius: BORDER_RADIUS.MEDIUM,
+                            fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
+                            fontSize: TYPOGRAPHY.SIZE_BODY,
+                            cursor: "pointer",
+                            transition: "all 0.3s ease",
+                            marginTop: SPACING.S,
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.backgroundColor = COLORS.SOFT_CLOUD;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.backgroundColor = "transparent";
+                          }}
+                        >
+                          Skip rating, I will rate later
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

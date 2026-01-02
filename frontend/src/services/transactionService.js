@@ -30,20 +30,20 @@ export const confirmShipping = async (orderId, trackingCode, file) => {
     formData.append("image", file);
   }
 
-  // CHANGE THIS TO api.patch
-  const response = await api.patch(`/api/orders/${orderId}/ship`, formData, {
+  // Use PATCH and correct endpoint
+  const response = await api.patch(`/api/orders/${orderId}/shipment-proof`, formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
 
-  return response.data.data;
+  return response.data.data || response.data;
 };
 
 /**
  * Step 3: Buyer Confirms Receipt
  */
 export const confirmReceipt = async (orderId) => {
-  const response = await api.patch(`/api/orders/${orderId}/receive`);
-  return response.data;
+  const response = await api.patch(`/api/orders/${orderId}/delivery-confirmation`);
+  return response.data.data || response.data;
 };
 
 /**

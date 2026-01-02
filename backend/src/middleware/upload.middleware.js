@@ -18,9 +18,38 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+const documentFileFilter = (req, file, cb) => {
+  const allowedTypes = [
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+    "application/pdf",
+  ];
+
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(
+      new Error(
+        "Invalid file type. Only JPEG, PNG, WebP images and PDF documents are allowed."
+      ),
+      false
+    );
+  }
+};
+
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+});
+
+const documentUpload = multer({
+  storage: storage,
+  fileFilter: documentFileFilter,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
@@ -30,6 +59,8 @@ const upload = multer({
 export const uploadSingle = upload.single("image");
 // Middleware for multiple image uploads (max 24)
 export const uploadMultiple = upload.array("images", 24);
+// Middleware for multiple document uploads (max 10)
+export const uploadDocuments = documentUpload.array("documents", 10);
 
 export const handleMulterError = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {

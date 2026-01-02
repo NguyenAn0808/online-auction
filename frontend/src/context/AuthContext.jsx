@@ -99,6 +99,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Update user data (e.g., after profile update)
+  const updateUser = useCallback(
+    (updatedData) => {
+      const updatedUser = { ...user, ...updatedData };
+      setUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+    },
+    [user]
+  );
+
   // Allow switching roles ONLY if the user actually has permission
   const switchRole = (newRole) => {
     if (!user) return;
@@ -137,11 +147,12 @@ export const AuthProvider = ({ children }) => {
       signup,
       signout,
       loginWithToken,
+      updateUser,
       isAuthenticated: !!user,
       isAdmin: user?.role === "admin",
       isSeller: user?.role === "seller",
     }),
-    [user, loading, activeRole, loginWithToken]
+    [user, loading, activeRole, loginWithToken, updateUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

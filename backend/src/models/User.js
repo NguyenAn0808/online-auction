@@ -94,7 +94,8 @@ class User {
   //  Find user by ID
   static async findById(id) {
     const query = `
-      SELECT id, hashed_password as "hashedPassword", email, phone, full_name as "fullName", address, birthdate, role, is_verified as "isVerified",
+      SELECT id, hashed_password as "hashedPassword", email, phone, full_name as "fullName", address, 
+             TO_CHAR(birthdate, 'YYYY-MM-DD') as birthdate, role, is_verified as "isVerified",
              google_id as "googleId", facebook_id as "facebookId", created_at as "createdAt", updated_at as "updatedAt"
       FROM users WHERE id = $1
     `;
@@ -105,7 +106,8 @@ class User {
   static async findByEmail(email) {
     const query = `
       SELECT id, hashed_password as "hashedPassword", email, phone,
-             full_name as "fullName", address, birthdate, role, is_verified as "isVerified",
+             full_name as "fullName", address, TO_CHAR(birthdate, 'YYYY-MM-DD') as birthdate, 
+             role, is_verified as "isVerified",
              google_id as "googleId", facebook_id as "facebookId", created_at as "createdAt", updated_at as "updatedAt"
       FROM users WHERE email = $1
     `;

@@ -54,7 +54,9 @@ export default function BidProduct() {
   }, []);
 
   const handlePayNow = (productId) => {
-    navigate(`/transactions/create?productId=${productId}`);
+    // Navigate to transactions list where user can find their order
+    // Orders are auto-created when auction ends
+    navigate(`/transactions`);
   };
   return (
     <>

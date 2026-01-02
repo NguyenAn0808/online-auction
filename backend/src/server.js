@@ -35,6 +35,8 @@ import { initProductDescriptionsTable } from "./models/product-description.model
 import Order from "./models/Order.js";
 import OrderMessage from "./models/OrderMessage.js";
 import { initializeCronJobs } from "./jobs/index.js";
+import UpgradeRequest from "./models/UpgradeRequest.js";
+import upgradeRequestRoutes from "./routes/upgradeRequest.routes.js";
 
 const app = express();
 
@@ -124,6 +126,7 @@ app.use("/api/ratings", ratingRoutes);
 app.use("/api/orders", orderRoute);
 app.use("/api", questionRoute);
 app.use("/api", answerRoute);
+app.use("/api/upgrade-requests", upgradeRequestRoutes);
 
 // Swagger UI and JSON
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -155,6 +158,7 @@ const startServer = async () => {
     await Answer.createTable();
     await Order.createTable();
     await OrderMessage.createTable();
+    await UpgradeRequest.createTable();
     
     // Initialize all CronJobs
     initializeCronJobs();

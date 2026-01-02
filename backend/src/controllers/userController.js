@@ -19,10 +19,11 @@ export const getAllUsers = async (req, res) => {
     const offset = (page - 1) * limit;
     const params = [];
 
-    // REMOVED: is_verified from SELECT
     let query = `
-      SELECT id, email, phone, full_name as "fullName", address, birthdate, 
+      SELECT id, email, phone, full_name as "fullName", address, 
+             TO_CHAR(birthdate, 'YYYY-MM-DD') as birthdate,
              role, google_id as "googleId", facebook_id as "facebookId", 
+             is_verified as "isVerified",
              created_at as "createdAt", updated_at as "updatedAt"
       FROM users
       WHERE 1=1
@@ -46,13 +47,21 @@ export const getAllUsers = async (req, res) => {
       countQuery += roleClause;
     }
 
-    // REMOVED: Verification Status Filter Logic
+    // 3. Verification Status Filter
+    const { isVerified } = req.query;
+    if (isVerified !== undefined && isVerified !== "all") {
+      params.push(isVerified === "true" || isVerified === true);
+      const verifyClause = ` AND is_verified = $${params.length}`;
+      query += verifyClause;
+      countQuery += verifyClause;
+    }
 
-    // 3. Sorting
+    // 4. Sorting
     const sortMapping = {
       fullName: "full_name",
       email: "email",
       role: "role",
+      isVerified: "is_verified",
       createdAt: "created_at",
       updatedAt: "updated_at",
       birthdate: "birthdate",
@@ -102,17 +111,19 @@ export const getUserById = async (req, res) => {
         .status(404)
         .json({ success: false, message: "User not found" });
     }
-    
+
     // Check if user has password before deleting it
-    const hasPassword = !!(user.hashedPassword && user.hashedPassword.length > 0);
+    const hasPassword = !!(
+      user.hashedPassword && user.hashedPassword.length > 0
+    );
     delete user.hashedPassword;
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: {
         ...user,
-        hasPassword
-      }
+        hasPassword,
+      },
     });
   } catch (error) {
     console.error("Error fetching user:", error);
@@ -151,22 +162,21 @@ export const createUser = async (req, res) => {
 
 export const updateUser = async (req, res) => {
   const { id } = req.params;
-  const { fullName, phone, address, birthdate, email } = req.body;
+  const { fullName, birthdate, email } = req.body;
 
   try {
     const query = `
       UPDATE users 
       SET full_name = COALESCE($1, full_name),
-          phone = COALESCE($2, phone),
-          address = COALESCE($3, address),
-          birthdate = COALESCE($4, birthdate),
-          email = COALESCE($5, email),
+          birthdate = COALESCE($2::date, birthdate),
+          email = COALESCE($3, email),
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = $6
-      RETURNING id, email, phone, full_name as "fullName", address, birthdate, role
+      WHERE id = $4
+      RETURNING id, email, full_name as "fullName", 
+                TO_CHAR(birthdate, 'YYYY-MM-DD') as birthdate, role
     `;
 
-    const values = [fullName, phone, address, birthdate, email, id];
+    const values = [fullName, birthdate, email, id];
     const result = await pool.query(query, values);
 
     if (result.rows.length === 0) {

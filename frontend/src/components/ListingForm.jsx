@@ -35,7 +35,7 @@ const schema = z
       .min(10, { message: "Description must be at least 10 characters" }),
     auction_duration: z
       .number({ invalid_type_error: "Please select auction duration" })
-      .min(0.003, { message: "Auction duration is required" }), // min ~5 minutes
+      .min(0.0006, { message: "Auction duration is required" }), // min ~1 minute
     images: z
       .array(z.instanceof(File))
       .min(3, { message: "Please upload at least 3 photos" })
@@ -750,6 +750,7 @@ const ListingForm = () => {
                   setValueAs: (v) => Number(v),
                 })}
               >
+                <option value={1 / 1440}>1 minute (testing)</option>
                 <option value={5 / 1440}>5 minutes (testing)</option>
                 <option value={10 / 1440}>10 minutes (testing)</option>
                 <option value={1}>1 day</option>
