@@ -819,7 +819,7 @@ export default function BidsOffers() {
                   }}
                 >
                   TRANSACTION HISTORY
-                </div>
+                </h2>
                 <div
                   style={{
                     display: "flex",

@@ -200,20 +200,6 @@ const DELIVERY_METHODS = [
     price: "160.000 VND",
   },
 ];
-const deliveryMethods = [
-  {
-    id: 1,
-    title: "Standard",
-    turnaround: "4–10 business days",
-    price: "50.000 VND",
-  },
-  {
-    id: 2,
-    title: "Express",
-    turnaround: "2–5 business days",
-    price: "160.000 VND",
-  },
-];
 
 // Mock auth hook - replace with real auth later
 function useMockAuth() {
@@ -1395,17 +1381,15 @@ export default function TransactionPage() {
                             </button>
                           </div>
                           <textarea
-                            value={ratingComment}
-                            onChange={(e) => setRatingComment(e.target.value)}
-                            placeholder="Comment..."
+                            value={"Người thắng không chịu thanh toán."}
+                            disabled
                             style={{
-                              width: "100%",
-                              padding: SPACING.M,
-                              border: "1px solid #ccc",
-                              borderRadius: BORDER_RADIUS.MEDIUM,
-                              marginBottom: SPACING.M,
+                              resize: "none",
+                              backgroundColor: "#f5f5f5",
+                              cursor: "not-allowed",
                             }}
                           />
+
                           <button
                             onClick={handleRatingSubmit}
                             disabled={!selectedRating}
