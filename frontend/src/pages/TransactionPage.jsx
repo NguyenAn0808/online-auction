@@ -22,6 +22,149 @@ import orderService, { ORDER_STATUS } from "../services/orderService"; // Use Op
 import { ratingService } from "../services/ratingService";
 import CancelOrderModal from "../components/CancelOrderModal";
 import { productService } from "../services/productService";
+import { XCircleIcon } from "@heroicons/react/24/outline";
+import { useToast } from "../context/ToastContext";
+
+// CancelledView Component - Displays when order is cancelled
+function CancelledView({ order, isSeller, navigate }) {
+  return (
+    <div
+      style={{
+        backgroundColor: "#FEF2F2",
+        border: "1px solid #FECACA",
+        borderRadius: "12px",
+        padding: "48px 32px",
+        textAlign: "center",
+        maxWidth: "500px",
+        margin: "0 auto",
+      }}
+    >
+      {/* Icon */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          marginBottom: "24px",
+        }}
+      >
+        <div
+          style={{
+            width: "80px",
+            height: "80px",
+            backgroundColor: "#FEE2E2",
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <XCircleIcon style={{ width: "48px", height: "48px", color: "#DC2626" }} />
+        </div>
+      </div>
+
+      {/* Title */}
+      <h2
+        style={{
+          fontSize: "24px",
+          fontWeight: "700",
+          color: "#991B1B",
+          marginBottom: "12px",
+        }}
+      >
+        {isSeller ? "Transaction Cancelled" : "Order Cancelled by Seller"}
+      </h2>
+
+      {/* Message */}
+      <p
+        style={{
+          fontSize: "15px",
+          color: "#7F1D1D",
+          marginBottom: "32px",
+          lineHeight: "1.6",
+        }}
+      >
+        {isSeller
+          ? "You have successfully cancelled this transaction. The buyer has been rated -1 automatically."
+          : "The seller has cancelled this order. If you believe this is an error, please contact support."}
+      </p>
+
+      {/* Order Info */}
+      {order && (
+        <div
+          style={{
+            backgroundColor: "#FFFFFF",
+            border: "1px solid #FECACA",
+            borderRadius: "8px",
+            padding: "16px",
+            marginBottom: "24px",
+            textAlign: "left",
+          }}
+        >
+          <div style={{ fontSize: "13px", color: "#6B7280", marginBottom: "4px" }}>
+            Order ID
+          </div>
+          <div style={{ fontSize: "14px", fontWeight: "600", color: "#374151" }}>
+            #{order.id?.slice(0, 8) || "N/A"}
+          </div>
+          {order.productName && (
+            <>
+              <div style={{ fontSize: "13px", color: "#6B7280", marginTop: "12px", marginBottom: "4px" }}>
+                Product
+              </div>
+              <div style={{ fontSize: "14px", fontWeight: "600", color: "#374151" }}>
+                {order.productName}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        <button
+          onClick={() => navigate("/")}
+          style={{
+            width: "100%",
+            padding: "14px 24px",
+            backgroundColor: "#1F1F1F",
+            color: "#FFFFFF",
+            border: "none",
+            borderRadius: "8px",
+            fontSize: "15px",
+            fontWeight: "600",
+            cursor: "pointer",
+            transition: "background-color 0.2s",
+          }}
+          onMouseOver={(e) => (e.target.style.backgroundColor = "#374151")}
+          onMouseOut={(e) => (e.target.style.backgroundColor = "#1F1F1F")}
+        >
+          Return to Dashboard
+        </button>
+        {!isSeller && (
+          <button
+            onClick={() => window.location.href = "mailto:support@auction.com"}
+            style={{
+              width: "100%",
+              padding: "14px 24px",
+              backgroundColor: "#FFFFFF",
+              color: "#DC2626",
+              border: "1px solid #FECACA",
+              borderRadius: "8px",
+              fontSize: "15px",
+              fontWeight: "600",
+              cursor: "pointer",
+              transition: "background-color 0.2s",
+            }}
+            onMouseOver={(e) => (e.target.style.backgroundColor = "#FEF2F2")}
+            onMouseOut={(e) => (e.target.style.backgroundColor = "#FFFFFF")}
+          >
+            Contact Support
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 const DELIVERY_METHODS = [
   {
     id: 1,
@@ -61,10 +204,11 @@ export default function TransactionPage() {
   const { user } = useAuth();
 
   // --- STATE ---
+  const toast = useToast();
   const [tx, setTx] = useState(null);
   const [productDetails, setProductDetails] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState(null);
+  const [localToast, setLocalToast] = useState(null);
   const [isCancelModalOpen, setCancelModalOpen] = useState(false);
   const [notification, setNotification] = useState(null);
   // Step 1 Form State (Buyer Creating Order)
@@ -115,19 +259,15 @@ export default function TransactionPage() {
 
       setCancelModalOpen(false);
 
-      // Hiển thị thông báo thành công màu xanh
+      // Update local state immediately to show CancelledView
+      setTx((prev) => ({ ...prev, status: ORDER_STATUS.CANCELLED }));
+
+      // Show success notification
       setNotification({
         type: "success",
         message: "Order has been cancelled & Buyer rated -1 successfully!",
       });
-
-      // Đợi 2 giây cho người dùng đọc thông báo rồi mới tải lại trang
-      setTimeout(() => {
-        window.location.reload();
-      }, 5000);
-
-      // Refresh page to show the new 'Cancelled' status
-      window.location.reload();
+      setTimeout(() => setNotification(null), 5000);
     } catch (error) {
       console.error("Cancellation failed:", error);
       setNotification({
@@ -175,7 +315,7 @@ export default function TransactionPage() {
           err.response &&
           (err.response.status === 403 || err.response.status === 404)
         ) {
-          alert(
+          toast.error(
             "You do not have permission to view this transaction or it does not exist."
           );
           navigate("/");
@@ -188,8 +328,8 @@ export default function TransactionPage() {
   }, [orderId, navigate]);
 
   function showToast(message) {
-    setToast(message);
-    setTimeout(() => setToast(null), 3000);
+    setLocalToast(message);
+    setTimeout(() => setLocalToast(null), 3000);
   }
 
   const isBuyer = tx && user && user.id === tx.buyer_id;
@@ -197,8 +337,9 @@ export default function TransactionPage() {
   const userRole = isSeller ? "seller" : "buyer";
 
   // Use OpenAPI status enums instead of database status strings
+  // Handle case-insensitive check for cancelled status (backend may return 'cancelled' or 'Cancelled')
   const isCompleted = tx?.status === ORDER_STATUS.COMPLETED;
-  const isCancelled = tx?.status === ORDER_STATUS.CANCELLED;
+  const isCancelled = tx?.status?.toLowerCase() === ORDER_STATUS.CANCELLED.toLowerCase();
 
   const isFormValid =
     formData.firstName && formData.address && formData.city && formData.phone;
@@ -618,18 +759,23 @@ export default function TransactionPage() {
               )}
             </div>
 
-            {/* Stepper */}
-            <div
-              style={{
-                backgroundColor: COLORS.WHITE,
-                padding: SPACING.L,
-                borderRadius: BORDER_RADIUS.MEDIUM,
-                boxShadow: SHADOWS.SUBTLE,
-                marginBottom: SPACING.L,
-              }}
-            >
-              <TransactionStepper current={isCancelled ? -1 : currentStep} />
-            </div>
+            {/* Cancelled View - Show when order is cancelled */}
+            {isCancelled ? (
+              <CancelledView order={tx} isSeller={isSeller} navigate={navigate} />
+            ) : (
+              <>
+                {/* Stepper */}
+                <div
+                  style={{
+                    backgroundColor: COLORS.WHITE,
+                    padding: SPACING.L,
+                    borderRadius: BORDER_RADIUS.MEDIUM,
+                    boxShadow: SHADOWS.SUBTLE,
+                    marginBottom: SPACING.L,
+                  }}
+                >
+                  <TransactionStepper current={currentStep} />
+                </div>
 
             {/* Step Content */}
             <div
@@ -1236,24 +1382,14 @@ export default function TransactionPage() {
                   View Transaction History
                 </button>
               )}
-              {isCancelled && (
-                <div
-                  style={{
-                    textAlign: "center",
-                    color: "#DC2626",
-                    fontWeight: "bold",
-                    padding: SPACING.L,
-                  }}
-                >
-                  Transaction Cancelled
-                </div>
-              )}
             </div>
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {toast && (
+      {localToast && (
         <div
           style={{
             position: "fixed",
@@ -1278,7 +1414,7 @@ export default function TransactionPage() {
           {/* Optional Icon based on success/error */}
           <span style={{ fontSize: "18px" }}>🔔</span>
 
-          <span style={{ fontWeight: 500, fontSize: "14px" }}>{toast}</span>
+          <span style={{ fontWeight: 500, fontSize: "14px" }}>{localToast}</span>
         </div>
       )}
 

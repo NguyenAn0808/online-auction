@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useToast } from "../context/ToastContext";
 import {
   HandThumbUpIcon,
   HandThumbDownIcon,
@@ -23,13 +24,14 @@ export default function FeedbackModal({ isOpen, item, onSubmit, onClose }) {
   const [rating, setRating] = useState(null);
   const [feedback, setFeedback] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const toast = useToast();
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (rating === null) {
-      alert("Please select a rating");
+      toast.warning("Please select a rating");
       return;
     }
 
@@ -49,7 +51,7 @@ export default function FeedbackModal({ isOpen, item, onSubmit, onClose }) {
       setFeedback("");
       onClose();
     } catch (err) {
-      alert("Error submitting feedback: " + err.message);
+      toast.error("Error submitting feedback: " + err.message);
     } finally {
       setSubmitting(false);
     }

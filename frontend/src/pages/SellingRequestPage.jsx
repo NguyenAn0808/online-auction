@@ -1,4 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Dialog, Transition } from "@headlessui/react";
+import { useAuth } from "../context/AuthContext";
 import Header from "../components/Header";
 import Tabs from "../components/Tabs";
 import Sidebar from "../components/Sidebar";
@@ -10,14 +13,97 @@ import {
   BORDER_RADIUS,
   SHADOWS,
 } from "../constants/designSystem";
+import upgradeRequestService from "../services/upgradeRequestService";
 
 export default function SellingRequestPage() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const [requestStatus, setRequestStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [errors, setErrors] = useState({
+    reason: "",
+    contact: "",
+    documents: "",
+  });
+
+  useEffect(() => {
+    fetchRequestStatus();
+  }, []);
+
+  async function fetchRequestStatus() {
+    try {
+      const res = await api.get("/api/upgrade-requests/my-status");
+      
+      // If a request exists, set the status
+      if (res.data && res.data.status) {
+        setRequestStatus(res.data.status);
+      } else {
+        setRequestStatus(null);
+      }
+    } catch (err) {
+      console.error("Error fetching status:", err);
+      // If 404 or error, assume no request exists
+      setRequestStatus(null);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   function handleFileChange(e) {
     const files = Array.from(e.target.files || []);
     setSelectedFiles(files);
+    if (errors.documents) {
+      setErrors((prev) => ({ ...prev, documents: "" }));
+    }
+  }
+
+  function validateForm(reason, contact, files) {
+    const newErrors = { reason: "", contact: "", documents: "" };
+    let isValid = true;
+
+    if (!reason || reason.length < 20) {
+      newErrors.reason = "Reason must be at least 20 characters long.";
+      isValid = false;
+    }
+
+    if (!contact) {
+      newErrors.contact = "Contact information is required.";
+      isValid = false;
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const phoneRegex = /^[\d\s()+-]{10,}$/;
+      if (!emailRegex.test(contact) && !phoneRegex.test(contact)) {
+        newErrors.contact = "Please enter a valid email or phone number.";
+        isValid = false;
+      }
+    }
+
+    if (files.length === 0) {
+      newErrors.documents = "At least one document is required.";
+      isValid = false;
+    } else {
+      const maxSize = 5 * 1024 * 1024;
+      const allowedTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
+      
+      for (const file of files) {
+        if (file.size > maxSize) {
+          newErrors.documents = `File "${file.name}" exceeds 5MB limit.`;
+          isValid = false;
+          break;
+        }
+        if (!allowedTypes.includes(file.type)) {
+          newErrors.documents = `File "${file.name}" is not a valid type. Only PDF, JPEG, and PNG are allowed.`;
+          isValid = false;
+          break;
+        }
+      }
+    }
+
+    setErrors(newErrors);
+    return isValid;
   }
 
   async function handleSubmit(e) {
@@ -25,8 +111,11 @@ export default function SellingRequestPage() {
     const form = e.target;
     const reason = form.reason.value.trim();
     const contact = form.contact.value.trim();
-    const files = form["documents"].files;
-    if (!reason) return alert("Please provide a reason for selling request");
+    const files = Array.from(form["documents"].files || []);
+
+    if (!validateForm(reason, contact, files)) {
+      return;
+    }
 
     const fd = new FormData();
     fd.append("reason", reason);
@@ -40,14 +129,42 @@ export default function SellingRequestPage() {
           "Content-Type": "multipart/form-data",
         },
       });
-      alert("Request submitted successfully. Admin will review it.");
       form.reset();
-      setSelectedFiles([]); // Clear selected files
+      setSelectedFiles([]);
+      setShowSuccessDialog(true);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to submit request");
+      const errorMsg = err.response?.data?.message || "Failed to submit request";
+      setErrors((prev) => ({ ...prev, documents: errorMsg }));
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handleReapply() {
+    setRequestStatus(null);
+    setSelectedFiles([]);
+    setErrors({ reason: "", contact: "", documents: "" });
+  }
+
+  if (loading) {
+    return (
+      <div style={{ backgroundColor: COLORS.WHISPER, minHeight: "100vh" }}>
+        <Header />
+        <div
+          style={{
+            maxWidth: "1400px",
+            margin: "0 auto",
+            padding: SPACING.M,
+            textAlign: "center",
+            paddingTop: SPACING.XXL,
+          }}
+        >
+          <p style={{ color: COLORS.PEBBLE, fontSize: TYPOGRAPHY.SIZE_BODY }}>
+            Loading...
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -77,7 +194,197 @@ export default function SellingRequestPage() {
                 gap: SPACING.XL,
               }}
             >
-              <section>
+              {requestStatus === "pending" && (
+                <div
+                  style={{
+                    backgroundColor: "#FEF3C7",
+                    borderRadius: BORDER_RADIUS.MEDIUM,
+                    boxShadow: SHADOWS.SUBTLE,
+                    padding: SPACING.XL,
+                    textAlign: "center",
+                    border: "2px solid #FCD34D",
+                  }}
+                >
+                  <svg
+                    style={{
+                      margin: "0 auto",
+                      height: "64px",
+                      width: "64px",
+                      color: "#F59E0B",
+                      marginBottom: SPACING.M,
+                    }}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <h2
+                    style={{
+                      fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
+                      fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+                      color: "#92400E",
+                      marginBottom: SPACING.S,
+                    }}
+                  >
+                    Application Under Review
+                  </h2>
+                  <p
+                    style={{
+                      fontSize: TYPOGRAPHY.SIZE_BODY,
+                      color: "#78350F",
+                    }}
+                  >
+                    We have received your request. Our team is currently reviewing your documents. This process usually takes 24-48 hours.
+                  </p>
+                </div>
+              )}
+
+              {requestStatus === "rejected" && (
+                <div
+                  style={{
+                    backgroundColor: "#FEE2E2",
+                    borderRadius: BORDER_RADIUS.MEDIUM,
+                    boxShadow: SHADOWS.SUBTLE,
+                    padding: SPACING.XL,
+                    textAlign: "center",
+                    border: "2px solid #FCA5A5",
+                  }}
+                >
+                  <svg
+                    style={{
+                      margin: "0 auto",
+                      height: "64px",
+                      width: "64px",
+                      color: "#DC2626",
+                      marginBottom: SPACING.M,
+                    }}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <h2
+                    style={{
+                      fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
+                      fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+                      color: "#991B1B",
+                      marginBottom: SPACING.S,
+                    }}
+                  >
+                    Application Not Approved
+                  </h2>
+                  <p
+                    style={{
+                      fontSize: TYPOGRAPHY.SIZE_BODY,
+                      color: "#7F1D1D",
+                      marginBottom: SPACING.L,
+                    }}
+                  >
+                    Unfortunately, your request was not approved at this time.
+                  </p>
+                  <button
+                    onClick={handleReapply}
+                    style={{
+                      borderRadius: BORDER_RADIUS.FULL,
+                      backgroundColor: "#DC2626",
+                      padding: `${SPACING.S} ${SPACING.L}`,
+                      fontSize: TYPOGRAPHY.SIZE_BODY,
+                      fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                      color: COLORS.WHITE,
+                      border: "none",
+                      cursor: "pointer",
+                      transition: "opacity 0.2s ease",
+                    }}
+                    className="hover:opacity-90"
+                  >
+                    Submit New Request
+                  </button>
+                </div>
+              )}
+
+              {requestStatus === "approved" && (
+                <div
+                  style={{
+                    backgroundColor: "#D1FAE5",
+                    borderRadius: BORDER_RADIUS.MEDIUM,
+                    boxShadow: SHADOWS.SUBTLE,
+                    padding: SPACING.XL,
+                    textAlign: "center",
+                    border: "2px solid #6EE7B7",
+                  }}
+                >
+                  <svg
+                    style={{
+                      margin: "0 auto",
+                      height: "64px",
+                      width: "64px",
+                      color: "#059669",
+                      marginBottom: SPACING.M,
+                    }}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <h2
+                    style={{
+                      fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
+                      fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+                      color: "#065F46",
+                      marginBottom: SPACING.S,
+                    }}
+                  >
+                    Congratulations!
+                  </h2>
+                  <p
+                    style={{
+                      fontSize: TYPOGRAPHY.SIZE_BODY,
+                      color: "#064E3B",
+                      marginBottom: SPACING.L,
+                    }}
+                  >
+                    You are already a seller. Start listing your products now!
+                  </p>
+                  <button
+                    onClick={() => navigate("/seller/listing")}
+                    style={{
+                      borderRadius: BORDER_RADIUS.FULL,
+                      backgroundColor: "#059669",
+                      padding: `${SPACING.S} ${SPACING.L}`,
+                      fontSize: TYPOGRAPHY.SIZE_BODY,
+                      fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                      color: COLORS.WHITE,
+                      border: "none",
+                      cursor: "pointer",
+                      transition: "opacity 0.2s ease",
+                    }}
+                    className="hover:opacity-90"
+                  >
+                    Go to Seller Dashboard
+                  </button>
+                </div>
+              )}
+
+              {requestStatus === null && (
+                <section>
                 <div
                   style={{
                     backgroundColor: COLORS.WHITE,
@@ -125,7 +432,7 @@ export default function SellingRequestPage() {
                           marginBottom: SPACING.S,
                         }}
                       >
-                        Reason
+                        Reason <span style={{ color: "#DC2626" }}>*</span>
                       </label>
                       <textarea
                         name="reason"
@@ -136,13 +443,30 @@ export default function SellingRequestPage() {
                           backgroundColor: COLORS.WHITE,
                           padding: `${SPACING.S} ${SPACING.M}`,
                           color: COLORS.MIDNIGHT_ASH,
-                          border: `1.5px solid ${COLORS.MORNING_MIST}`,
+                          border: `1.5px solid ${
+                            errors.reason ? "#DC2626" : COLORS.MORNING_MIST
+                          }`,
                           fontSize: TYPOGRAPHY.SIZE_BODY,
                           fontFamily: "inherit",
                         }}
                         rows={4}
-                        placeholder="Explain why you want to become a seller on our platform"
+                        placeholder="Explain why you want to become a seller on our platform (minimum 20 characters)"
+                        onChange={() =>
+                          errors.reason &&
+                          setErrors((prev) => ({ ...prev, reason: "" }))
+                        }
                       />
+                      {errors.reason && (
+                        <p
+                          style={{
+                            color: "#DC2626",
+                            fontSize: TYPOGRAPHY.SIZE_LABEL,
+                            marginTop: SPACING.XS,
+                          }}
+                        >
+                          {errors.reason}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -155,11 +479,11 @@ export default function SellingRequestPage() {
                           marginBottom: SPACING.S,
                         }}
                       >
-                        Contact Info
+                        Contact Info <span style={{ color: "#DC2626" }}>*</span>
                       </label>
                       <input
                         name="contact"
-                        type="email"
+                        type="text"
                         style={{
                           display: "block",
                           width: "100%",
@@ -167,12 +491,29 @@ export default function SellingRequestPage() {
                           backgroundColor: COLORS.WHITE,
                           padding: `${SPACING.S} ${SPACING.M}`,
                           color: COLORS.MIDNIGHT_ASH,
-                          border: `1.5px solid ${COLORS.MORNING_MIST}`,
+                          border: `1.5px solid ${
+                            errors.contact ? "#DC2626" : COLORS.MORNING_MIST
+                          }`,
                           fontSize: TYPOGRAPHY.SIZE_BODY,
                           fontFamily: "inherit",
                         }}
-                        placeholder="your.email@example.com"
+                        placeholder="your.email@example.com or phone number"
+                        onChange={() =>
+                          errors.contact &&
+                          setErrors((prev) => ({ ...prev, contact: "" }))
+                        }
                       />
+                      {errors.contact && (
+                        <p
+                          style={{
+                            color: "#DC2626",
+                            fontSize: TYPOGRAPHY.SIZE_LABEL,
+                            marginTop: SPACING.XS,
+                          }}
+                        >
+                          {errors.contact}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -185,14 +526,17 @@ export default function SellingRequestPage() {
                           marginBottom: SPACING.S,
                         }}
                       >
-                        Supporting documents (ID, samples)
+                        Supporting documents (ID, samples){" "}
+                        <span style={{ color: "#DC2626" }}>*</span>
                       </label>
                       <div
                         style={{
                           display: "flex",
                           justifyContent: "center",
                           borderRadius: BORDER_RADIUS.MEDIUM,
-                          border: `2px dashed ${COLORS.MORNING_MIST}`,
+                          border: `2px dashed ${
+                            errors.documents ? "#DC2626" : COLORS.MORNING_MIST
+                          }`,
                           padding: SPACING.XL,
                           backgroundColor: COLORS.WHITE,
                         }}
@@ -260,7 +604,7 @@ export default function SellingRequestPage() {
                               marginTop: SPACING.S,
                             }}
                           >
-                            PNG, JPG, PDF up to 10MB each
+                            PNG, JPG, PDF up to 5MB each
                           </p>
                           {selectedFiles.length > 0 && (
                             <div
@@ -292,6 +636,17 @@ export default function SellingRequestPage() {
                           )}
                         </div>
                       </div>
+                      {errors.documents && (
+                        <p
+                          style={{
+                            color: "#DC2626",
+                            fontSize: TYPOGRAPHY.SIZE_LABEL,
+                            marginTop: SPACING.XS,
+                          }}
+                        >
+                          {errors.documents}
+                        </p>
+                      )}
                     </div>
 
                     <div
@@ -342,10 +697,159 @@ export default function SellingRequestPage() {
                   </form>
                 </div>
               </section>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      <Transition appear show={showSuccessDialog} as={React.Fragment}>
+        <Dialog
+          as="div"
+          style={{ position: "relative", zIndex: 50 }}
+          onClose={() => setShowSuccessDialog(false)}
+        >
+          <Transition.Child
+            as={React.Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                backgroundColor: "rgba(0, 0, 0, 0.5)",
+              }}
+            />
+          </Transition.Child>
+
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              overflow: "auto",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                minHeight: "100%",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: SPACING.M,
+                textAlign: "center",
+              }}
+            >
+              <Transition.Child
+                as={React.Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <Dialog.Panel
+                  style={{
+                    width: "100%",
+                    maxWidth: "500px",
+                    transform: "scale(1)",
+                    borderRadius: BORDER_RADIUS.LARGE,
+                    backgroundColor: COLORS.WHITE,
+                    padding: SPACING.XL,
+                    textAlign: "center",
+                    boxShadow: SHADOWS.SUBTLE,
+                  }}
+                >
+                  <div
+                    style={{
+                      margin: "0 auto",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      height: "64px",
+                      width: "64px",
+                      borderRadius: "50%",
+                      backgroundColor: "#D1FAE5",
+                      marginBottom: SPACING.L,
+                    }}
+                  >
+                    <svg
+                      style={{
+                        height: "32px",
+                        width: "32px",
+                        color: "#059669",
+                      }}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </div>
+
+                  <Dialog.Title
+                    as="h3"
+                    style={{
+                      fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
+                      fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+                      color: COLORS.MIDNIGHT_ASH,
+                      marginBottom: SPACING.M,
+                    }}
+                  >
+                    Request Submitted Successfully
+                  </Dialog.Title>
+
+                  <div style={{ marginTop: SPACING.M }}>
+                    <p
+                      style={{
+                        fontSize: TYPOGRAPHY.SIZE_BODY,
+                        color: COLORS.PEBBLE,
+                        marginBottom: SPACING.L,
+                      }}
+                    >
+                      Our admin team will review your documents and credentials.
+                      You will be notified once your application has been
+                      processed. This typically takes 3-7 business days.
+                    </p>
+                  </div>
+
+                  <div style={{ marginTop: SPACING.L }}>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/summary/" + user.id)}
+                      style={{
+                        width: "100%",
+                        borderRadius: BORDER_RADIUS.FULL,
+                        backgroundColor: COLORS.MIDNIGHT_ASH,
+                        padding: `${SPACING.S} ${SPACING.L}`,
+                        fontSize: TYPOGRAPHY.SIZE_BODY,
+                        fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                        color: COLORS.WHITE,
+                        border: "none",
+                        cursor: "pointer",
+                        transition: "opacity 0.2s ease",
+                      }}
+                      className="hover:opacity-90"
+                    >
+                      Return to Profile
+                    </button>
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
     </div>
   );
 }

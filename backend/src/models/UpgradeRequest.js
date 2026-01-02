@@ -240,6 +240,23 @@ class UpgradeRequest {
     }
   }
 
+  static async findLatestByUserId(userId) {
+    const query = `
+      SELECT * FROM upgrade_requests
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+
+    try {
+      const result = await pool.query(query, [userId]);
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error("Error finding latest user upgrade request:", error);
+      throw error;
+    }
+  }
+
   static async hasPendingRequest(userId) {
     const query = `
       SELECT id FROM upgrade_requests

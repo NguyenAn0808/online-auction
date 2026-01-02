@@ -21,6 +21,8 @@ router.post(
 
 router.get("/my-requests", UpgradeRequestController.getMyRequests);
 
+router.get("/my-status", UpgradeRequestController.getMyStatus);
+
 // Admin routes
 router.get("/", authorize("admin"), UpgradeRequestController.getAllRequests);
 

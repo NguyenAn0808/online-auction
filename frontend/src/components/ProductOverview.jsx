@@ -1,5 +1,6 @@
 "use client";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../context/CartContext";
@@ -63,6 +64,7 @@ function maskDisplayName(name) {
 
 export default function ProductOverview({ productId: propProductId }) {
   const { user } = useAuth(); // Check if user is logged in
+  const toast = useToast();
   const { productId: paramProductId } = useParams();
   const productId = propProductId || paramProductId;
   const location = useLocation();
@@ -143,7 +145,7 @@ export default function ProductOverview({ productId: propProductId }) {
           const ended = new Date(data.end_time) <= new Date();
           setIsEnded(ended);
 
-          // If ended, check if user is buyer or seller
+          // If ended, fetch order data for winner/seller UI
           if (ended && user) {
             try {
               const orderData = await orderService.getOrder(productId);
@@ -203,6 +205,27 @@ export default function ProductOverview({ productId: propProductId }) {
   const openEditDesc = () => setIsEditDescOpen(true);
   const closeEditDesc = () => setIsEditDescOpen(false);
 
+  const handleUpdateProduct = async (productId, data) => {
+    try {
+      const payload = {
+        name: data.name,
+        description: data.description,
+        start_price: data.start_price,
+        step_price: data.step_price,
+        buy_now_price: data.buy_now_price ?? null,
+        allow_unrated_bidder: !!data.allow_unrated_bidder,
+        auto_extend: !!data.auto_extend,
+      };
+      await productService.updateProduct(productId, payload);
+      toast.success("Product updated successfully!");
+      // Reload product to reflect changes
+      const updated = await productService.getProductById(productId);
+      setProduct(updated);
+    } catch (e) {
+      toast.error("Failed to update product");
+    }
+  };
+
   const requireAuth = (actionCallback) => {
     if (!user) {
       // Force full page navigation to signin
@@ -254,54 +277,9 @@ export default function ProductOverview({ productId: propProductId }) {
       <div className="p-10 text-center">{error || "Product not found."}</div>
     );
 
-  // Show ended message for non-participants
-  if (
-    isEnded &&
-    (!order || (order.buyer_id !== user?.id && order.seller_id !== user?.id))
-  ) {
-    return (
-      <div style={{ backgroundColor: COLORS.WHISPER, minHeight: "100vh" }}>
-        <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-          <div style={{ fontSize: "64px", marginBottom: SPACING.L }}>⏱️</div>
-          <h2
-            style={{
-              fontSize: TYPOGRAPHY.SIZE_HEADING_LG,
-              fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
-              marginBottom: SPACING.M,
-              color: COLORS.MIDNIGHT_ASH,
-            }}
-          >
-            Auction Ended
-          </h2>
-          <p
-            style={{
-              color: COLORS.PEBBLE,
-              marginBottom: SPACING.XL,
-              fontSize: TYPOGRAPHY.SIZE_BODY,
-            }}
-          >
-            This auction has concluded. Only the buyer and seller can access the
-            order details.
-          </p>
-          <button
-            onClick={() => navigate("/")}
-            style={{
-              backgroundColor: COLORS.MIDNIGHT_ASH,
-              color: COLORS.WHITE,
-              padding: `${SPACING.M} ${SPACING.XL}`,
-              borderRadius: BORDER_RADIUS.MEDIUM,
-              border: "none",
-              cursor: "pointer",
-              fontSize: TYPOGRAPHY.SIZE_BODY,
-              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-            }}
-          >
-            Browse Other Auctions
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Determine user role for auction ended state
+  const isWinnerUser = user && (user.id === product?.price_holder || order?.buyer_id === user.id);
+  const isSellerUser = user && user.id === product?.seller_id;
 
   // Derive display values from backend data
   const currentPrice = Number(
@@ -748,17 +726,171 @@ export default function ProductOverview({ productId: propProductId }) {
             <form className="mt-6">
               <div className="mt-10 flex flex-col gap-4">
                 {isEnded ? (
-                  <div
-                    className="p-4 rounded text-center"
-                    style={{
-                      backgroundColor: COLORS.SOFT_CLOUD,
-                      borderRadius: BORDER_RADIUS.MEDIUM,
-                      color: COLORS.PEBBLE,
-                    }}
-                  >
-                    This auction has ended.
-                  </div>
+                  // Role-based UI when auction has ended
+                  <>
+                    {isWinnerUser ? (
+                      // Winner UI
+                      <div
+                        style={{
+                          padding: SPACING.L,
+                          borderRadius: BORDER_RADIUS.MEDIUM,
+                          backgroundColor: "#ECFDF5",
+                          border: "1px solid #10B981",
+                          textAlign: "center",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: SPACING.S,
+                            padding: `${SPACING.XS} ${SPACING.M}`,
+                            backgroundColor: "#10B981",
+                            color: COLORS.WHITE,
+                            borderRadius: BORDER_RADIUS.FULL,
+                            fontSize: TYPOGRAPHY.SIZE_LABEL,
+                            fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+                            marginBottom: SPACING.M,
+                          }}
+                        >
+                          🎉 You Won!
+                        </div>
+                        <p
+                          style={{
+                            fontSize: TYPOGRAPHY.SIZE_BODY,
+                            color: COLORS.MIDNIGHT_ASH,
+                            marginBottom: SPACING.M,
+                          }}
+                        >
+                          Congratulations! You are the winning bidder.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => navigate(order ? `/transactions/${order.id}` : `/transactions/${productId}`)}
+                          style={{
+                            backgroundColor: "#10B981",
+                            color: COLORS.WHITE,
+                            borderRadius: BORDER_RADIUS.FULL,
+                            padding: `${SPACING.S} ${SPACING.L}`,
+                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                            border: "none",
+                            cursor: "pointer",
+                            width: "100%",
+                          }}
+                          className="hover:opacity-90"
+                        >
+                          {order ? "View Transaction" : "Pay Now"}
+                        </button>
+                      </div>
+                    ) : isSellerUser ? (
+                      // Seller UI
+                      <div
+                        style={{
+                          padding: SPACING.L,
+                          borderRadius: BORDER_RADIUS.MEDIUM,
+                          backgroundColor: "#EFF6FF",
+                          border: "1px solid #3B82F6",
+                          textAlign: "center",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: SPACING.S,
+                            padding: `${SPACING.XS} ${SPACING.M}`,
+                            backgroundColor: "#3B82F6",
+                            color: COLORS.WHITE,
+                            borderRadius: BORDER_RADIUS.FULL,
+                            fontSize: TYPOGRAPHY.SIZE_LABEL,
+                            fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+                            marginBottom: SPACING.M,
+                          }}
+                        >
+                          ✓ Auction Completed
+                        </div>
+                        <p
+                          style={{
+                            fontSize: TYPOGRAPHY.SIZE_BODY,
+                            color: COLORS.MIDNIGHT_ASH,
+                            marginBottom: SPACING.M,
+                          }}
+                        >
+                          Your auction has successfully ended.
+                        </p>
+                        {order && (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/transactions/${order.id}`)}
+                            style={{
+                              backgroundColor: "#3B82F6",
+                              color: COLORS.WHITE,
+                              borderRadius: BORDER_RADIUS.FULL,
+                              padding: `${SPACING.S} ${SPACING.L}`,
+                              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                              border: "none",
+                              cursor: "pointer",
+                              width: "100%",
+                            }}
+                            className="hover:opacity-90"
+                          >
+                            Go to Transaction
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      // Loser/Guest UI - Scaled down Auction Ended
+                      <div
+                        style={{
+                          padding: SPACING.L,
+                          borderRadius: BORDER_RADIUS.MEDIUM,
+                          backgroundColor: COLORS.SOFT_CLOUD,
+                          textAlign: "center",
+                        }}
+                      >
+                        <div style={{ fontSize: "32px", marginBottom: SPACING.S }}>⏱️</div>
+                        <h3
+                          style={{
+                            fontSize: TYPOGRAPHY.SIZE_BODY_LARGE,
+                            fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+                            marginBottom: SPACING.S,
+                            color: COLORS.MIDNIGHT_ASH,
+                          }}
+                        >
+                          Auction Ended
+                        </h3>
+                        <p
+                          style={{
+                            color: COLORS.PEBBLE,
+                            marginBottom: SPACING.M,
+                            fontSize: TYPOGRAPHY.SIZE_BODY,
+                          }}
+                        >
+                          This auction has concluded.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => navigate("/")}
+                          style={{
+                            backgroundColor: COLORS.MIDNIGHT_ASH,
+                            color: COLORS.WHITE,
+                            padding: `${SPACING.S} ${SPACING.L}`,
+                            borderRadius: BORDER_RADIUS.FULL,
+                            border: "none",
+                            cursor: "pointer",
+                            fontSize: TYPOGRAPHY.SIZE_BODY,
+                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                            width: "100%",
+                          }}
+                          className="hover:opacity-90"
+                        >
+                          Browse Other Auctions
+                        </button>
+                      </div>
+                    )}
+                  </>
                 ) : (
+                  // Active auction UI
                   <>
                     <button
                       type="button"

@@ -327,7 +327,7 @@ export default function BidProduct() {
 
                       <button
                         type="button"
-                        onClick={() => alert("Contact seller (placeholder)")}
+                        onClick={() => console.log("Contact seller (placeholder)")}
                         aria-label="Contact seller"
                         style={{
                           display: "inline-flex",
@@ -359,7 +359,7 @@ export default function BidProduct() {
 
                       <button
                         type="button"
-                        onClick={() => alert("Leave feedback (placeholder)")}
+                        onClick={() => console.log("Leave feedback (placeholder)")}
                         aria-label="Leave feedback"
                         style={{
                           display: "inline-flex",
@@ -390,7 +390,7 @@ export default function BidProduct() {
                       <button
                         type="button"
                         onClick={() =>
-                          alert("Sell one like this (placeholder)")
+                          console.log("Sell one like this (placeholder)")
                         }
                         aria-label="Sell one like this"
                         style={{

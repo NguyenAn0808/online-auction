@@ -11,12 +11,14 @@ import {
 } from "../constants/designSystem";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { useNavigate } from "react-router-dom";
 import * as TransactionService from "../services/transactionService";
 import { listOrders } from "../services/orderService";
 
 export default function BidderProfile() {
   const { user, updateUser } = useAuth();
+  const toast = useToast();
   const [loading, setLoading] = useState(false);
   const { signout } = useAuth();
   const navigate = useNavigate();
@@ -36,7 +38,7 @@ export default function BidderProfile() {
   const [selectedRatingToUpdate, setSelectedRatingToUpdate] = useState(null);
   const [newRatingScore, setNewRatingScore] = useState(null);
   const [newRatingComment, setNewRatingComment] = useState("");
-  const [toast, setToast] = useState(null);
+  const [localToast, setLocalToast] = useState(null);
   const [loadingRatings, setLoadingRatings] = useState(false);
 
   // Fetch ratings on component mount
@@ -52,8 +54,8 @@ export default function BidderProfile() {
   };
 
   function showToast(message) {
-    setToast(message);
-    setTimeout(() => setToast(null), 3000);
+    setLocalToast(message);
+    setTimeout(() => setLocalToast(null), 3000);
   }
 
   async function fetchRatings() {
@@ -130,11 +132,11 @@ export default function BidderProfile() {
       if (response.data.success) {
         // Update user context with new data
         updateUser(response.data.data);
-        alert("Personal information updated successfully!");
+        toast.success("Personal information updated successfully!");
       }
     } catch (error) {
       console.error("Error updating personal info:", error);
-      alert(
+      toast.error(
         error.response?.data?.message || "Failed to update personal information"
       );
     } finally {
@@ -945,9 +947,9 @@ export default function BidderProfile() {
       </div>
 
       {/* Toast Notification */}
-      {toast && (
+      {localToast && (
         <div className="fixed bottom-6 right-6 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg z-50">
-          {toast}
+          {localToast}
         </div>
       )}
 

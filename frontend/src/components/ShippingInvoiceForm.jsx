@@ -1,20 +1,22 @@
 import React, { useState } from "react";
+import { useToast } from "../context/ToastContext";
 
 export default function ShippingInvoiceForm({ initial = {}, onSubmit }) {
   const [shippingCode, setShippingCode] = useState(initial.tracking || "");
   const [eta, setEta] = useState(initial.eta || "");
   const [cost, setCost] = useState(initial.cost || "");
   const [file, setFile] = useState(null);
+  const toast = useToast();
 
   function handleSubmit(e) {
     e.preventDefault();
 
     if (!shippingCode) {
-      alert("Please enter a tracking number");
+      toast.warning("Please enter a tracking number");
       return;
     }
     if (!file) {
-      alert("Please upload a shipping receipt image");
+      toast.warning("Please upload a shipping receipt image");
       return;
     }
 

@@ -6,6 +6,7 @@ import BidOfferCard from "../components/BidOfferCard";
 import FeedbackModal from "../components/FeedbackModal";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { listTransactions } from "../services/transactionService";
 import { winListService } from "../services/winListService";
 import { ratingService } from "../services/ratingService";
@@ -76,6 +77,7 @@ function formatWonOrderForCard(order) {
 
 export default function BidsOffers() {
   const { user } = useAuth();
+  const toast = useToast();
   const [feedbackModal, setFeedbackModal] = useState({
     isOpen: false,
     item: null,
@@ -110,7 +112,7 @@ export default function BidsOffers() {
   const handleSubmitFeedback = async (feedbackData) => {
     try {
       if (!user?.id || !feedbackData.item?.id) {
-        alert("Missing user or item information");
+        toast.error("Missing user or item information");
         return;
       }
 
@@ -123,12 +125,12 @@ export default function BidsOffers() {
         comment: feedbackData.comment || "",
       });
 
-      alert("Feedback submitted successfully!");
+      toast.success("Feedback submitted successfully!");
       closeFeedbackModal();
       // Optionally refresh data
     } catch (error) {
       console.error("Error submitting feedback:", error);
-      alert("Failed to submit feedback. Please try again.");
+      toast.error("Failed to submit feedback. Please try again.");
     }
   };
 

@@ -6,6 +6,7 @@ import {
   listOrders,
 } from "../services/orderService";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import {
   COLORS,
   TYPOGRAPHY,
@@ -28,6 +29,7 @@ function initials(nameOrId) {
 export default function ChatBox({ onClose, openForTx, contextProduct }) {
   const location = useLocation();
   const { user } = useAuth();
+  const toast = useToast();
   const [transactions, setTransactions] = useState([]);
   const [filteredTx, setFilteredTx] = useState([]);
   const [selectedTxId, setSelectedTxId] = useState(openForTx || null);
@@ -166,7 +168,7 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
       setFiles([]);
     } catch (error) {
       console.error("Failed to send message:", error);
-      alert("Failed to send message. Please try again.");
+      toast.error("Failed to send message. Please try again.");
     }
   }
 
@@ -840,7 +842,7 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
           </div>
         </div>
 
-        <div className="flex h-full">
+        <div className="flex flex-1 overflow-hidden">
           {/* Sidebar - Transaction List (30%) */}
           <div className="w-80 lg:w-80 border-r border-[#B3BFB9]/20 bg-white flex flex-col">
             {/* Search */}
@@ -938,10 +940,10 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
           </div>
 
           {/* Chat Area (70%) */}
-          <div className="flex-1 flex flex-col bg-[#F8F6F0]">
-            {/* Sticky Context Header */}
+          <div className="flex-1 flex flex-col min-h-0 bg-[#F8F6F0] overflow-hidden">
+            {/* HEADER: Fix height, never shrink - only show when conversation selected */}
             {tx && (
-              <div className="sticky top-0 z-10 bg-white border-b border-[#B3BFB9]/20 p-4 flex items-center gap-4">
+              <div className="shrink-0 border-b border-[#B3BFB9]/20 p-4 bg-white z-10 flex items-center gap-4">
                 {/* Product Context */}
                 <div className="w-12 h-12 bg-[#F8F6F0] rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden">
                   {productContext?.image ? (
@@ -971,8 +973,8 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
               </div>
             )}
 
-            {/* Messages Area */}
-            <div ref={listRef} className="flex-1 overflow-y-auto p-6">
+            {/* SCROLL PANEL: Grow to fill space, scroll internally */}
+            <div ref={listRef} className="flex-1 overflow-y-auto min-h-0 p-6 pb-4 scroll-smooth">
               {!tx ? (
                 <div className="flex flex-col items-center justify-center h-full text-center py-12">
                   <div className="w-20 h-20 mx-auto mb-6 bg-white/50 rounded-2xl p-4 shadow-lg">
@@ -1009,11 +1011,14 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
                   {tx.messages.map((m, idx) => {
                     const prev = tx.messages[idx - 1];
                     const showAvatar = !prev || prev.sender !== m.sender;
-                    const mine = m.sender === userId;
+                    // Type-safe comparison: handle number vs string IDs
+                    const mine = String(m.sender) === String(user?.id);
                     const timeStr = new Date(m.time).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
                     });
+                    // Fallback for sender name - hide UUIDs
+                    const senderName = m.sender_name || (m.sender?.length > 20 ? "User" : m.sender);
 
                     return (
                       <li
@@ -1026,7 +1031,7 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
                           <div className="flex-shrink-0">
                             <div className="w-8 h-8 rounded-full bg-[#1F1F1F] flex items-center justify-center flex-shrink-0">
                               <span className="text-xs font-semibold text-white">
-                                {initials(m.sendername || m.sender)}
+                                {initials(senderName)}
                               </span>
                             </div>
                           </div>
@@ -1038,21 +1043,21 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
                           <div
                             className={`inline-block px-4 py-2 rounded-lg shadow-sm ${
                               mine
-                                ? "bg-[#938A83] text-white rounded-br-none"
-                                : "bg-white rounded-bl-none border border-[#B3BFB9]/30"
+                                ? "bg-[#1F1F1F] text-white rounded-br-none"
+                                : "bg-white rounded-bl-none border border-[#B3BFB9]/30 text-[#1F1F1F]"
                             }`}
                           >
                             {!mine && (
                               <div className="flex items-baseline justify-between mb-1">
-                                <span className="font-semibold text-sm">
-                                  {m.sendername || m.sender}
+                                <span className="font-semibold text-sm text-[#1F1F1F]">
+                                  {senderName}
                                 </span>
                                 <span className="ml-2 text-xs opacity-75">
                                   {timeStr}
                                 </span>
                               </div>
                             )}
-                            <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                            <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                               {m.text}
                             </div>
                             {mine && (
@@ -1083,7 +1088,7 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
                           <div className="flex-shrink-0">
                             <div className="w-8 h-8 rounded-full bg-[#1F1F1F] flex items-center justify-center">
                               <span className="text-xs font-semibold text-white">
-                                {initials(m.sendername || m.sender)}
+                                {initials(senderName)}
                               </span>
                             </div>
                           </div>
@@ -1095,8 +1100,8 @@ export default function ChatBox({ onClose, openForTx, contextProduct }) {
               )}
             </div>
 
-            {/* Input Area */}
-            <div className="p-4 pt-0 border-t border-[#B3BFB9]/20 bg-white">
+            {/* FOOTER (INPUT): Always visible, fix height, never shrink, stick to bottom */}
+            <div className="shrink-0 p-4 border-t border-[#B3BFB9]/20 bg-white z-10">
               <div className="flex items-end gap-2">
                 {/* File Attachment */}
                 <label className="p-2 border border-[#B3BFB9]/50 rounded-full bg-[#F0EEE6] cursor-pointer hover:bg-[#F0EEE6]/75 transition-colors">

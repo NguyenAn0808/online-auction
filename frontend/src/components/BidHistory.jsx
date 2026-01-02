@@ -14,6 +14,7 @@ import {
 } from "../constants/designSystem";
 import { useAuth } from "../context/AuthContext";
 import { useBidPolling } from "../hooks/useBidPolling";
+import { useToast } from "../context/ToastContext";
 // Fallbacks for demo/dev: some components assume globals like CURRENT_USER_ID / CURRENT_USER_NAME
 // Provide safe defaults from localStorage to avoid ReferenceError in dev environment.
 const CURRENT_USER_ID = (() => {
@@ -160,6 +161,7 @@ function maskName(fullName, userId, bidderUserData) {
 
 export default function BidHistory({ isSeller = false, productId = null }) {
   const { user } = useAuth();
+  const toast = useToast();
   const [
     localBids,
     setLocalBids,
@@ -246,10 +248,10 @@ export default function BidHistory({ isSeller = false, productId = null }) {
       setLocalBids((prev) =>
         prev.map((b) => (b.id === bidId ? { ...b, status: "accepted" } : b))
       );
-      alert("Bid accepted successfully!");
+      toast.success("Bid accepted successfully!");
     } catch (error) {
       console.error("Failed to accept bid:", error);
-      alert(error?.response?.data?.message || "Failed to accept bid");
+      toast.error(error?.response?.data?.message || "Failed to accept bid");
     } finally {
       setIsProcessing((prev) => ({ ...prev, [bidId]: false }));
     }
@@ -276,10 +278,10 @@ export default function BidHistory({ isSeller = false, productId = null }) {
       // Force refresh of history and product info (price_holder etc)
       refresh();
 
-      alert("Bidder rejected and blocked. Product price and winner updated.");
+      toast.success("Bidder rejected and blocked. Product price and winner updated.");
     } catch (error) {
       console.error("Failed to reject bid:", error);
-      alert(error?.message || "Failed to reject bid");
+      toast.error(error?.message || "Failed to reject bid");
     } finally {
       setIsProcessing((prev) => ({ ...prev, [bidId]: false }));
     }
@@ -299,10 +301,10 @@ export default function BidHistory({ isSeller = false, productId = null }) {
       // Force refresh of history and product info
       refresh();
 
-      alert("Bidder unblocked and bids restored successfully!");
+      toast.success("Bidder unblocked and bids restored successfully!");
     } catch (error) {
       console.error("Failed to unblock bidder:", error);
-      alert(error?.message || "Failed to unblock bidder");
+      toast.error(error?.message || "Failed to unblock bidder");
     } finally {
       setIsProcessing((prev) => ({ ...prev, [bidderId]: false }));
     }

@@ -43,6 +43,7 @@ const refinedSchema = schema.superRefine((data, ctx) => {
 });
 
 const EditProductModal = ({ isOpen, onClose, product, onUpdate }) => {
+  const toast = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [selectedTab, setSelectedTab] = useState(0);
@@ -132,7 +133,7 @@ const EditProductModal = ({ isOpen, onClose, product, onUpdate }) => {
       existingImages.length + newImageFiles.length + validFiles.length;
 
     if (totalImages > 24) {
-      alert(
+      toast.warning(
         `Maximum 24 photos allowed. You can add ${
           24 - existingImages.length - newImageFiles.length
         } more.`

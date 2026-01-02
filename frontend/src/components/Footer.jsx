@@ -1,15 +1,17 @@
 import React, { useState } from "react";
+import { useToast } from "../context/ToastContext";
 import { Link } from "react-router-dom";
 
 const Footer = () => {
   const [email, setEmail] = useState("");
+  const toast = useToast();
 
   const handleNewsletterSubmit = (e) => {
     e.preventDefault();
     // TODO: Implement newsletter subscription
     console.log("Newsletter signup:", email);
     setEmail("");
-    alert("Thank you for subscribing to our newsletter!");
+    toast.success("Thank you for subscribing to our newsletter!");
   };
 
   return (

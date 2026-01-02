@@ -150,7 +150,7 @@ export default function MessagesList({
                   </button>
                   <button
                     type="button"
-                    onClick={() => alert(`Reply to ${msg.sender}`)}
+                    onClick={() => console.log(`Reply to ${msg.sender}`)}
                     className="text-xs text-gray-500 hover:underline"
                   >
                     Reply

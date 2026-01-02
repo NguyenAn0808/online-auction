@@ -1,4 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
+import {
+  getOrderMessages,
+  sendOrderMessage,
+  listOrders,
+} from "../services/orderService";
 import Header from "../components/Header";
 import Tabs from "../components/Tabs";
 import Sidebar from "../components/Sidebar";
@@ -17,85 +24,174 @@ import {
   SHADOWS,
 } from "../constants/designSystem";
 
-const dummyMessages = [
-  {
-    id: "m1",
-    sender: "eBay",
-    subject: "Your use of the eBay platform has been restricted",
-    preview: "Dear member, we have detected unusual activity...",
-    time: "1d",
-    read: false,
-    hasBlueIndicator: true,
-  },
-  {
-    id: "m2",
-    sender: "eBay",
-    subject: "A new device is using your account",
-    preview: "We noticed a login from a new device...",
-    time: "Dec 3",
-    read: true,
-    hasBlueIndicator: false,
-  },
-  {
-    id: "m3",
-    sender: "eBay",
-    subject: "ACTION NEEDED: Please update the information we requested",
-    preview: "To continue using your account...",
-    time: "Dec 2",
-    read: false,
-    hasBlueIndicator: true,
-  },
-  {
-    id: "m4",
-    sender: "eBay",
-    subject: "ACTION NEEDED: Please update the information we requested",
-    preview: "We need additional verification...",
-    time: "Nov 25",
-    read: false,
-    hasBlueIndicator: true,
-  },
-  {
-    id: "m5",
-    sender: "eBay",
-    subject: "Finish your draft",
-    preview: "You have an unfinished listing...",
-    time: "Nov 22",
-    read: true,
-    hasBlueIndicator: false,
-  },
-  {
-    id: "m6",
-    sender: "eBay",
-    subject: "eBay, bigger range, better choice!",
-    preview: "Explore our expanded catalog...",
-    time: "Nov 21",
-    read: true,
-    hasBlueIndicator: false,
-  },
-  {
-    id: "m7",
-    sender: "eBay",
-    subject: "A new device is using your account",
-    preview: "Security alert for your account...",
-    time: "Nov 20",
-    read: false,
-    hasBlueIndicator: true,
-  },
-  {
-    id: "m8",
-    sender: "eBay",
-    subject: "ACTION NEEDED: Please update the information we requested",
-    preview: "Important account update required...",
-    time: "Nov 18",
-    read: false,
-    hasBlueIndicator: true,
-  },
-];
+// Helper functions from ChatBox
+function initials(nameOrId) {
+  if (!nameOrId) return "?";
+  if (nameOrId.includes(" ")) {
+    return nameOrId.split(" ")[0].slice(0, 1).toUpperCase();
+  }
+  return nameOrId.slice(0, 1).toUpperCase();
+}
+
+function formatTime(date) {
+  if (!date) return "";
+  const d = new Date(date);
+  const now = new Date();
+  const diffMs = now - d;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) {
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  } else if (diffDays === 1) {
+    return "Yesterday";
+  } else if (diffDays < 7) {
+    return `${diffDays}d ago`;
+  } else {
+    return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  }
+}
 
 export default function Conversation() {
-  const [selectedMessage, setSelectedMessage] = useState(null);
-  const [selectedIds, setSelectedIds] = useState(new Set());
+  const { user } = useAuth();
+  const toast = useToast();
+  const [transactions, setTransactions] = useState([]);
+  const [filteredTx, setFilteredTx] = useState([]);
+  const [selectedTxId, setSelectedTxId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const listRef = useRef(null);
+  const userId = user?.id;
+
+  // Load orders from backend API
+  useEffect(() => {
+    const loadOrders = async () => {
+      if (!userId) return;
+
+      try {
+        setLoading(true);
+        const orders = await listOrders();
+        const mappedOrders = orders.map((order) => ({
+          id: order.id,
+          buyerId: order.buyer_id || order.buyer?.id,
+          sellerId: order.seller_id || order.seller?.id,
+          productName: order.product?.name || `Order #${order.id?.slice(0, 8)}`,
+          status: order.status || "pending",
+          product_id: order.product_id || order.product?.id,
+          created_at: order.created_at,
+          unread: 0,
+        }));
+        setTransactions(mappedOrders);
+      } catch (error) {
+        console.error("Failed to load orders:", error);
+        setTransactions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadOrders();
+  }, [userId]);
+
+  // Filter transactions based on search
+  useEffect(() => {
+    const q = (searchQuery || "").toLowerCase();
+    setFilteredTx(
+      transactions.filter(
+        (t) =>
+          t.productName?.toLowerCase().includes(q) ||
+          t.status?.toLowerCase().includes(q) ||
+          t.id?.toLowerCase().includes(q)
+      )
+    );
+  }, [searchQuery, transactions]);
+
+  // Load messages for selected order
+  useEffect(() => {
+    if (selectedTxId && userId) {
+      const loadMessages = async () => {
+        try {
+          setLoadingMessages(true);
+          const msgs = await getOrderMessages(selectedTxId);
+          setMessages(
+            msgs.map((msg) => ({
+              id: msg.id,
+              sender_id: msg.sender_id,
+              text: msg.message,
+              time: new Date(msg.created_at).getTime(),
+              sender_name: msg.sender_name,
+            }))
+          );
+        } catch (error) {
+          console.error("Failed to load messages:", error);
+          setMessages([]);
+        } finally {
+          setLoadingMessages(false);
+        }
+      };
+
+      loadMessages();
+    } else {
+      setMessages([]);
+    }
+  }, [selectedTxId, userId]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+    }
+  }, [messages.length]);
+
+  // Polling: Refresh messages every 3 seconds
+  useEffect(() => {
+    if (!selectedTxId || !userId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const msgs = await getOrderMessages(selectedTxId);
+        setMessages(
+          msgs.map((msg) => ({
+            id: msg.id,
+            sender_id: msg.sender_id,
+            text: msg.message,
+            time: new Date(msg.created_at).getTime(),
+            sender_name: msg.sender_name,
+          }))
+        );
+      } catch (error) {
+        console.error("Failed to refresh messages:", error);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [selectedTxId, userId]);
+
+  // Handle sending messages
+  async function handleSend() {
+    if (!selectedTxId || !text.trim() || !userId) return;
+
+    try {
+      await sendOrderMessage(selectedTxId, text.trim());
+      const msgs = await getOrderMessages(selectedTxId);
+      setMessages(
+        msgs.map((msg) => ({
+          id: msg.id,
+          sender_id: msg.sender_id,
+          text: msg.message,
+          time: new Date(msg.created_at).getTime(),
+          sender_name: msg.sender_name,
+        }))
+      );
+      setText("");
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      toast.error("Failed to send message. Please try again.");
+    }
+  }
 
   const toggleSelect = (id) => {
     const newSet = new Set(selectedIds);
@@ -108,12 +204,14 @@ export default function Conversation() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === dummyMessages.length) {
+    if (selectedIds.size === filteredTx.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(dummyMessages.map((m) => m.id)));
+      setSelectedIds(new Set(filteredTx.map((m) => m.id)));
     }
   };
+
+  const selectedOrder = transactions.find((t) => t.id === selectedTxId);
 
   return (
     <div
@@ -158,7 +256,7 @@ export default function Conversation() {
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 2fr",
-                    height: "calc(100vh - 200px)",
+                    height: "calc(100vh - 250px)",
                   }}
                 >
                   {/* Left column: Message list */}
@@ -232,7 +330,7 @@ export default function Conversation() {
                     >
                       <input
                         type="checkbox"
-                        checked={selectedIds.size === dummyMessages.length}
+                        checked={selectedIds.size === filteredTx.length && filteredTx.length > 0}
                         onChange={toggleSelectAll}
                         style={{
                           accentColor: COLORS.MIDNIGHT_ASH,
@@ -336,10 +434,43 @@ export default function Conversation() {
                           borderTop: `1px solid ${COLORS.MORNING_MIST}20`,
                         }}
                       >
-                        {dummyMessages.map((msg) => (
+                        {loading ? (
                           <li
-                            key={msg.id}
-                            onClick={() => setSelectedMessage(msg)}
+                            style={{
+                              padding: SPACING.XL,
+                              textAlign: "center",
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontSize: TYPOGRAPHY.SIZE_BODY,
+                                color: COLORS.PEBBLE,
+                              }}
+                            >
+                              Loading conversations...
+                            </div>
+                          </li>
+                        ) : filteredTx.length === 0 ? (
+                          <li
+                            style={{
+                              padding: SPACING.XL,
+                              textAlign: "center",
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontSize: TYPOGRAPHY.SIZE_BODY,
+                                color: COLORS.PEBBLE,
+                              }}
+                            >
+                              No conversations found
+                            </div>
+                          </li>
+                        ) : (
+                          filteredTx.map((order) => (
+                          <li
+                            key={order.id}
+                            onClick={() => setSelectedTxId(order.id)}
                             style={{
                               paddingLeft: SPACING.M,
                               paddingRight: SPACING.M,
@@ -347,7 +478,7 @@ export default function Conversation() {
                               paddingBottom: SPACING.S,
                               cursor: "pointer",
                               backgroundColor:
-                                selectedMessage?.id === msg.id
+                                selectedTxId === order.id
                                   ? COLORS.SOFT_CLOUD
                                   : COLORS.WHITE,
                               borderBottom: `1px solid ${COLORS.MORNING_MIST}20`,
@@ -355,13 +486,13 @@ export default function Conversation() {
                             }}
                             className="hover:bg-soft-cloud"
                             onMouseEnter={(e) => {
-                              if (selectedMessage?.id !== msg.id) {
+                              if (selectedTxId !== order.id) {
                                 e.currentTarget.style.backgroundColor =
                                   COLORS.SOFT_CLOUD + "50";
                               }
                             }}
                             onMouseLeave={(e) => {
-                              if (selectedMessage?.id !== msg.id) {
+                              if (selectedTxId !== order.id) {
                                 e.currentTarget.style.backgroundColor =
                                   COLORS.WHITE;
                               }
@@ -376,10 +507,10 @@ export default function Conversation() {
                             >
                               <input
                                 type="checkbox"
-                                checked={selectedIds.has(msg.id)}
+                                checked={selectedIds.has(order.id)}
                                 onChange={(e) => {
                                   e.stopPropagation();
-                                  toggleSelect(msg.id);
+                                  toggleSelect(order.id);
                                 }}
                                 style={{
                                   marginTop: "6px",
@@ -401,57 +532,39 @@ export default function Conversation() {
                                     marginBottom: SPACING.XS,
                                   }}
                                 >
-                                  {msg.hasBlueIndicator && (
-                                    <div
-                                      style={{
-                                        height: "8px",
-                                        width: "8px",
-                                        borderRadius: "50%",
-                                        backgroundColor: "#3b82f6",
-                                        flexShrink: 0,
-                                      }}
-                                    />
-                                  )}
                                   <span
                                     style={{
                                       fontSize: TYPOGRAPHY.SIZE_BODY,
-                                      fontWeight: msg.read
-                                        ? TYPOGRAPHY.WEIGHT_NORMAL
-                                        : TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                                      color: msg.read
-                                        ? COLORS.PEBBLE
-                                        : COLORS.MIDNIGHT_ASH,
+                                      fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                                      color: COLORS.MIDNIGHT_ASH,
                                     }}
                                   >
-                                    {msg.sender}
+                                    {order.productName}
                                   </span>
                                 </div>
-                                <p
-                                  style={{
-                                    fontSize: TYPOGRAPHY.SIZE_BODY,
-                                    color: msg.read
-                                      ? COLORS.PEBBLE
-                                      : COLORS.MIDNIGHT_ASH,
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                    whiteSpace: "nowrap",
-                                    margin: 0,
-                                  }}
-                                >
-                                  {msg.subject}
-                                </p>
-                                <p
+                                <span
                                   style={{
                                     fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                    color: COLORS.PEBBLE,
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                    whiteSpace: "nowrap",
-                                    margin: `${SPACING.XS} 0 0 0`,
+                                    padding: `2px ${SPACING.S}`,
+                                    borderRadius: BORDER_RADIUS.FULL,
+                                    backgroundColor:
+                                      order.status === "shipped"
+                                        ? "#D1FAE5"
+                                        : order.status === "delivered"
+                                        ? "#DBEAFE"
+                                        : "#FEF3C7",
+                                    color:
+                                      order.status === "shipped"
+                                        ? "#065F46"
+                                        : order.status === "delivered"
+                                        ? "#1E40AF"
+                                        : "#92400E",
+                                    fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                                    textTransform: "capitalize",
                                   }}
                                 >
-                                  {msg.preview}
-                                </p>
+                                  {order.status}
+                                </span>
                               </div>
                               <span
                                 style={{
@@ -460,11 +573,12 @@ export default function Conversation() {
                                   flexShrink: 0,
                                 }}
                               >
-                                {msg.time}
+                                {formatTime(order.created_at)}
                               </span>
                             </div>
                           </li>
-                        ))}
+                        ))
+                        )}
                       </ul>
                     </div>
                   </div>
@@ -474,22 +588,26 @@ export default function Conversation() {
                     style={{
                       display: "flex",
                       flex: 1,
-                      alignItems: "center",
-                      justifyContent: "center",
+                      flexDirection: "column",
+                      height: "100%",
+                      minHeight: 0,
                       backgroundColor: COLORS.WHITE,
                     }}
                   >
-                    {selectedMessage ? (
+                    {selectedTxId ? (
                       <div
                         style={{
                           width: "100%",
                           height: "100%",
                           display: "flex",
                           flexDirection: "column",
+                          overflow: "hidden",
                         }}
                       >
+                        {/* HEADER: Fix height, never shrink */}
                         <div
                           style={{
+                            flexShrink: 0,
                             padding: SPACING.L,
                             borderBottom: `1px solid ${COLORS.MORNING_MIST}20`,
                             backgroundColor: COLORS.WHITE,
@@ -511,7 +629,7 @@ export default function Conversation() {
                                   margin: 0,
                                 }}
                               >
-                                {selectedMessage.subject}
+                                {selectedOrder?.productName || "Conversation"}
                               </h2>
                               <p
                                 style={{
@@ -521,28 +639,262 @@ export default function Conversation() {
                                   margin: 0,
                                 }}
                               >
-                                From: {selectedMessage.sender} ·{" "}
-                                {selectedMessage.time}
+                                Order Status: {selectedOrder?.status || "N/A"}
                               </p>
                             </div>
                           </div>
                         </div>
+                        {/* SCROLL PANEL: Grow to fill space, scroll internally */}
                         <div
+                          ref={listRef}
+                          className="scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400"
                           style={{
-                            flex: 1,
+                            flex: "1 1 0",
+                            minHeight: 0,
+                            maxHeight: "100%",
                             padding: SPACING.L,
+                            paddingBottom: SPACING.M,
                             overflowY: "auto",
+                            overflowX: "hidden",
+                            backgroundColor: COLORS.WHISPER,
                           }}
                         >
-                          <p
+                          {loadingMessages ? (
+                            <div
+                              style={{
+                                textAlign: "center",
+                                padding: SPACING.XL,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  fontSize: TYPOGRAPHY.SIZE_BODY,
+                                  color: COLORS.PEBBLE,
+                                }}
+                              >
+                                Loading messages...
+                              </div>
+                            </div>
+                          ) : messages.length === 0 ? (
+                            <div
+                              style={{
+                                textAlign: "center",
+                                padding: SPACING.XL,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  fontSize: TYPOGRAPHY.SIZE_BODY,
+                                  color: COLORS.PEBBLE,
+                                }}
+                              >
+                                No messages yet. Start the conversation!
+                              </div>
+                            </div>
+                          ) : (
+                            <ul
+                              style={{
+                                margin: 0,
+                                padding: 0,
+                                listStyle: "none",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: SPACING.M,
+                              }}
+                            >
+                              {messages.map((m, idx) => {
+                                const prev = messages[idx - 1];
+                                const showAvatar = !prev || prev.sender_id !== m.sender_id;
+                                // Type-safe comparison: handle number vs string IDs
+                                const isMe = String(m.sender_id) === String(userId);
+                                return (
+                                  <li
+                                    key={m.id}
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "flex-start",
+                                      gap: SPACING.M,
+                                      justifyContent: isMe ? "flex-end" : "flex-start",
+                                    }}
+                                  >
+                                    {!isMe && showAvatar && (
+                                      <div
+                                        style={{
+                                          height: "32px",
+                                          width: "32px",
+                                          borderRadius: "50%",
+                                          backgroundColor: COLORS.MIDNIGHT_ASH,
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          fontSize: TYPOGRAPHY.SIZE_LABEL,
+                                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                                          color: COLORS.WHITE,
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        {initials(m.sender_name || m.sender_id)}
+                                      </div>
+                                    )}
+                                    {!isMe && !showAvatar && (
+                                      <div style={{ width: "32px" }} />
+                                    )}
+                                    <div
+                                      style={{
+                                        maxWidth: "75%",
+                                        textAlign: isMe ? "right" : "left",
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          display: "inline-block",
+                                          paddingLeft: SPACING.M,
+                                          paddingRight: SPACING.M,
+                                          paddingTop: SPACING.S,
+                                          paddingBottom: SPACING.S,
+                                          borderRadius: BORDER_RADIUS.MEDIUM,
+                                          boxShadow: SHADOWS.SUBTLE,
+                                          backgroundColor: isMe
+                                            ? COLORS.MIDNIGHT_ASH
+                                            : COLORS.WHITE,
+                                          color: isMe ? COLORS.WHITE : COLORS.MIDNIGHT_ASH,
+                                        }}
+                                      >
+                                        {!isMe && (
+                                          <div
+                                            style={{
+                                              fontSize: TYPOGRAPHY.SIZE_LABEL,
+                                              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                                              marginBottom: SPACING.XS,
+                                            }}
+                                          >
+                                            {m.sender_name || "User"}
+                                          </div>
+                                        )}
+                                        <div
+                                          style={{
+                                            fontSize: TYPOGRAPHY.SIZE_BODY,
+                                            wordBreak: "break-word",
+                                            whiteSpace: "pre-wrap",
+                                          }}
+                                        >
+                                          {m.text}
+                                        </div>
+                                        <div
+                                          style={{
+                                            fontSize: TYPOGRAPHY.SIZE_LABEL,
+                                            opacity: 0.75,
+                                            marginTop: SPACING.XS,
+                                          }}
+                                        >
+                                          {new Date(m.time).toLocaleTimeString([], {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                          })}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    {isMe && showAvatar && (
+                                      <div
+                                        style={{
+                                          height: "32px",
+                                          width: "32px",
+                                          borderRadius: "50%",
+                                          backgroundColor: COLORS.MIDNIGHT_ASH,
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          fontSize: TYPOGRAPHY.SIZE_LABEL,
+                                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                                          color: COLORS.WHITE,
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        {initials(user?.fullName || user?.email)}
+                                      </div>
+                                    )}
+                                    {isMe && !showAvatar && (
+                                      <div style={{ width: "32px" }} />
+                                    )}
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          )}
+                        </div>
+                        {/* FOOTER (INPUT): Fix height, never shrink, stick to bottom */}
+                        <div
+                          style={{
+                            flexShrink: 0,
+                            padding: SPACING.M,
+                            borderTop: `1px solid ${COLORS.MORNING_MIST}`,
+                            backgroundColor: COLORS.WHITE,
+                          }}
+                        >
+                          <div
                             style={{
-                              fontSize: TYPOGRAPHY.SIZE_BODY,
-                              color: COLORS.MIDNIGHT_ASH,
-                              lineHeight: TYPOGRAPHY.LINE_HEIGHT_RELAXED,
+                              display: "flex",
+                              gap: SPACING.S,
+                              alignItems: "center",
                             }}
                           >
-                            {selectedMessage.preview}
-                          </p>
+                            <input
+                              value={text}
+                              onChange={(e) => setText(e.target.value)}
+                              placeholder="Write a message..."
+                              style={{
+                                flex: 1,
+                                borderRadius: BORDER_RADIUS.MEDIUM,
+                                border: `1px solid ${COLORS.MORNING_MIST}`,
+                                paddingLeft: SPACING.M,
+                                paddingRight: SPACING.M,
+                                paddingTop: "8px",
+                                paddingBottom: "8px",
+                                fontSize: TYPOGRAPHY.SIZE_BODY,
+                                color: COLORS.MIDNIGHT_ASH,
+                                backgroundColor: COLORS.WHITE,
+                                transition: "border-color 0.2s ease",
+                              }}
+                              onFocus={(e) => {
+                                e.target.style.borderColor = COLORS.MIDNIGHT_ASH;
+                              }}
+                              onBlur={(e) => {
+                                e.target.style.borderColor = COLORS.MORNING_MIST;
+                              }}
+                              onKeyPress={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleSend();
+                                }
+                              }}
+                            />
+                            <button
+                              onClick={handleSend}
+                              disabled={!text.trim()}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                paddingLeft: SPACING.M,
+                                paddingRight: SPACING.M,
+                                paddingTop: "8px",
+                                paddingBottom: "8px",
+                                backgroundColor: text.trim()
+                                  ? COLORS.MIDNIGHT_ASH
+                                  : COLORS.PEBBLE,
+                                color: COLORS.WHITE,
+                                borderRadius: BORDER_RADIUS.SMALL,
+                                border: "none",
+                                cursor: text.trim() ? "pointer" : "not-allowed",
+                                fontSize: TYPOGRAPHY.SIZE_BODY,
+                                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                                transition: "opacity 0.2s ease",
+                                opacity: text.trim() ? 1 : 0.6,
+                              }}
+                              className="hover:opacity-90"
+                            >
+                              Send
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ) : (
@@ -627,7 +979,7 @@ export default function Conversation() {
                             color: COLORS.MIDNIGHT_ASH,
                           }}
                         >
-                          Select a message to read.
+                          Select a conversation to read messages.
                         </p>
                       </div>
                     )}

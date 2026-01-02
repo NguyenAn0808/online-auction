@@ -1,14 +1,16 @@
 import React, { useState } from "react";
+import { useToast } from "../context/ToastContext";
 
 export default function CancelOrderModal({ isOpen, onClose, onSubmit }) {
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const toast = useToast();
 
   if (!isOpen) return null;
 
   const handleSubmit = async () => {
     if (!reason.trim()) {
-      alert("Please enter a reason for cancellation.");
+      toast.warning("Please enter a reason for cancellation.");
       return;
     }
 

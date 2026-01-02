@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import Pagination from "../components/Pagination";
 import upgradeRequestService from "../services/upgradeRequestService";
 import userService from "../services/userService";
+import { useToast } from "../context/ToastContext";
 
 const SellerUpgradesPage = () => {
+  const toast = useToast();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -96,18 +98,16 @@ const SellerUpgradesPage = () => {
       })();
       const adminId = currentUser?.id;
       if (!adminId) {
-        alert("Missing admin ID. Please sign in again.");
+        toast.error("Missing admin ID. Please sign in again.");
         return;
       }
 
       await upgradeRequestService.approveRequest(requestId, adminId);
-      console.log("Request approved successfully");
-
-      // Refresh the list
+      toast.success("Request approved successfully!");
       fetchRequests();
     } catch (error) {
       console.error("Error approving request:", error);
-      alert("Failed to approve request. Please try again.");
+      toast.error("Failed to approve request. Please try again.");
     }
   };
 
@@ -122,18 +122,16 @@ const SellerUpgradesPage = () => {
       })();
       const adminId = currentUser?.id;
       if (!adminId) {
-        alert("Missing admin ID. Please sign in again.");
+        toast.error("Missing admin ID. Please sign in again.");
         return;
       }
 
       await upgradeRequestService.rejectRequest(requestId, adminId);
-      console.log("Request rejected successfully");
-
-      // Refresh the list
+      toast.success("Request rejected successfully!");
       fetchRequests();
     } catch (error) {
       console.error("Error rejecting request:", error);
-      alert("Failed to reject request. Please try again.");
+      toast.error("Failed to reject request. Please try again.");
     }
   };
 

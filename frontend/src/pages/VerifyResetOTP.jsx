@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useToast } from "../context/ToastContext";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import logo from "../assets/logo.png";
 import api from "../services/api";
@@ -6,6 +7,7 @@ import api from "../services/api";
 function VerifyResetOTP() {
   const navigate = useNavigate();
   const location = useLocation();
+  const toast = useToast();
   const email = location.state?.email || "";
   const expiresIn = location.state?.expiresIn || "10 minutes";
 
@@ -31,7 +33,7 @@ function VerifyResetOTP() {
         email,
         purpose: "password-reset",
       });
-      alert("New OTP sent to your email!");
+      toast.success("New OTP sent to your email!");
     } catch (err) {
       setError(err.response?.data?.message || "Failed to resend OTP");
     } finally {

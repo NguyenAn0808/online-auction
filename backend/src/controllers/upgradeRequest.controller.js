@@ -150,6 +150,34 @@ class UpgradeRequestController {
     }
   }
 
+  // Get current user's most recent upgrade request status
+  static async getMyStatus(req, res) {
+    try {
+      const userId = req.user.id;
+      const request = await UpgradeRequest.findLatestByUserId(userId);
+
+      if (!request) {
+        return res.json({
+          success: true,
+          status: null,
+          message: "No upgrade request found",
+        });
+      }
+
+      res.json({
+        success: true,
+        status: request.status,
+        data: request,
+      });
+    } catch (error) {
+      console.error("Error fetching user upgrade request status:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch your upgrade request status",
+      });
+    }
+  }
+
   // Approve upgrade request (Admin only)
   static async approveRequest(req, res) {
     try {

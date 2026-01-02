@@ -9,6 +9,7 @@ import {
 } from "../services/watchlistService";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import ProductCard from "../components/ProductCard";
 import {
   COLORS,
@@ -20,6 +21,7 @@ import {
 
 export default function Watchlist() {
   const { user } = useAuth();
+  const toast = useToast();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -58,7 +60,7 @@ export default function Watchlist() {
       setItems((prev) => prev.filter((item) => item.id !== id));
     } catch (err) {
       console.error("Error removing from watchlist:", err);
-      alert("Failed to remove item from watchlist");
+      toast.error("Failed to remove item from watchlist");
     }
   };
 

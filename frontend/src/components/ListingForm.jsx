@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { z } from "zod";
+import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { categoryService } from "../services/categoryService";
@@ -57,12 +59,14 @@ const schema = z
 
 const ListingForm = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const [categories, setCategories] = useState([]);
   const [selectedParentId, setSelectedParentId] = useState("");
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [currency, setCurrency] = useState("VND"); // VND or USD
 
   const {
@@ -160,7 +164,7 @@ const ListingForm = () => {
       })();
 
       if (!currentUser || !currentUser.id) {
-        alert("Please sign in to create a listing");
+        toast.warning("Please sign in to create a listing");
         setIsSubmitting(false);
         return;
       }
@@ -198,14 +202,13 @@ const ListingForm = () => {
       );
 
       if (result.success) {
-        alert("Listing created successfully!");
-        navigate("/");
+        setShowSuccessDialog(true);
       } else {
         throw new Error(result.message || "Failed to create listing");
       }
     } catch (error) {
       console.error("Failed to create listing:", error);
-      alert(
+      toast.error(
         error?.message ||
           error?.response?.data?.message ||
           "Failed to create listing"
@@ -542,7 +545,7 @@ const ListingForm = () => {
         <section className="bg-white rounded-lg border border-gray-200 p-6">
           <h2 className="text-xl font-bold mb-4">DESCRIPTION</h2>
           <Editor
-            apiKey={import.meta.env.VITE_TINYMCE_API_KEY}
+            apiKey='jxvczqc4lpxsovk6fkvm19mof94m2e35d62b1zz3855xiwrp'
             value={watch("description") || ""}
             onEditorChange={(content) => {
               setValue("description", content);
@@ -820,6 +823,69 @@ const ListingForm = () => {
           </button>
         </div>
       </form>
+
+      {/* Success Dialog */}
+      {showSuccessDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => {
+              setShowSuccessDialog(false);
+              navigate("/");
+            }}
+          />
+          {/* Dialog */}
+          <div className="relative bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4 animate-in fade-in zoom-in duration-200">
+            {/* Success Icon */}
+            <div className="flex justify-center mb-6">
+              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
+                <svg 
+                  className="w-8 h-8 text-emerald-600" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M5 13l4 4L19 7" 
+                  />
+                </svg>
+              </div>
+            </div>
+            {/* Content */}
+            <h3 className="text-xl font-bold text-center text-gray-900 mb-2">
+              Listing Created Successfully!
+            </h3>
+            <p className="text-gray-600 text-center mb-6">
+              Your auction listing has been created and is now live. Bidders can start placing bids.
+            </p>
+            {/* Actions */}
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => {
+                  setShowSuccessDialog(false);
+                  navigate("/");
+                }}
+                className="w-full px-6 py-3 bg-[#1F1F1F] text-white rounded-lg font-semibold hover:bg-[#2F2F2F] transition"
+              >
+                Browse Auctions
+              </button>
+              <button
+                onClick={() => {
+                  setShowSuccessDialog(false);
+                  navigate("/sell");
+                }}
+                className="w-full px-6 py-3 bg-white text-[#1F1F1F] border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition"
+              >
+                Create Another Listing
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -7,11 +7,13 @@ import Modal from "../components/Modal";
 import EditProductModal from "../components/EditProductModal";
 import { formatCurrency, formatTimeLeft } from "../utils/formatters";
 import { productService } from "../services/productService";
+import { useToast } from "../context/ToastContext";
 import { categoryService } from "../services/categoryService";
 import userService from "../services/userService";
 
 const ProductManagementPage = () => {
   const location = useLocation();
+  const toast = useToast();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -273,7 +275,7 @@ const ProductManagementPage = () => {
       setProducts(items);
       setTotalPages(Math.ceil(items.length / productsPerPage) || 1);
 
-      alert("Product updated successfully!");
+      toast.success("Product updated successfully!");
     } catch (error) {
       console.error("Failed to update product:", error);
       throw error; // Let modal handle the error
@@ -300,10 +302,10 @@ const ProductManagementPage = () => {
       setProducts(items);
       setTotalPages(Math.ceil(items.length / productsPerPage) || 1);
 
-      alert("Product deleted successfully!");
+      toast.success("Product deleted successfully!");
     } catch (error) {
       console.error("Failed to delete product:", error);
-      alert(
+      toast.error(
         error.response?.data?.message ||
           error.message ||
           "Failed to delete product"

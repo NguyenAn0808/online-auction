@@ -13,6 +13,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import QA_API from "../services/qaService";
+import { useToast } from "../context/ToastContext";
 
 // Fallback for demo/dev: provide current user name from localStorage
 const CURRENT_USER_NAME = (() => {
@@ -38,6 +39,7 @@ function maskName(fullName, userId, userData) {
 
 export default function QuestionsHistory({ productId, product }) {
   const { user } = useAuth();
+  const toast = useToast();
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userInfoById, setUserInfoById] = useState({});
@@ -116,11 +118,11 @@ export default function QuestionsHistory({ productId, product }) {
     } catch (err) {
       console.error("Failed to post question", err);
       if (err.response && err.response.status === 403) {
-        alert(
+        toast.warning(
           "Permission Denied: You are using a Seller account. Only Bidders are allowed to ask questions."
         );
       } else {
-        alert("Failed to post question. Please try again.");
+        toast.error("Failed to post question. Please try again.");
       }
     } finally {
       setSending(false);
@@ -141,7 +143,7 @@ export default function QuestionsHistory({ productId, product }) {
       }
     } catch (err) {
       console.error("Failed to post reply", err);
-      alert("Failed to post reply.");
+      toast.error("Failed to post reply.");
     } finally {
       setReplying(false);
     }
@@ -159,7 +161,7 @@ export default function QuestionsHistory({ productId, product }) {
       }
       fetchQuestions();
     } catch (err) {
-      alert(`Failed to delete ${type}.`);
+      toast.error(`Failed to delete ${type}.`);
     }
   };
 
@@ -186,7 +188,7 @@ export default function QuestionsHistory({ productId, product }) {
       setEditText("");
       fetchQuestions();
     } catch (err) {
-      alert("Failed to update.");
+      toast.error("Failed to update.");
     }
   };
   const isMyContent = (ownerId) => user && user.id === ownerId;
