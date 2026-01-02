@@ -468,6 +468,20 @@ class ProductModel {
     const result = await pool.query(query, [id, newPrice, priceHolder]);
     return result.rows[0];
   }
+
+  /**
+   * Update auction end time (for auto-extend feature)
+   */
+  static async updateEndTime(id, newEndTime) {
+    const query = `
+      UPDATE products
+      SET end_time = $2, updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `;
+    const result = await pool.query(query, [id, newEndTime]);
+    return result.rows[0];
+  }
 }
 
 export default ProductModel;

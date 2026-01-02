@@ -2,6 +2,7 @@ import Bid from "../models/Bid.js";
 import BlockedBidderModel from "../models/blocked-bidder.model.js";
 import ProductModel from "../models/product.model.js";
 import User from "../models/User.js";
+import Settings from "../models/Settings.js";
 import * as EmailService from "./emailService.js";
 
 class BidService {
@@ -76,18 +77,29 @@ class BidService {
       competitionResult.price_holder
     );
 
+    // 8.5. CHECK AND APPLY AUTO-EXTEND if product has auto_extend enabled
+    let extendedTime = null;
+    if (product.auto_extend) {
+      extendedTime = await this.checkAndExtendAuction(
+        product_id,
+        product.end_time
+      );
+    }
+
     // 9. SEND NOTIFICATIONS (async, fire-and-forget)
     this.sendBidNotifications(
       product,
       bidder_id,
       competitionResult,
-      previousHighestBidderId
+      previousHighestBidderId,
+      extendedTime
     );
 
     // Return the updated bid with competition result
     return {
       ...bidRecord,
       competition: competitionResult,
+      extended_time: extendedTime,
     };
   }
 
@@ -158,9 +170,9 @@ class BidService {
 
     // Logic: Winning amount is the second highest max_bid exactly
     // But must be at least startPrice and at most winnerMaxBid
-    let winningAmount = secondMaxBid;
+    let winningAmount = secondMaxBid + stepPrice;
 
-    // Special case: if multiple people have the EXACT same max_bid, 
+    // Special case: if multiple people have the EXACT same max_bid,
     // the first one (winner) wins at their full max_bid
     if (winnerMaxBid === secondMaxBid) {
       winningAmount = winnerMaxBid;
@@ -209,7 +221,8 @@ class BidService {
     product,
     bidderId,
     competitionResult,
-    previousHighestBidderId
+    previousHighestBidderId,
+    extendedTime = null
   ) {
     (async () => {
       try {
@@ -267,7 +280,7 @@ class BidService {
     return {
       bids,
       product: product,
-      blockedBidders
+      blockedBidders,
     };
   }
 
@@ -358,6 +371,48 @@ class BidService {
 
   static async getBidById(bid_id) {
     return Bid.getById(bid_id);
+  }
+
+  /**
+   * Check if bid is within threshold time before auction end
+   * If yes, extend the auction by configured duration
+   * @param {string} product_id
+   * @param {Date} current_end_time
+   * @returns {Date|null} New end time if extended, null otherwise
+   */
+  static async checkAndExtendAuction(product_id, current_end_time) {
+    try {
+      // Get auto-extend settings from database
+      const settings = await Settings.getAutoExtendSettings();
+      const thresholdMinutes = settings.threshold_minutes || 5;
+      const extensionMinutes = settings.extension_minutes || 10;
+
+      const now = new Date();
+      const endTime = new Date(current_end_time);
+      const timeUntilEnd = endTime - now; // milliseconds
+      const minutesUntilEnd = timeUntilEnd / (1000 * 60);
+
+      // Check if bid is within threshold time
+      if (minutesUntilEnd > 0 && minutesUntilEnd <= thresholdMinutes) {
+        // Extend auction by configured minutes
+        const newEndTime = new Date(
+          endTime.getTime() + extensionMinutes * 60 * 1000
+        );
+
+        // Update product end_time
+        await ProductModel.updateEndTime(product_id, newEndTime);
+
+        console.log(
+          `Auction ${product_id} extended by ${extensionMinutes} minutes. New end time: ${newEndTime}`
+        );
+        return newEndTime;
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error in checkAndExtendAuction:", error);
+      return null; // Don't fail the bid if auto-extend fails
+    }
   }
 }
 

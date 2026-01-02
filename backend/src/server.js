@@ -37,6 +37,8 @@ import OrderMessage from "./models/OrderMessage.js";
 import { initializeCronJobs } from "./jobs/index.js";
 import UpgradeRequest from "./models/UpgradeRequest.js";
 import upgradeRequestRoutes from "./routes/upgradeRequest.routes.js";
+import settingsRoutes from "./routes/settings.routes.js";
+import Settings from "./models/Settings.js";
 
 const app = express();
 
@@ -127,6 +129,7 @@ app.use("/api/orders", orderRoute);
 app.use("/api", questionRoute);
 app.use("/api", answerRoute);
 app.use("/api/upgrade-requests", upgradeRequestRoutes);
+app.use("/api/settings", settingsRoutes);
 
 // Swagger UI and JSON
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -150,6 +153,7 @@ const startServer = async () => {
     await initRatingsTable();
     await initBidsTable();
     await initBlockedBiddersTable();
+    await Settings.initSettingsTable();
 
     await User.createTable();
     await Session.createTable();
@@ -159,10 +163,10 @@ const startServer = async () => {
     await Order.createTable();
     await OrderMessage.createTable();
     await UpgradeRequest.createTable();
-    
+
     // Initialize all CronJobs
     initializeCronJobs();
-    
+
     // Start listening
     app.listen(config.port, () => {
       console.log(`Server is running on port ${config.port}`);
