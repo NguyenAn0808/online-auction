@@ -8,11 +8,31 @@ const router = express.Router();
 router.get("/auto-extend", SettingsController.getAutoExtendSettings);
 
 // Admin only routes
-router.get("/", authenticate, authorize("admin"), SettingsController.getAllSettings);
-router.get("/:key", authenticate, authorize("admin"), SettingsController.getSetting);
-router.put("/:key", authenticate, authorize("admin"), SettingsController.updateSetting);
+router.get(
+  "/",
+  authenticate,
+  authorize("admin"),
+  SettingsController.getAllSettings
+);
+router.get(
+  "/:key",
+  authenticate,
+  authorize("admin"),
+  SettingsController.getSetting
+);
+router.put(
+  "/:key",
+  authenticate,
+  authorize("admin"),
+  SettingsController.updateSetting
+);
 
 // Initialize defaults (run once, admin only)
-router.post("/initialize", authenticate, authorize("admin"), SettingsController.initializeDefaults);
+router.post(
+  "/initialize",
+  authenticate,
+  authorize("admin"),
+  SettingsController.initializeDefaults
+);
 
 export default router;
