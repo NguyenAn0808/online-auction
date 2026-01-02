@@ -87,7 +87,7 @@ export default function ShippingInvoiceForm({ initial = {}, onSubmit }) {
             <p className="text-xs text-gray-500">
               {file ? (
                 <span className="text-green-600 font-bold">
-                  ✓ Selected: {file.name}
+                  Selected: {file.name}
                 </span>
               ) : (
                 "PNG, JPG, GIF up to 10MB"

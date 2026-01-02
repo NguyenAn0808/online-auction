@@ -37,17 +37,17 @@ function formatProductForCard(product, type = "bid") {
     product.finalPrice ||
     product.start_price ||
     0;
-  const endTime =
-    product.end_time || product.endTime
-      ? new Date(product.end_time || product.endTime).toLocaleDateString()
-      : null;
+  const endTime = product.end_time || product.endTime || null;
 
   return {
     id: productId,
     name: productName,
     imageSrc,
     status: type === "won" ? "Won" : type === "lost" ? "Lost" : "Active",
-    amount: typeof price === "number" ? price.toFixed(2) : price,
+    amount:
+      product.userBidAmount !== undefined && product.userBidAmount !== null
+        ? Number(product.userBidAmount)
+        : Number(price),
     endTime: endTime || "N/A",
     type,
     // Include extra data for won items (order info)
@@ -65,7 +65,7 @@ function formatWonOrderForCard(order) {
     name: order.productName || "Won Item",
     imageSrc: order.productImage || "/images/sample.jpg",
     status: "Won",
-    amount: order.final_price ? Number(order.final_price).toFixed(2) : "N/A",
+    amount: order.final_price ? Number(order.final_price) : null,
     endTime: order.endTime
       ? new Date(order.endTime).toLocaleDateString()
       : "N/A",
@@ -85,6 +85,7 @@ export default function BidsOffers() {
   const [transactions, setTransactions] = useState([]);
   const [loadingTx, setLoadingTx] = useState(true);
   const [txError, setTxError] = useState(null);
+  const [txCards, setTxCards] = useState([]);
   const [activeBids, setActiveBids] = useState([]);
   const [wonItems, setWonItems] = useState([]);
   const [loadingWon, setLoadingWon] = useState(false);
@@ -285,10 +286,23 @@ export default function BidsOffers() {
         )
       );
 
+      // Build a map of user's bid amount per product (prefer latest or highest amount)
+      const userBidAmountMap = {};
+      myBids.forEach((b) => {
+        const pid = b.product_id || b.productId || b.product?.id;
+        if (!pid) return;
+        const candidate = Number(b.amount ?? b.max_bid ?? 0);
+        if (!userBidAmountMap[pid] || candidate > userBidAmountMap[pid]) {
+          userBidAmountMap[pid] = candidate;
+        }
+      });
+
       // Fetch product details to get end_time and names
       let productMap = {};
+      // Also fetch highest accepted bid per product to determine if user leads
+      const highestMap = {};
       try {
-        const results = await Promise.all(
+        const productResults = await Promise.all(
           productIds.map((pid) =>
             productService
               .getProductById(pid)
@@ -296,11 +310,42 @@ export default function BidsOffers() {
               .catch(() => ({ pid, p: null }))
           )
         );
-        results.forEach(({ pid, p }) => {
+        productResults.forEach(({ pid, p }) => {
           productMap[pid] = p;
         });
+
+        const bidsResults = await Promise.all(
+          productIds.map((pid) =>
+            api
+              .get("/api/bids", {
+                params: { product_id: pid, status: "accepted" },
+              })
+              .then((res) => ({ pid, bids: res.data?.data || res.data || [] }))
+              .catch(() => ({ pid, bids: [] }))
+          )
+        );
+        bidsResults.forEach(({ pid, bids }) => {
+          if (!Array.isArray(bids) || bids.length === 0) return;
+          const top = bids.reduce((acc, b) => {
+            const amt = Number(b.amount ?? 0);
+            if (
+              !acc ||
+              amt > acc.amount ||
+              (amt === acc.amount &&
+                new Date(b.timestamp) > new Date(acc.timestamp))
+            ) {
+              return {
+                amount: amt,
+                bidder_id: b.bidder_id,
+                timestamp: b.timestamp,
+              };
+            }
+            return acc;
+          }, null);
+          if (top) highestMap[pid] = top;
+        });
       } catch (e) {
-        console.warn("Failed to load some product details", e);
+        console.warn("Failed to load some product/bid details", e);
       }
 
       const now = new Date();
@@ -327,9 +372,19 @@ export default function BidsOffers() {
             thumbnail,
             end_time: product.end_time,
             current_price: product.current_price,
+            userBidAmount: userBidAmountMap[pid],
           },
           isActive ? "bid" : "lost"
         );
+
+        if (isActive) {
+          const top = highestMap[pid];
+          const currentUserId = user?.id;
+          if (top && currentUserId) {
+            card.status =
+              top.bidder_id === currentUserId ? "Highest Bid" : "Outbid";
+          }
+        }
 
         if (isActive && !won) active.push(card);
         if (!isActive && !won) lost.push(card);
@@ -340,7 +395,101 @@ export default function BidsOffers() {
     }
 
     buildBidLists();
-  }, [myBids, wonItems]);
+  }, [myBids, wonItems, user]);
+
+  // Build transaction cards enriched with product details and user's bid
+  useEffect(() => {
+    let mounted = true;
+    async function buildTxCards() {
+      try {
+        if (!Array.isArray(transactions) || transactions.length === 0) {
+          setTxCards([]);
+          return;
+        }
+        const productIds = Array.from(
+          new Set(
+            transactions
+              .map((tx) => tx.product_id || tx.productId)
+              .filter(Boolean)
+          )
+        );
+        const productMap = {};
+        // Fetch product details to get thumbnail and end_time
+        try {
+          const productResults = await Promise.all(
+            productIds.map((pid) =>
+              productService
+                .getProductById(pid)
+                .then((p) => ({ pid, p }))
+                .catch(() => ({ pid, p: null }))
+            )
+          );
+          productResults.forEach(({ pid, p }) => {
+            productMap[pid] = p || {};
+          });
+        } catch (e) {
+          console.warn(
+            "Failed to load some product details for transactions",
+            e
+          );
+        }
+
+        // Build a map of user's bid amount per product
+        const userBidAmountMap = {};
+        if (Array.isArray(myBids) && myBids.length) {
+          myBids.forEach((b) => {
+            const pid = b.product_id || b.productId || b.product?.id;
+            if (!pid) return;
+            const candidate = Number(b.amount ?? b.max_bid ?? 0);
+            if (!userBidAmountMap[pid] || candidate > userBidAmountMap[pid]) {
+              userBidAmountMap[pid] = candidate;
+            }
+          });
+        }
+
+        const cards = transactions.map((tx) => {
+          const pid = tx.product_id || tx.productId;
+          const product = productMap[pid] || {};
+          const name = tx.productName || product.name || "Transaction Item";
+          const imageSrc =
+            product.thumbnail ||
+            product.productImage ||
+            product.images?.[0]?.image_url ||
+            product.images?.[0]?.src ||
+            "/images/sample.jpg";
+          const ended = product.end_time
+            ? new Date(product.end_time).toLocaleDateString()
+            : tx.created_at
+            ? new Date(tx.created_at).toLocaleDateString()
+            : "N/A";
+          const amount =
+            userBidAmountMap[pid] !== undefined
+              ? userBidAmountMap[pid]
+              : tx.final_price !== undefined
+              ? Number(tx.final_price)
+              : null;
+          return {
+            id: tx.id,
+            productId: pid,
+            name,
+            imageSrc,
+            amount,
+            ended,
+            status: tx.status,
+          };
+        });
+
+        if (mounted) setTxCards(cards);
+      } catch (e) {
+        console.warn("Failed to build transaction cards", e);
+        if (mounted) setTxCards([]);
+      }
+    }
+    buildTxCards();
+    return () => {
+      mounted = false;
+    };
+  }, [transactions, myBids]);
 
   return (
     <div style={{ backgroundColor: COLORS.WHISPER, minHeight: "100vh" }}>
@@ -380,7 +529,7 @@ export default function BidsOffers() {
                       marginBottom: SPACING.S,
                     }}
                   >
-                    🏪 YOUR ACTIVE LISTINGS
+                    YOUR ACTIVE LISTINGS
                   </h2>
                   <p
                     style={{
@@ -449,7 +598,8 @@ export default function BidsOffers() {
                               transition: "box-shadow 0.2s",
                             }}
                             onMouseEnter={(e) =>
-                              (e.currentTarget.style.boxShadow = SHADOWS.CARD_HOVER)
+                              (e.currentTarget.style.boxShadow =
+                                SHADOWS.CARD_HOVER)
                             }
                             onMouseLeave={(e) =>
                               (e.currentTarget.style.boxShadow = "none")
@@ -493,7 +643,8 @@ export default function BidsOffers() {
                                   color: COLORS.MIDNIGHT_ASH,
                                 }}
                               >
-                                {Number(currentPrice).toLocaleString("vi-VN")} VND
+                                {Number(currentPrice).toLocaleString("vi-VN")}{" "}
+                                VND
                               </div>
                               <div
                                 style={{
@@ -523,7 +674,7 @@ export default function BidsOffers() {
                     marginBottom: SPACING.S,
                   }}
                 >
-                  🛒 YOUR BIDDING ACTIVITY
+                  YOUR BIDDING ACTIVITY
                 </h2>
                 <p
                   style={{
@@ -595,18 +746,25 @@ export default function BidsOffers() {
                     marginBottom: SPACING.S,
                   }}
                 >
-                  📋 TRANSACTION HISTORY
-                </h2>
-                <p
+                  TRANSACTION HISTORY
+                </div>
+                <div
                   style={{
-                    fontSize: TYPOGRAPHY.SIZE_LABEL,
-                    color: COLORS.PEBBLE,
-                    marginBottom: SPACING.M,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: SPACING.S,
                   }}
                 >
-                  Your completed and pending transactions
-                </p>
-                {transactions.length > 0 && (
+                  <p
+                    style={{
+                      fontSize: TYPOGRAPHY.SIZE_LABEL,
+                      color: COLORS.PEBBLE,
+                    }}
+                  >
+                    Your completed and pending transactions
+                  </p>
+                  {transactions.length > 0 && (
                     <button
                       onClick={() => navigate("/transactions")}
                       style={{
@@ -614,14 +772,15 @@ export default function BidsOffers() {
                         fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
                         color: COLORS.DEEP_CHARCOAL,
                         backgroundColor: "transparent",
-                        border: "none",
+                        padding: `4px ${SPACING.M}`,
                         cursor: "pointer",
-                        textDecoration: "underline",
                       }}
+                      className="hover:bg-gray-50 underline"
                     >
                       View All
                     </button>
                   )}
+                </div>
                 {loadingTx ? (
                   <div className="text-gray-500">Loading transactions...</div>
                 ) : txError ? (
@@ -647,14 +806,14 @@ export default function BidsOffers() {
                       gap: SPACING.S,
                     }}
                   >
-                    {transactions.map((tx) => (
+                    {txCards.map((card) => (
                       <div
-                        key={tx.id}
-                        onClick={() => navigate(`/transactions/${tx.id}`)}
+                        key={card.id}
+                        onClick={() => navigate(`/transactions/${card.id}`)}
                         style={{
                           display: "flex",
-                          justifyContent: "space-between",
                           alignItems: "center",
+                          gap: SPACING.M,
                           backgroundColor: COLORS.WHITE,
                           border: `1px solid ${COLORS.MORNING_MIST}`,
                           padding: SPACING.M,
@@ -662,7 +821,17 @@ export default function BidsOffers() {
                           cursor: "pointer",
                         }}
                       >
-                        <div>
+                        <img
+                          src={card.imageSrc}
+                          alt={card.name}
+                          style={{
+                            width: "64px",
+                            height: "64px",
+                            objectFit: "cover",
+                            borderRadius: BORDER_RADIUS.SMALL,
+                          }}
+                        />
+                        <div style={{ flex: 1 }}>
                           <div
                             style={{
                               fontSize: TYPOGRAPHY.SIZE_BODY,
@@ -670,48 +839,48 @@ export default function BidsOffers() {
                               color: COLORS.MIDNIGHT_ASH,
                             }}
                           >
-                            {tx.productName ||
-                              `Transaction ${tx.id.slice(0, 8)}`}
+                            {card.name}
                           </div>
                           <div
                             style={{
+                              display: "flex",
+                              gap: SPACING.L,
                               marginTop: SPACING.S,
                               fontSize: TYPOGRAPHY.SIZE_LABEL,
-                              color: COLORS.PEBBLE,
-                            }}
-                          >
-                            {tx.created_at
-                              ? new Date(tx.created_at).toLocaleDateString()
-                              : "-"}
-                          </div>
-                        </div>
-
-                        <div style={{ textAlign: "right" }}>
-                          <div
-                            style={{
-                              fontSize: TYPOGRAPHY.SIZE_BODY,
-                              fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
                               color: COLORS.MIDNIGHT_ASH,
                             }}
                           >
-                            $
-                            {tx.final_price
-                              ? Number(tx.final_price).toFixed(2)
-                              : "N/A"}
+                            <span>
+                              Your bid:{" "}
+                              <span className="text-midnight-ash font-bold ml-1">
+                                {card.amount != null
+                                  ? `${Number(card.amount).toLocaleString(
+                                      "vi-VN"
+                                    )} VND`
+                                  : "N/A"}
+                              </span>
+                            </span>
+                            <span>
+                              Ended:
+                              <span className="text-midnight-ash font-bold ml-1">
+                                {card.ended}
+                              </span>
+                            </span>
                           </div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
                           <div
                             style={{
-                              marginTop: SPACING.S,
                               fontSize: TYPOGRAPHY.SIZE_LABEL,
                               color:
-                                tx.status === "completed"
+                                card.status === "completed"
                                   ? "#16a34a"
-                                  : tx.status === "cancelled"
+                                  : card.status === "cancelled"
                                   ? "#dc2626"
                                   : "#b45309",
                             }}
                           >
-                            {tx.status || "Unknown"}
+                            {card.status || "Unknown"}
                           </div>
                         </div>
                       </div>
@@ -730,7 +899,7 @@ export default function BidsOffers() {
                     marginBottom: SPACING.S,
                   }}
                 >
-                  🏆 WON ITEMS
+                  WON AUCTIONS
                 </h2>
                 <p
                   style={{
@@ -739,7 +908,7 @@ export default function BidsOffers() {
                     marginBottom: SPACING.M,
                   }}
                 >
-                  Auctions you have won
+                  Auctions where your bid was successful
                 </p>
                 <div
                   style={{
@@ -796,7 +965,7 @@ export default function BidsOffers() {
                     marginBottom: SPACING.S,
                   }}
                 >
-                  ❌ DIDN'T WIN
+                  OUTBID AUCTIONS
                 </h2>
                 <p
                   style={{

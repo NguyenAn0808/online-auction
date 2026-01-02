@@ -15,22 +15,37 @@ import {
   BORDER_RADIUS,
   SHADOWS,
 } from "../constants/designSystem";
+import { Italic } from "lucide-react";
 
 // Helper function to format rating data for display
 function formatRating(rating) {
   return {
     id: rating._id || rating.id,
-    seller: rating.reviewer?.full_name || rating.reviewer?.username || "Unknown",
-    rating: rating.is_positive ? 1 : -1,
+    seller:
+      rating.reviewer_name ||
+      rating.reviewer?.full_name ||
+      rating.reviewer?.username ||
+      "Unknown",
+    rating:
+      typeof rating.score === "number"
+        ? rating.score >= 1
+          ? 1
+          : -1
+        : rating.is_positive
+        ? 1
+        : -1,
     title: rating.comment
       ? rating.comment.split(".")[0] || rating.comment.substring(0, 50)
       : "No title",
     body: rating.comment || "",
-    date: rating.createdAt
-      ? new Date(rating.createdAt).toISOString().split("T")[0]
-      : new Date().toISOString().split("T")[0],
+    date:
+      rating.created_at || rating.createdAt
+        ? new Date(rating.created_at || rating.createdAt)
+            .toISOString()
+            .split("T")[0]
+        : new Date().toISOString().split("T")[0],
     transaction: `Order #${(rating.product_id || "").slice(0, 8)}`,
-    itemName: rating.product?.name || "Unknown Item",
+    itemName: rating.product_name || rating.product?.name || "Unknown Item",
   };
 }
 
@@ -53,13 +68,17 @@ export default function Ratings() {
         setError(null);
         const data = await ratingService.getUserRatings(user.id);
         // Handle backend response format: { success: true, data: [...] } or { ratings: [...] }
-        const ratingsList = data?.data 
-          ? (Array.isArray(data.data) ? data.data : [])
-          : data?.ratings 
-            ? (Array.isArray(data.ratings) ? data.ratings : [])
-            : Array.isArray(data) 
-              ? data 
-              : [];
+        const ratingsList = data?.data
+          ? Array.isArray(data.data)
+            ? data.data
+            : []
+          : data?.ratings
+          ? Array.isArray(data.ratings)
+            ? data.ratings
+            : []
+          : Array.isArray(data)
+          ? data
+          : [];
         setRatings(ratingsList.map(formatRating));
       } catch (err) {
         console.error("Error fetching ratings:", err);
@@ -125,7 +144,7 @@ export default function Ratings() {
                     marginBottom: SPACING.L,
                   }}
                 >
-                  Your Bidder Ratings
+                  RECEIVED RATINGS
                 </h2>
 
                 {/* Rating Stats Grid */}
@@ -141,6 +160,7 @@ export default function Ratings() {
                   <div
                     style={{
                       backgroundColor: COLORS.SOFT_CLOUD,
+                      border: `1px solid ${COLORS.MORNING_MIST}`,
                       borderRadius: BORDER_RADIUS.MEDIUM,
                       padding: SPACING.M,
                       textAlign: "center",
@@ -169,13 +189,14 @@ export default function Ratings() {
                   {/* Positive Ratings */}
                   <div
                     style={{
-                      backgroundColor: "#D4EDDA",
+                      backgroundColor: "#EAF7EF",
+                      border: `1px solid ${COLORS.MORNING_MIST}`,
                       borderRadius: BORDER_RADIUS.MEDIUM,
                       padding: SPACING.M,
                       cursor: "pointer",
                       transition: "background-color 0.2s ease",
                     }}
-                    className="hover:opacity-80"
+                    className="hover:opacity-90"
                     onClick={() =>
                       setFilterRating(filterRating === 1 ? null : 1)
                     }
@@ -221,13 +242,14 @@ export default function Ratings() {
                   {/* Negative Ratings */}
                   <div
                     style={{
-                      backgroundColor: "#F8D7DA",
+                      backgroundColor: "#FBEAEC",
+                      border: `1px solid ${COLORS.MORNING_MIST}`,
                       borderRadius: BORDER_RADIUS.MEDIUM,
                       padding: SPACING.M,
                       cursor: "pointer",
                       transition: "background-color 0.2s ease",
                     }}
-                    className="hover:opacity-80"
+                    className="hover:opacity-90"
                     onClick={() =>
                       setFilterRating(filterRating === -1 ? null : -1)
                     }
@@ -264,7 +286,7 @@ export default function Ratings() {
                             marginTop: SPACING.S,
                           }}
                         >
-                          Neutral
+                          Negative
                         </div>
                       </div>
                     </div>
@@ -292,7 +314,7 @@ export default function Ratings() {
                     >
                       {filterRating === 1
                         ? "Showing positive feedback only"
-                        : "Showing neutral feedback only"}
+                        : "Showing negative feedback only"}
                     </span>
                     <button
                       onClick={() => setFilterRating(null)}
@@ -367,7 +389,7 @@ export default function Ratings() {
                           borderBottom: `1px solid ${COLORS.MORNING_MIST}`,
                           transition: "background-color 0.2s ease",
                         }}
-                        className="hover:bg-whisper"
+                        className="hover:bg-gray-50"
                       >
                         {/* Header */}
                         <div
@@ -473,24 +495,14 @@ export default function Ratings() {
                           </div>
                         </div>
 
-                        {/* Title */}
-                        <h4
-                          style={{
-                            fontSize: TYPOGRAPHY.SIZE_BODY,
-                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                            color: COLORS.MIDNIGHT_ASH,
-                            marginBottom: SPACING.S,
-                          }}
-                        >
-                          {feedback.title}
-                        </h4>
-
                         {/* Body */}
                         <p
                           style={{
                             fontSize: TYPOGRAPHY.SIZE_BODY,
-                            color: COLORS.PEBBLE,
+                            color: COLORS.MIDNIGHT_ASH,
                             marginBottom: SPACING.M,
+                            borderLeft: `4px solid ${COLORS.MORNING_MIST}`,
+                            paddingLeft: SPACING.M,
                           }}
                         >
                           {feedback.body}

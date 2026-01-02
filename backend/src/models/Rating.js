@@ -97,7 +97,17 @@ class Rating {
   }
 
   static async getUserRatings(target_user_id) {
-    const query = `SELECT * FROM ratings WHERE target_user_id = $1 ORDER BY created_at DESC`;
+    const query = `
+      SELECT 
+        r.*, 
+        u.full_name AS reviewer_name,
+        p.name AS product_name
+      FROM ratings r
+      JOIN users u ON r.reviewer_id = u.id
+      JOIN products p ON r.product_id = p.id
+      WHERE r.target_user_id = $1
+      ORDER BY r.created_at DESC
+    `;
     const result = await pool.query(query, [target_user_id]);
     return result.rows;
   }

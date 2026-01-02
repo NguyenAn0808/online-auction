@@ -7,6 +7,7 @@ import { Editor } from "@tinymce/tinymce-react";
 import Modal from "./Modal";
 import { productService } from "../services/productService";
 import { Link } from "react-router-dom";
+import { useToast } from "../context/ToastContext";
 
 // strip HTML tags to validate plain text length
 const stripHtml = (value = "") => value.replace(/<[^>]*>/g, "");

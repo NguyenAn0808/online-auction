@@ -39,6 +39,38 @@ export default function BidOfferCard({
     }
   };
 
+  // Format amount to VND: xx.xxx.xxx VND
+  const formatVND = (value) => {
+    if (value === null || value === undefined || isNaN(Number(value))) {
+      return "-";
+    }
+    try {
+      const formatted = new Intl.NumberFormat("vi-VN").format(Number(value));
+      return `${formatted} VND`;
+    } catch {
+      return `${value} VND`;
+    }
+  };
+
+  // Compute responsive time remaining (days/hours/minutes left)
+  const getTimeRemainingLabel = () => {
+    if (!endTime) return "";
+    const end = new Date(endTime);
+    if (isNaN(end.getTime())) {
+      return endTime; // fallback to provided string
+    }
+    const now = new Date();
+    const diffMs = end.getTime() - now.getTime();
+    if (diffMs <= 0) return "Ended";
+    const minutes = Math.floor(diffMs / (60 * 1000));
+    const days = Math.floor(minutes / (60 * 24));
+    const hours = Math.floor((minutes % (60 * 24)) / 60);
+    const mins = minutes % 60;
+    if (days > 0) return `${days} day${days > 1 ? "s" : ""}`;
+    if (hours > 0) return `${hours} hour${hours > 1 ? "s" : ""}`;
+    return `${mins} minute${mins !== 1 ? "s" : ""}`;
+  };
+
   // Determine status color (PDF palette)
   const getStatusColor = () => {
     if (status === "Highest Bid" || status === "Won") return "#6CA977"; // Green
@@ -91,6 +123,7 @@ export default function BidOfferCard({
           flexDirection: "row",
           gap: SPACING.M,
           padding: SPACING.M,
+          position: "relative",
         }}
         className="sm:flex-row flex-col"
       >
@@ -169,20 +202,22 @@ export default function BidOfferCard({
               }}
             >
               <div>
-                <span style={{ color: COLORS.PEBBLE }}>Amount: </span>
+                <span style={{ color: COLORS.PEBBLE }}>Your bid: </span>
                 <span
                   style={{
                     fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
                     color: COLORS.MIDNIGHT_ASH,
                   }}
                 >
-                  ${amount}
+                  {formatVND(amount)}
                 </span>
               </div>
               {endTime && (
                 <div>
                   <span style={{ color: COLORS.PEBBLE }}>
-                    {type === "lost" || type === "won" ? "Ended: " : "Time: "}
+                    {type === "lost" || type === "won"
+                      ? "Ended: "
+                      : "Time left: "}
                   </span>
                   <span
                     style={{
@@ -190,7 +225,9 @@ export default function BidOfferCard({
                       color: COLORS.MIDNIGHT_ASH,
                     }}
                   >
-                    {endTime}
+                    {type === "lost" || type === "won"
+                      ? endTime
+                      : getTimeRemainingLabel()}
                   </span>
                 </div>
               )}
@@ -217,22 +254,19 @@ export default function BidOfferCard({
                   marginTop: SPACING.S,
                 }}
               >
-                ✓ Congratulations! You won this item.
+                Congratulations! You won this item.
               </p>
             )}
           </div>
         </div>
 
-        {/* Right: Action */}
+        {/* Action (bottom-right) */}
         <div
           style={{
-            flexShrink: 0,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            width: "auto",
+            position: "absolute",
+            bottom: SPACING.M,
+            right: SPACING.M,
           }}
-          className="sm:w-auto"
         >
           <button
             onClick={handleActionClick}

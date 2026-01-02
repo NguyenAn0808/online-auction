@@ -38,12 +38,6 @@ export default function FlyoutMenu({ alignRight = false }) {
     ...(isAdmin
       ? [
           {
-            name: "Admin Dashboard",
-            description: "Manage system",
-            href: "/admin",
-            icon: Cog6ToothIcon,
-          },
-          {
             name: "View Storefront",
             description: "See public site",
             href: "/?view=storefront",

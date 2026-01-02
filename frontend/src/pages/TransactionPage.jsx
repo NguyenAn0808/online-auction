@@ -58,7 +58,9 @@ function CancelledView({ order, isSeller, navigate }) {
             justifyContent: "center",
           }}
         >
-          <XCircleIcon style={{ width: "48px", height: "48px", color: "#DC2626" }} />
+          <XCircleIcon
+            style={{ width: "48px", height: "48px", color: "#DC2626" }}
+          />
         </div>
       </div>
 
@@ -100,18 +102,35 @@ function CancelledView({ order, isSeller, navigate }) {
             textAlign: "left",
           }}
         >
-          <div style={{ fontSize: "13px", color: "#6B7280", marginBottom: "4px" }}>
+          <div
+            style={{ fontSize: "13px", color: "#6B7280", marginBottom: "4px" }}
+          >
             Order ID
           </div>
-          <div style={{ fontSize: "14px", fontWeight: "600", color: "#374151" }}>
+          <div
+            style={{ fontSize: "14px", fontWeight: "600", color: "#374151" }}
+          >
             #{order.id?.slice(0, 8) || "N/A"}
           </div>
           {order.productName && (
             <>
-              <div style={{ fontSize: "13px", color: "#6B7280", marginTop: "12px", marginBottom: "4px" }}>
+              <div
+                style={{
+                  fontSize: "13px",
+                  color: "#6B7280",
+                  marginTop: "12px",
+                  marginBottom: "4px",
+                }}
+              >
                 Product
               </div>
-              <div style={{ fontSize: "14px", fontWeight: "600", color: "#374151" }}>
+              <div
+                style={{
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  color: "#374151",
+                }}
+              >
                 {order.productName}
               </div>
             </>
@@ -142,7 +161,9 @@ function CancelledView({ order, isSeller, navigate }) {
         </button>
         {!isSeller && (
           <button
-            onClick={() => window.location.href = "mailto:support@auction.com"}
+            onClick={() =>
+              (window.location.href = "mailto:support@auction.com")
+            }
             style={{
               width: "100%",
               padding: "14px 24px",
@@ -170,18 +191,28 @@ const DELIVERY_METHODS = [
     id: 1,
     title: "Standard",
     turnaround: "4–10 business days",
-    price: "$5.00",
+    price: "50.000 VND",
   },
-  { id: 2, title: "Express", turnaround: "2–5 business days", price: "$16.00" },
+  {
+    id: 2,
+    title: "Express",
+    turnaround: "2–5 business days",
+    price: "160.000 VND",
+  },
 ];
 const deliveryMethods = [
   {
     id: 1,
     title: "Standard",
     turnaround: "4–10 business days",
-    price: "$5.00",
+    price: "50.000 VND",
   },
-  { id: 2, title: "Express", turnaround: "2–5 business days", price: "$16.00" },
+  {
+    id: 2,
+    title: "Express",
+    turnaround: "2–5 business days",
+    price: "160.000 VND",
+  },
 ];
 
 // Mock auth hook - replace with real auth later
@@ -339,7 +370,8 @@ export default function TransactionPage() {
   // Use OpenAPI status enums instead of database status strings
   // Handle case-insensitive check for cancelled status (backend may return 'cancelled' or 'Cancelled')
   const isCompleted = tx?.status === ORDER_STATUS.COMPLETED;
-  const isCancelled = tx?.status?.toLowerCase() === ORDER_STATUS.CANCELLED.toLowerCase();
+  const isCancelled =
+    tx?.status?.toLowerCase() === ORDER_STATUS.CANCELLED.toLowerCase();
 
   const isFormValid =
     formData.firstName && formData.address && formData.city && formData.phone;
@@ -761,7 +793,11 @@ export default function TransactionPage() {
 
             {/* Cancelled View - Show when order is cancelled */}
             {isCancelled ? (
-              <CancelledView order={tx} isSeller={isSeller} navigate={navigate} />
+              <CancelledView
+                order={tx}
+                isSeller={isSeller}
+                navigate={navigate}
+              />
             ) : (
               <>
                 {/* Stepper */}
@@ -777,612 +813,633 @@ export default function TransactionPage() {
                   <TransactionStepper current={currentStep} />
                 </div>
 
-            {/* Step Content */}
-            <div
-              style={{
-                backgroundColor: COLORS.WHITE,
-                padding: SPACING.L,
-                borderRadius: BORDER_RADIUS.MEDIUM,
-                boxShadow: SHADOWS.SUBTLE,
-                transition: "all 0.4s ease-in-out",
-                opacity: tx ? 1 : 0.95,
-              }}
-            >
-              {/* STEP 1: CREATE (Buyer View) */}
-              {currentStep === 1 && isBuyer && (
-                <div style={{ animation: "fadeSlideIn 0.4s ease-out" }}>
-                  {tx?.status === ORDER_STATUS.PENDING_SELLER_CONFIRMATION ? (
-                    /* Waiting State */
-                    <div
-                      style={{
-                        backgroundColor: "#F0FDF4",
-                        padding: SPACING.L,
-                        borderRadius: BORDER_RADIUS.MEDIUM,
-                        border: `1px solid #BBF7D0`,
-                      }}
-                    >
-                      <h3
-                        style={{
-                          fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
-                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                          color: "#16A34A",
-                        }}
-                      >
-                        ✓ Order Submitted
-                      </h3>
-                      <p style={{ color: "#16A34A" }}>
-                        Waiting for seller to confirm payment.
-                      </p>
+                {/* Step Content */}
+                <div
+                  style={{
+                    backgroundColor: COLORS.WHITE,
+                    padding: SPACING.L,
+                    borderRadius: BORDER_RADIUS.MEDIUM,
+                    boxShadow: SHADOWS.SUBTLE,
+                    transition: "all 0.4s ease-in-out",
+                    opacity: tx ? 1 : 0.95,
+                  }}
+                >
+                  {/* STEP 1: CREATE (Buyer View) */}
+                  {currentStep === 1 && isBuyer && (
+                    <div style={{ animation: "fadeSlideIn 0.4s ease-out" }}>
+                      {tx?.status ===
+                      ORDER_STATUS.PENDING_SELLER_CONFIRMATION ? (
+                        /* Waiting State */
+                        <div
+                          style={{
+                            backgroundColor: "#F0FDF4",
+                            padding: SPACING.L,
+                            borderRadius: BORDER_RADIUS.MEDIUM,
+                            border: `1px solid #BBF7D0`,
+                          }}
+                        >
+                          <h3
+                            style={{
+                              fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
+                              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                              color: "#16A34A",
+                            }}
+                          >
+                            ✓ Order Submitted
+                          </h3>
+                          <p style={{ color: "#16A34A" }}>
+                            Waiting for seller to confirm payment.
+                          </p>
+                        </div>
+                      ) : (
+                        /* Form State */
+                        <div>
+                          <h3
+                            style={{
+                              fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
+                              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                              color: COLORS.MIDNIGHT_ASH,
+                              marginBottom: SPACING.S,
+                            }}
+                          >
+                            Step 1 — Provide Payment & Delivery Address
+                          </h3>
+
+                          {/* Form Inputs */}
+                          <div
+                            style={{
+                              backgroundColor: COLORS.SOFT_CLOUD,
+                              padding: SPACING.L,
+                              borderRadius: BORDER_RADIUS.MEDIUM,
+                              marginBottom: SPACING.L,
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns: "1fr 1fr",
+                                gap: SPACING.M,
+                              }}
+                            >
+                              <input
+                                name="firstName"
+                                placeholder="First Name"
+                                onChange={handleInputChange}
+                                style={{
+                                  padding: SPACING.M,
+                                  border: "1px solid #ddd",
+                                  borderRadius: BORDER_RADIUS.MEDIUM,
+                                }}
+                              />
+                              <input
+                                name="lastName"
+                                placeholder="Last Name"
+                                onChange={handleInputChange}
+                                style={{
+                                  padding: SPACING.M,
+                                  border: "1px solid #ddd",
+                                  borderRadius: BORDER_RADIUS.MEDIUM,
+                                }}
+                              />
+                              <input
+                                name="address"
+                                placeholder="Address"
+                                onChange={handleInputChange}
+                                style={{
+                                  padding: SPACING.M,
+                                  border: "1px solid #ddd",
+                                  borderRadius: BORDER_RADIUS.MEDIUM,
+                                  gridColumn: "1 / -1",
+                                }}
+                              />
+                              <input
+                                name="city"
+                                placeholder="City"
+                                onChange={handleInputChange}
+                                style={{
+                                  padding: SPACING.M,
+                                  border: "1px solid #ddd",
+                                  borderRadius: BORDER_RADIUS.MEDIUM,
+                                }}
+                              />
+                              <input
+                                name="phone"
+                                placeholder="Phone"
+                                onChange={handleInputChange}
+                                style={{
+                                  padding: SPACING.M,
+                                  border: "1px solid #ddd",
+                                  borderRadius: BORDER_RADIUS.MEDIUM,
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Payment Proof */}
+                          <div style={{ marginBottom: SPACING.L }}>
+                            <label
+                              style={{
+                                display: "block",
+                                marginBottom: SPACING.S,
+                                fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
+                              }}
+                            >
+                              Upload Payment Proof
+                            </label>
+                            <div
+                              style={{
+                                padding: SPACING.L,
+                                border: "2px dashed #ccc",
+                                borderRadius: BORDER_RADIUS.MEDIUM,
+                                textAlign: "center",
+                              }}
+                            >
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) =>
+                                  setPaymentProofFile(e.target.files?.[0])
+                                }
+                              />
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={handleCreateOrder}
+                            disabled={!isFormValid}
+                            style={{
+                              width: "100%",
+                              backgroundColor: isFormValid
+                                ? COLORS.MIDNIGHT_ASH
+                                : COLORS.PEBBLE,
+                              color: COLORS.WHITE,
+                              padding: SPACING.M,
+                              borderRadius: BORDER_RADIUS.MEDIUM,
+                              border: "none",
+                              cursor: isFormValid ? "pointer" : "not-allowed",
+                            }}
+                          >
+                            Submit Payment & Address
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    /* Form State */
-                    <div>
+                  )}
+
+                  {/* STEP 1: SELLER WAITING */}
+                  {currentStep === 1 && isSeller && (
+                    <div style={{ padding: SPACING.L }}>
                       <h3
                         style={{
-                          fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
                           fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                          marginBottom: SPACING.L,
                           color: COLORS.MIDNIGHT_ASH,
-                          marginBottom: SPACING.S,
                         }}
                       >
-                        Step 1 — Provide Payment & Delivery Address
+                        Step 1 — Buyer Payment Information
                       </h3>
 
-                      {/* Form Inputs */}
+                      {tx?.payment_proof_image && tx?.shipping_address ? (
+                        <div
+                          style={{
+                            backgroundColor: COLORS.SOFT_CLOUD,
+                            padding: SPACING.L,
+                            borderRadius: BORDER_RADIUS.MEDIUM,
+                            marginBottom: SPACING.L,
+                          }}
+                        >
+                          <div style={{ marginBottom: SPACING.M }}>
+                            <p
+                              style={{
+                                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                                marginBottom: SPACING.S,
+                              }}
+                            >
+                              <strong>Shipping Address:</strong>
+                            </p>
+                            <p style={{ color: COLORS.MIDNIGHT_ASH }}>
+                              {tx.shipping_address}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p
+                              style={{
+                                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                                marginBottom: SPACING.S,
+                              }}
+                            >
+                              <strong>Payment Proof:</strong>
+                            </p>
+                            <a
+                              href={tx.payment_proof_image}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                color: "#2563EB",
+                                textDecoration: "underline",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: SPACING.S,
+                              }}
+                            >
+                              View Payment Proof Image →
+                            </a>
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          style={{ textAlign: "center", padding: SPACING.XXL }}
+                        >
+                          <div
+                            style={{
+                              fontSize: "40px",
+                              marginBottom: SPACING.M,
+                            }}
+                          >
+                            ⏳
+                          </div>
+                          <h3
+                            style={{ fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD }}
+                          >
+                            Waiting for Buyer
+                          </h3>
+                          <p style={{ color: COLORS.PEBBLE }}>
+                            The buyer has not yet submitted payment proof and
+                            shipping address.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* STEP 2: SELLER SHIP */}
+                  {currentStep === 2 && isSeller && (
+                    <div style={{ animation: "fadeSlideIn 0.4s ease-out" }}>
+                      <h3
+                        style={{
+                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                          marginBottom: SPACING.L,
+                        }}
+                      >
+                        Step 2 — Verify Payment & Ship
+                      </h3>
+
+                      {/* Proof Display */}
                       <div
                         style={{
                           backgroundColor: COLORS.SOFT_CLOUD,
-                          padding: SPACING.L,
+                          padding: SPACING.M,
                           borderRadius: BORDER_RADIUS.MEDIUM,
                           marginBottom: SPACING.L,
                         }}
                       >
-                        <div
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr",
-                            gap: SPACING.M,
-                          }}
-                        >
-                          <input
-                            name="firstName"
-                            placeholder="First Name"
-                            onChange={handleInputChange}
-                            style={{
-                              padding: SPACING.M,
-                              border: "1px solid #ddd",
-                              borderRadius: BORDER_RADIUS.MEDIUM,
-                            }}
-                          />
-                          <input
-                            name="lastName"
-                            placeholder="Last Name"
-                            onChange={handleInputChange}
-                            style={{
-                              padding: SPACING.M,
-                              border: "1px solid #ddd",
-                              borderRadius: BORDER_RADIUS.MEDIUM,
-                            }}
-                          />
-                          <input
-                            name="address"
-                            placeholder="Address"
-                            onChange={handleInputChange}
-                            style={{
-                              padding: SPACING.M,
-                              border: "1px solid #ddd",
-                              borderRadius: BORDER_RADIUS.MEDIUM,
-                              gridColumn: "1 / -1",
-                            }}
-                          />
-                          <input
-                            name="city"
-                            placeholder="City"
-                            onChange={handleInputChange}
-                            style={{
-                              padding: SPACING.M,
-                              border: "1px solid #ddd",
-                              borderRadius: BORDER_RADIUS.MEDIUM,
-                            }}
-                          />
-                          <input
-                            name="phone"
-                            placeholder="Phone"
-                            onChange={handleInputChange}
-                            style={{
-                              padding: SPACING.M,
-                              border: "1px solid #ddd",
-                              borderRadius: BORDER_RADIUS.MEDIUM,
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Payment Proof */}
-                      <div style={{ marginBottom: SPACING.L }}>
-                        <label
-                          style={{
-                            display: "block",
-                            marginBottom: SPACING.S,
-                            fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                          }}
-                        >
-                          Upload Payment Proof
-                        </label>
-                        <div
-                          style={{
-                            padding: SPACING.L,
-                            border: "2px dashed #ccc",
-                            borderRadius: BORDER_RADIUS.MEDIUM,
-                            textAlign: "center",
-                          }}
-                        >
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) =>
-                              setPaymentProofFile(e.target.files?.[0])
-                            }
-                          />
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={handleCreateOrder}
-                        disabled={!isFormValid}
-                        style={{
-                          width: "100%",
-                          backgroundColor: isFormValid
-                            ? COLORS.MIDNIGHT_ASH
-                            : COLORS.PEBBLE,
-                          color: COLORS.WHITE,
-                          padding: SPACING.M,
-                          borderRadius: BORDER_RADIUS.MEDIUM,
-                          border: "none",
-                          cursor: isFormValid ? "pointer" : "not-allowed",
-                        }}
-                      >
-                        Submit Payment & Address
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* STEP 1: SELLER WAITING */}
-              {currentStep === 1 && isSeller && (
-                <div style={{ padding: SPACING.L }}>
-                  <h3
-                    style={{
-                      fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                      marginBottom: SPACING.L,
-                      color: COLORS.MIDNIGHT_ASH,
-                    }}
-                  >
-                    Step 1 — Buyer Payment Information
-                  </h3>
-
-                  {tx?.payment_proof_image && tx?.shipping_address ? (
-                    <div
-                      style={{
-                        backgroundColor: COLORS.SOFT_CLOUD,
-                        padding: SPACING.L,
-                        borderRadius: BORDER_RADIUS.MEDIUM,
-                        marginBottom: SPACING.L,
-                      }}
-                    >
-                      <div style={{ marginBottom: SPACING.M }}>
-                        <p
-                          style={{
-                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                            marginBottom: SPACING.S,
-                          }}
-                        >
-                          <strong>Shipping Address:</strong>
+                        <p>
+                          <strong>Ship To:</strong> {tx.shipping_address}
                         </p>
-                        <p style={{ color: COLORS.MIDNIGHT_ASH }}>
-                          {tx.shipping_address}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p
-                          style={{
-                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                            marginBottom: SPACING.S,
-                          }}
-                        >
+                        <p>
                           <strong>Payment Proof:</strong>
                         </p>
-                        <a
-                          href={tx.payment_proof_image}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{
-                            color: "#2563EB",
-                            textDecoration: "underline",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: SPACING.S,
-                          }}
-                        >
-                          View Payment Proof Image →
-                        </a>
+                        {tx.payment_proof_image ? (
+                          <a
+                            href={tx.payment_proof_image}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              color: "#2563EB",
+                              textDecoration: "underline",
+                            }}
+                          >
+                            View Proof Image
+                          </a>
+                        ) : (
+                          <span
+                            style={{ color: "#DC2626", fontWeight: "bold" }}
+                          >
+                            Not Uploaded
+                          </span>
+                        )}
                       </div>
+
+                      <ShippingInvoiceForm onSubmit={handleSellerConfirm} />
                     </div>
-                  ) : (
+                  )}
+
+                  {/* STEP 2: BUYER WAITING */}
+                  {currentStep === 2 && isBuyer && (
                     <div style={{ textAlign: "center", padding: SPACING.XXL }}>
                       <div
                         style={{ fontSize: "40px", marginBottom: SPACING.M }}
                       >
-                        ⏳
+                        📦
                       </div>
                       <h3 style={{ fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD }}>
-                        Waiting for Buyer
+                        Processing
                       </h3>
                       <p style={{ color: COLORS.PEBBLE }}>
-                        The buyer has not yet submitted payment proof and
-                        shipping address.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* STEP 2: SELLER SHIP */}
-              {currentStep === 2 && isSeller && (
-                <div style={{ animation: "fadeSlideIn 0.4s ease-out" }}>
-                  <h3
-                    style={{
-                      fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                      marginBottom: SPACING.L,
-                    }}
-                  >
-                    Step 2 — Verify Payment & Ship
-                  </h3>
-
-                  {/* Proof Display */}
-                  <div
-                    style={{
-                      backgroundColor: COLORS.SOFT_CLOUD,
-                      padding: SPACING.M,
-                      borderRadius: BORDER_RADIUS.MEDIUM,
-                      marginBottom: SPACING.L,
-                    }}
-                  >
-                    <p>
-                      <strong>Ship To:</strong> {tx.shipping_address}
-                    </p>
-                    <p>
-                      <strong>Payment Proof:</strong>
-                    </p>
-                    {tx.payment_proof_image ? (
-                      <a
-                        href={tx.payment_proof_image}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{
-                          color: "#2563EB",
-                          textDecoration: "underline",
-                        }}
-                      >
-                        View Proof Image
-                      </a>
-                    ) : (
-                      <span style={{ color: "#DC2626", fontWeight: "bold" }}>
-                        Not Uploaded
-                      </span>
-                    )}
-                  </div>
-
-                  <ShippingInvoiceForm onSubmit={handleSellerConfirm} />
-                </div>
-              )}
-
-              {/* STEP 2: BUYER WAITING */}
-              {currentStep === 2 && isBuyer && (
-                <div style={{ textAlign: "center", padding: SPACING.XXL }}>
-                  <div style={{ fontSize: "40px", marginBottom: SPACING.M }}>
-                    📦
-                  </div>
-                  <h3 style={{ fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD }}>
-                    Processing
-                  </h3>
-                  <p style={{ color: COLORS.PEBBLE }}>
-                    Seller is verifying your payment.
-                  </p>
-                </div>
-              )}
-
-              {/* STEP 3: BUYER CONFIRM RECEIPT */}
-              {currentStep === 3 && isBuyer && (
-                <div style={{ animation: "fadeSlideIn 0.4s ease-out" }}>
-                  <h3
-                    style={{
-                      fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                      marginBottom: SPACING.L,
-                    }}
-                  >
-                    Step 3 — Confirm Receipt
-                  </h3>
-                  <div
-                    style={{
-                      backgroundColor: COLORS.SOFT_CLOUD,
-                      padding: SPACING.M,
-                      borderRadius: BORDER_RADIUS.MEDIUM,
-                      marginBottom: SPACING.L,
-                    }}
-                  >
-                    <p>
-                      <strong>Tracking Code:</strong> {tx.shipping_code}
-                    </p>
-                  </div>
-                  <button
-                    onClick={handleBuyerConfirmReceipt}
-                    style={{
-                      width: "100%",
-                      backgroundColor: COLORS.MIDNIGHT_ASH,
-                      color: COLORS.WHITE,
-                      padding: SPACING.M,
-                      borderRadius: BORDER_RADIUS.MEDIUM,
-                      border: "none",
-                      cursor: "pointer",
-                    }}
-                  >
-                    I Have Received the Product
-                  </button>
-                </div>
-              )}
-
-              {/* STEP 3: SELLER WAITING */}
-              {currentStep === 3 && isSeller && (
-                <div style={{ textAlign: "center", padding: SPACING.XXL }}>
-                  <div style={{ fontSize: "40px", marginBottom: SPACING.M }}>
-                    🚚
-                  </div>
-                  <h3 style={{ fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD }}>
-                    In Transit
-                  </h3>
-                  <p style={{ color: COLORS.PEBBLE }}>
-                    Waiting for buyer to receive package.
-                  </p>
-                </div>
-              )}
-
-              {(currentStep === 4 || currentStep === 5) && (
-                <div
-                  style={{
-                    animation: "fadeSlideIn 0.4s ease-out",
-                    textAlign: "center",
-                  }}
-                >
-                  <h3
-                    style={{
-                      fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                      marginBottom: SPACING.L,
-                    }}
-                  >
-                    Step {currentStep} —{" "}
-                    {currentStep === 4 ? "Rate Your Experience" : "Finalized"}
-                  </h3>
-
-                  {/* Info banner for re-rating */}
-                  {!shouldShowFinalReceipt && hasUserRated && (
-                    <div
-                      style={{
-                        backgroundColor: "#FEF3C7",
-                        padding: SPACING.M,
-                        borderRadius: BORDER_RADIUS.MEDIUM,
-                        marginBottom: SPACING.L,
-                        border: "1px solid #FCD34D",
-                      }}
-                    >
-                      <p
-                        style={{
-                          color: "#92400E",
-                          fontSize: TYPOGRAPHY.SIZE_LABEL,
-                        }}
-                      >
-                        ℹ️ You have already rated this transaction. You can
-                        update your rating below.
+                        Seller is verifying your payment.
                       </p>
                     </div>
                   )}
 
-                  {shouldShowFinalReceipt ? (
-                    /* CONDITION 1: FINAL RECEIPT (Triggers if Step 5 OR if rating was just submitted/exists) */
-                    <div
-                      style={{
-                        padding: SPACING.XXL,
-                        backgroundColor: "#E0F2F1", // Light Cyan/Teal
-                        borderRadius: BORDER_RADIUS.MEDIUM,
-                        border: "1px solid #2DD4BF", // Teal border
-                        color: "#0D9488", // Dark Teal text
-                      }}
-                    >
-                      <CheckCircleIcon
+                  {/* STEP 3: BUYER CONFIRM RECEIPT */}
+                  {currentStep === 3 && isBuyer && (
+                    <div style={{ animation: "fadeSlideIn 0.4s ease-out" }}>
+                      <h3
                         style={{
-                          width: "40px",
-                          margin: "0 auto",
-                          marginBottom: SPACING.M,
-                        }}
-                      />
-                      <h4
-                        style={{
-                          fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
-                          fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
-                        }}
-                      >
-                        Transaction Complete!
-                      </h4>
-                      <p style={{ marginTop: SPACING.S }}>
-                        Thank you for using eBid. All steps are finalized.
-                        {currentStep === 4 &&
-                          " (Waiting for counterparty rating to move to Step 5)"}{" "}
-                        {/* Helpful message */}
-                      </p>
-                    </div>
-                  ) : (
-                    /* CONDITION 2: ACTIVE RATING FORM */
-                    <div>
-                      {/* Your active Rating Buttons, Textarea, and Submit Button JSX go here */}
-                      {/* ... (Copy the full rating form block from your Step 4 logic) ... */}
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "center",
-                          gap: SPACING.L,
+                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
                           marginBottom: SPACING.L,
                         }}
                       >
-                        {/* ... Thumb Up/Down Buttons ... */}
-                        <button
-                          onClick={() => setSelectedRating(1)}
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            gap: SPACING.S,
-                            padding: SPACING.L,
-                            backgroundColor:
-                              selectedRating === 1
-                                ? "#F0FDF4"
-                                : COLORS.SOFT_CLOUD,
-                            border:
-                              selectedRating === 1
-                                ? `2px solid #16A34A`
-                                : `2px solid transparent`,
-                            borderRadius: BORDER_RADIUS.MEDIUM,
-                            cursor: "pointer",
-                            transition: "all 0.3s ease",
-                            minWidth: "100px",
-                            transform:
-                              selectedRating === 1 ? "scale(1.05)" : "scale(1)",
-                          }}
-                        >
-                          <HandThumbUpIcon
-                            style={{ width: "30px", color: "#16A34A" }}
-                          />{" "}
-                          +1
-                        </button>
-                        <button
-                          onClick={() => setSelectedRating(-1)}
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            gap: SPACING.S,
-                            padding: SPACING.L,
-                            backgroundColor:
-                              selectedRating === -1
-                                ? "#FEF2F2"
-                                : COLORS.SOFT_CLOUD,
-                            border:
-                              selectedRating === -1
-                                ? `2px solid #DC2626`
-                                : `2px solid transparent`,
-                            borderRadius: BORDER_RADIUS.MEDIUM,
-                            cursor: "pointer",
-                            transition: "all 0.3s ease",
-                            minWidth: "100px",
-                            transform:
-                              selectedRating === -1
-                                ? "scale(1.05)"
-                                : "scale(1)",
-                          }}
-                        >
-                          <HandThumbDownIcon
-                            style={{ width: "30px", color: "#DC2626" }}
-                          />{" "}
-                          -1
-                        </button>
-                      </div>
-                      <textarea
-                        value={ratingComment}
-                        onChange={(e) => setRatingComment(e.target.value)}
-                        placeholder="Comment..."
+                        Step 3 — Confirm Receipt
+                      </h3>
+                      <div
                         style={{
-                          width: "100%",
+                          backgroundColor: COLORS.SOFT_CLOUD,
                           padding: SPACING.M,
-                          border: "1px solid #ccc",
                           borderRadius: BORDER_RADIUS.MEDIUM,
-                          marginBottom: SPACING.M,
-                        }}
-                      />
-                      <button
-                        onClick={handleRatingSubmit}
-                        disabled={!selectedRating}
-                        style={{
-                          width: "100%",
-                          padding: `${SPACING.M} ${SPACING.L}`,
-                          backgroundColor: selectedRating
-                            ? COLORS.MIDNIGHT_ASH
-                            : COLORS.PEBBLE,
-                          color: COLORS.WHITE,
-                          border: "none",
-                          borderRadius: BORDER_RADIUS.MEDIUM,
-                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                          fontSize: TYPOGRAPHY.SIZE_BODY,
-                          cursor: selectedRating ? "pointer" : "not-allowed",
-                          transition: "all 0.3s ease",
+                          marginBottom: SPACING.L,
                         }}
                       >
-                        {hasUserRated ? "Update Rating" : "Submit Rating"}
+                        <p>
+                          <strong>Tracking Code:</strong> {tx.shipping_code}
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleBuyerConfirmReceipt}
+                        style={{
+                          width: "100%",
+                          backgroundColor: COLORS.MIDNIGHT_ASH,
+                          color: COLORS.WHITE,
+                          padding: SPACING.M,
+                          borderRadius: BORDER_RADIUS.MEDIUM,
+                          border: "none",
+                          cursor: "pointer",
+                        }}
+                      >
+                        I Have Received the Product
                       </button>
+                    </div>
+                  )}
 
-                      {/* Skip Rating Button */}
-                      {!hasUserRated && (
-                        <button
-                          onClick={handleSkipRating}
+                  {/* STEP 3: SELLER WAITING */}
+                  {currentStep === 3 && isSeller && (
+                    <div style={{ textAlign: "center", padding: SPACING.XXL }}>
+                      <div
+                        style={{ fontSize: "40px", marginBottom: SPACING.M }}
+                      >
+                        🚚
+                      </div>
+                      <h3 style={{ fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD }}>
+                        In Transit
+                      </h3>
+                      <p style={{ color: COLORS.PEBBLE }}>
+                        Waiting for buyer to receive package.
+                      </p>
+                    </div>
+                  )}
+
+                  {(currentStep === 4 || currentStep === 5) && (
+                    <div
+                      style={{
+                        animation: "fadeSlideIn 0.4s ease-out",
+                        textAlign: "center",
+                      }}
+                    >
+                      <h3
+                        style={{
+                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                          marginBottom: SPACING.L,
+                        }}
+                      >
+                        Step {currentStep} —{" "}
+                        {currentStep === 4
+                          ? "Rate Your Experience"
+                          : "Finalized"}
+                      </h3>
+
+                      {/* Info banner for re-rating */}
+                      {!shouldShowFinalReceipt && hasUserRated && (
+                        <div
                           style={{
-                            width: "100%",
-                            padding: `${SPACING.M} ${SPACING.L}`,
-                            backgroundColor: "transparent",
-                            color: COLORS.MIDNIGHT_ASH,
-                            border: `2px solid ${COLORS.PEBBLE}`,
+                            backgroundColor: "#FEF3C7",
+                            padding: SPACING.M,
                             borderRadius: BORDER_RADIUS.MEDIUM,
-                            fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                            fontSize: TYPOGRAPHY.SIZE_BODY,
-                            cursor: "pointer",
-                            transition: "all 0.3s ease",
-                            marginTop: SPACING.S,
-                          }}
-                          onMouseEnter={(e) => {
-                            e.target.style.backgroundColor = COLORS.SOFT_CLOUD;
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.backgroundColor = "transparent";
+                            marginBottom: SPACING.L,
+                            border: "1px solid #FCD34D",
                           }}
                         >
-                          Skip rating, I will rate later
-                        </button>
+                          <p
+                            style={{
+                              color: "#92400E",
+                              fontSize: TYPOGRAPHY.SIZE_LABEL,
+                            }}
+                          >
+                            ℹ️ You have already rated this transaction. You can
+                            update your rating below.
+                          </p>
+                        </div>
+                      )}
+
+                      {shouldShowFinalReceipt ? (
+                        /* CONDITION 1: FINAL RECEIPT (Triggers if Step 5 OR if rating was just submitted/exists) */
+                        <div
+                          style={{
+                            padding: SPACING.XXL,
+                            backgroundColor: "#E0F2F1", // Light Cyan/Teal
+                            borderRadius: BORDER_RADIUS.MEDIUM,
+                            border: "1px solid #2DD4BF", // Teal border
+                            color: "#0D9488", // Dark Teal text
+                          }}
+                        >
+                          <CheckCircleIcon
+                            style={{
+                              width: "40px",
+                              margin: "0 auto",
+                              marginBottom: SPACING.M,
+                            }}
+                          />
+                          <h4
+                            style={{
+                              fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+                              fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
+                            }}
+                          >
+                            Transaction Complete!
+                          </h4>
+                          <p style={{ marginTop: SPACING.S }}>
+                            Thank you for using eBid. All steps are finalized.
+                            {currentStep === 4 &&
+                              " (Waiting for counterparty rating to move to Step 5)"}{" "}
+                            {/* Helpful message */}
+                          </p>
+                        </div>
+                      ) : (
+                        /* CONDITION 2: ACTIVE RATING FORM */
+                        <div>
+                          {/* Your active Rating Buttons, Textarea, and Submit Button JSX go here */}
+                          {/* ... (Copy the full rating form block from your Step 4 logic) ... */}
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "center",
+                              gap: SPACING.L,
+                              marginBottom: SPACING.L,
+                            }}
+                          >
+                            {/* ... Thumb Up/Down Buttons ... */}
+                            <button
+                              onClick={() => setSelectedRating(1)}
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                gap: SPACING.S,
+                                padding: SPACING.L,
+                                backgroundColor:
+                                  selectedRating === 1
+                                    ? "#F0FDF4"
+                                    : COLORS.SOFT_CLOUD,
+                                border:
+                                  selectedRating === 1
+                                    ? `2px solid #16A34A`
+                                    : `2px solid transparent`,
+                                borderRadius: BORDER_RADIUS.MEDIUM,
+                                cursor: "pointer",
+                                transition: "all 0.3s ease",
+                                minWidth: "100px",
+                                transform:
+                                  selectedRating === 1
+                                    ? "scale(1.05)"
+                                    : "scale(1)",
+                              }}
+                            >
+                              <HandThumbUpIcon
+                                style={{ width: "30px", color: "#16A34A" }}
+                              />{" "}
+                              +1
+                            </button>
+                            <button
+                              onClick={() => setSelectedRating(-1)}
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                gap: SPACING.S,
+                                padding: SPACING.L,
+                                backgroundColor:
+                                  selectedRating === -1
+                                    ? "#FEF2F2"
+                                    : COLORS.SOFT_CLOUD,
+                                border:
+                                  selectedRating === -1
+                                    ? `2px solid #DC2626`
+                                    : `2px solid transparent`,
+                                borderRadius: BORDER_RADIUS.MEDIUM,
+                                cursor: "pointer",
+                                transition: "all 0.3s ease",
+                                minWidth: "100px",
+                                transform:
+                                  selectedRating === -1
+                                    ? "scale(1.05)"
+                                    : "scale(1)",
+                              }}
+                            >
+                              <HandThumbDownIcon
+                                style={{ width: "30px", color: "#DC2626" }}
+                              />{" "}
+                              -1
+                            </button>
+                          </div>
+                          <textarea
+                            value={ratingComment}
+                            onChange={(e) => setRatingComment(e.target.value)}
+                            placeholder="Comment..."
+                            style={{
+                              width: "100%",
+                              padding: SPACING.M,
+                              border: "1px solid #ccc",
+                              borderRadius: BORDER_RADIUS.MEDIUM,
+                              marginBottom: SPACING.M,
+                            }}
+                          />
+                          <button
+                            onClick={handleRatingSubmit}
+                            disabled={!selectedRating}
+                            style={{
+                              width: "100%",
+                              padding: `${SPACING.M} ${SPACING.L}`,
+                              backgroundColor: selectedRating
+                                ? COLORS.MIDNIGHT_ASH
+                                : COLORS.PEBBLE,
+                              color: COLORS.WHITE,
+                              border: "none",
+                              borderRadius: BORDER_RADIUS.MEDIUM,
+                              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                              fontSize: TYPOGRAPHY.SIZE_BODY,
+                              cursor: selectedRating
+                                ? "pointer"
+                                : "not-allowed",
+                              transition: "all 0.3s ease",
+                            }}
+                          >
+                            {hasUserRated ? "Update Rating" : "Submit Rating"}
+                          </button>
+
+                          {/* Skip Rating Button */}
+                          {!hasUserRated && (
+                            <button
+                              onClick={handleSkipRating}
+                              style={{
+                                width: "100%",
+                                padding: `${SPACING.M} ${SPACING.L}`,
+                                backgroundColor: "transparent",
+                                color: COLORS.MIDNIGHT_ASH,
+                                border: `2px solid ${COLORS.PEBBLE}`,
+                                borderRadius: BORDER_RADIUS.MEDIUM,
+                                fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
+                                fontSize: TYPOGRAPHY.SIZE_BODY,
+                                cursor: "pointer",
+                                transition: "all 0.3s ease",
+                                marginTop: SPACING.S,
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.backgroundColor =
+                                  COLORS.SOFT_CLOUD;
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.backgroundColor = "transparent";
+                              }}
+                            >
+                              Skip rating, I will rate later
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
-                </div>
-              )}
-              {currentStep === 5 && (
-                <button
-                  onClick={() => navigate("/transactions")} // Navigate to the history list
-                  style={{
-                    backgroundColor: COLORS.MIDNIGHT_ASH,
-                    color: COLORS.WHITE,
-                    padding: `${SPACING.S} ${SPACING.M}`,
-                    borderRadius: BORDER_RADIUS.MEDIUM,
-                    border: "none",
-                    fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                  {currentStep === 5 && (
+                    <button
+                      onClick={() => navigate("/transactions")} // Navigate to the history list
+                      style={{
+                        backgroundColor: COLORS.MIDNIGHT_ASH,
+                        color: COLORS.WHITE,
+                        padding: `${SPACING.S} ${SPACING.M}`,
+                        borderRadius: BORDER_RADIUS.MEDIUM,
+                        border: "none",
+                        fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
 
-                    cursor: "pointer",
-                    marginTop: SPACING.M, // Give it some space
-                    transition: "background-color 0.2s",
-                    // Adding hover effect (Requires styling solution to handle :hover)
-                    // ':hover': { backgroundColor: '#334155' }
-                  }}
-                >
-                  View Transaction History
-                </button>
-              )}
-            </div>
+                        cursor: "pointer",
+                        marginTop: SPACING.M, // Give it some space
+                        transition: "background-color 0.2s",
+                        // Adding hover effect (Requires styling solution to handle :hover)
+                        // ':hover': { backgroundColor: '#334155' }
+                      }}
+                    >
+                      View Transaction History
+                    </button>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -1414,7 +1471,9 @@ export default function TransactionPage() {
           {/* Optional Icon based on success/error */}
           <span style={{ fontSize: "18px" }}>🔔</span>
 
-          <span style={{ fontWeight: 500, fontSize: "14px" }}>{localToast}</span>
+          <span style={{ fontWeight: 500, fontSize: "14px" }}>
+            {localToast}
+          </span>
         </div>
       )}
 

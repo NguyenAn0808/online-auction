@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
 import { formatCurrency } from "../utils/formatters";
@@ -8,6 +9,7 @@ import upgradeRequestService from "../services/upgradeRequestService";
 import settingsService from "../services/settingsService";
 
 const AdminDashboardPage = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalProducts: 0,
     activeAuctions: 0,
@@ -194,34 +196,53 @@ const AdminDashboardPage = () => {
           Recent Products
         </h3>
         <div className="space-y-4">
-          {recentProducts.map((product) => (
-            <div
-              key={product.id}
-              className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-900 truncate mb-2">
-                  {product.name}
-                </p>
-                <div className="flex items-center gap-3">
-                  <StatusBadge status={product.status} type="product" />
-                  <span className="text-xs text-gray-500">
-                    {product.bid_count || 0} bids
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    {new Date(
-                      product.createdAt || product.created_at
-                    ).toLocaleDateString("vi-VN")}
-                  </span>
+          {recentProducts.map((product) => {
+            const thumb =
+              product.thumbnail ||
+              product.productImage ||
+              product.images?.[0]?.image_url;
+            return (
+              <div
+                key={product.id}
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+              >
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  {thumb && (
+                    <img
+                      src={thumb}
+                      alt={product.name}
+                      className="w-12 h-12 object-cover rounded-md border border-gray-200"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 truncate mb-2">
+                      {product.name}
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <StatusBadge status={product.status} type="product" />
+                      <span className="text-xs text-gray-500">
+                        {product.bid_count || 0} bids
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {`Created at: `}
+                        {new Date(
+                          product.createdAt || product.created_at
+                        ).toLocaleDateString("vi-VN")}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="ml-4 text-right">
+                  <button
+                    onClick={() => navigate(`/products/${product.id}`)}
+                    className="!mt-2 !px-3 !py-1 btn-secondary !text-sm !font-semibold !rounded-md hover:!bg-gray-200 transition"
+                  >
+                    Open Product
+                  </button>
                 </div>
               </div>
-              <div className="ml-4 text-right">
-                <p className="text-lg font-bold text-gray-900">
-                  {formatCurrency(product.current_price || product.start_price)}
-                </p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -230,10 +251,6 @@ const AdminDashboardPage = () => {
         <h3 className="text-lg font-bold text-gray-900 mb-4">
           Auto-Extend Auction Settings
         </h3>
-        <p className="text-sm text-gray-600 mb-6">
-          Configure automatic auction extension when bids are placed near the
-          end time.
-        </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           {/* Threshold Minutes */}
@@ -242,8 +259,7 @@ const AdminDashboardPage = () => {
               Time Threshold (minutes)
             </label>
             <p className="text-xs text-gray-500 mb-2">
-              Trigger auto-extend when bid placed within this many minutes
-              before auction end
+              Minimum minutes before auction end to trigger extension
             </p>
             <input
               type="number"
@@ -284,7 +300,7 @@ const AdminDashboardPage = () => {
           </div>
         </div>
 
-        {/* Example */}
+        {/* Example rule summary */}
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-md mb-4">
           <p className="text-sm text-blue-800">
             <strong>Current rule:</strong> If a bid is placed within{" "}
@@ -299,7 +315,6 @@ const AdminDashboardPage = () => {
           </p>
         </div>
 
-        {/* Save Button */}
         <button
           onClick={handleSaveSettings}
           disabled={savingSettings}

@@ -28,14 +28,23 @@ export default function TransactionSummary({ transaction, product }) {
   let shippingCost = 0;
   if (displayData.shippingPriceStr) {
     // Only run .replace if the string actually exists!
-    shippingCost =
-      parseFloat(displayData.shippingPriceStr.replace("$", "")) || 0;
+    const numeric = displayData.shippingPriceStr
+      .toString()
+      .replace(/[^0-9.]/g, "");
+    shippingCost = parseFloat(numeric) || 0;
   }
 
   const total =
     (typeof displayData.price === "number"
       ? displayData.price
       : parseFloat(displayData.price)) + shippingCost;
+
+  const formatVND = (value) => {
+    if (value === null || value === undefined || isNaN(Number(value))) {
+      return "-";
+    }
+    return `${Number(value).toLocaleString("vi-VN")} VND`;
+  };
 
   return (
     <div
@@ -91,7 +100,7 @@ export default function TransactionSummary({ transaction, product }) {
               color: COLORS.MIDNIGHT_ASH,
             }}
           >
-            ${Number(displayData.price).toFixed(2)}
+            {formatVND(displayData.price)}
           </p>
         </div>
       </div>
@@ -159,7 +168,7 @@ export default function TransactionSummary({ transaction, product }) {
                 color: COLORS.MIDNIGHT_ASH,
               }}
             >
-              ${Number(displayData.price).toFixed(2)}
+              {formatVND(displayData.price)}
             </span>
           </div>
 
@@ -182,7 +191,7 @@ export default function TransactionSummary({ transaction, product }) {
                 color: COLORS.MIDNIGHT_ASH,
               }}
             >
-              {shippingCost > 0 ? `$${shippingCost.toFixed(2)}` : "TBD"}
+              {shippingCost > 0 ? formatVND(shippingCost) : "TBD"}
             </span>
           </div>
 
@@ -211,7 +220,7 @@ export default function TransactionSummary({ transaction, product }) {
                 color: COLORS.MIDNIGHT_ASH,
               }}
             >
-              ${total.toFixed(2)}
+              {formatVND(total)}
             </span>
           </div>
         </div>
