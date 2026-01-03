@@ -95,7 +95,7 @@ const ProductListingPage = () => {
     };
 
     fetchProducts();
-  }, [categoryId, searchTerm, sortPriceAsc, sortPriceDesc, sortEndTimeDesc]);
+  }, [categoryId, searchTerm, sortPriceAsc, sortPriceDesc, sortEndTimeDesc, location.search]);
 
   // Get category name for display
   const getCategoryName = () => {

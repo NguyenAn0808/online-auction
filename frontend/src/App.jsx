@@ -4,6 +4,7 @@ import {
   RouterProvider,
   createRoutesFromElements,
 } from "react-router-dom";
+import { useEffect } from "react";
 
 // Authentication Pages
 import Login from "./pages/Login";

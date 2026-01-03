@@ -10,12 +10,13 @@ import BidHistory from "../components/BidHistory";
 import QuestionsHistory from "../components/QuestionsHistory";
 import { COLORS, SPACING } from "../constants/designSystem";
 import { useAuth } from "../context/AuthContext";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { productService } from "../services/productService";
 
 const ProductDetails = () => {
   const { user } = useAuth();
   const { productId } = useParams();
+  const location = useLocation();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -35,7 +36,7 @@ const ProductDetails = () => {
     };
     fetchProduct();
     document.title = "Product Details — eBid";
-  }, [productId]);
+  }, [productId, location.pathname]);
 
   return (
     <>

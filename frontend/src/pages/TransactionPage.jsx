@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import Header from "../components/Header";
 import TransactionStepper from "../components/TransactionStepper";
 import TransactionSummary from "../components/TransactionSummary";
@@ -214,6 +214,7 @@ function useMockAuth() {
 
 export default function TransactionPage() {
   const { orderId } = useParams(); // The Order ID
+  const location = useLocation();
   const [ratingComment, setRatingComment] = useState("");
   const [selectedRating, setSelectedRating] = useState(null);
   const [isRatingSubmitted, setIsRatingSubmitted] = useState(false);
@@ -358,7 +359,7 @@ export default function TransactionPage() {
       }
     }
     loadData();
-  }, [orderId, navigate]);
+  }, [orderId, navigate, location.pathname]);
 
   function showToast(message) {
     setLocalToast(message);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import api, { saveAccessToken, setAuthHeader } from "../services/api";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -10,8 +10,17 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { signin } = useAuth();
+  const { signin, user } = useAuth();
   const location = useLocation();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      const from = location.state?.from?.pathname || "/";
+      navigate(from, { replace: true });
+    }
+  }, [user, navigate, location]);
+
   const validate = () => {
     if (!email) return "Email is required";
     const re = /^\S+@\S+\.\S+$/;

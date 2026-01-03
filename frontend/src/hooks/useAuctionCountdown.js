@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 /**
  * Hook for countdown timer to auction end time
@@ -8,6 +8,12 @@ import { useState, useEffect, useCallback } from "react";
 export const useAuctionCountdown = (endTime, onEnd) => {
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [hasEnded, setHasEnded] = useState(false);
+  const onEndRef = useRef(onEnd);
+
+  // Keep onEndRef up to date
+  useEffect(() => {
+    onEndRef.current = onEnd;
+  }, [onEnd]);
 
   const calculateTimeRemaining = useCallback(() => {
     if (!endTime) return null;
@@ -19,7 +25,7 @@ export const useAuctionCountdown = (endTime, onEnd) => {
     if (diff <= 0) {
       if (!hasEnded) {
         setHasEnded(true);
-        if (onEnd) onEnd();
+        if (onEndRef.current) onEndRef.current();
       }
       return {
         days: 0,
@@ -56,7 +62,7 @@ export const useAuctionCountdown = (endTime, onEnd) => {
       total: diff,
       formatted,
     };
-  }, [endTime, hasEnded, onEnd]);
+  }, [endTime, hasEnded]);
 
   useEffect(() => {
     // Initial calculation

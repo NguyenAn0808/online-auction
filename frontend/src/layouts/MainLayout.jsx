@@ -5,11 +5,16 @@ import { useAuth } from "../context/AuthContext";
 import { useEffect } from "react";
 
 const MainLayout = () => {
-  const { pathname, search } = useLocation();
+  const location = useLocation();
   const navigate = useNavigate();
   const { user, activeRole } = useAuth();
   // Hide chat bubble on auth pages (e.g. /auth/login, /auth/signup)
-  const showChat = user && !pathname.startsWith("/auth");
+  const showChat = user && !location.pathname.startsWith("/auth");
+
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   // Auto-redirect admins landing on "/" to admin dashboard, with bypass via query
   useEffect(() => {
@@ -17,12 +22,19 @@ const MainLayout = () => {
       user?.role === "admin" ||
       activeRole === "admin" ||
       user?.roles?.includes?.("admin");
-    const params = new URLSearchParams(search);
+    const params = new URLSearchParams(location.search);
     const bypass = params.get("view") === "storefront"; // allow normal view
-    if (isAdmin && pathname === "/" && !bypass) {
+    if (isAdmin && location.pathname === "/" && !bypass) {
       navigate("/admin", { replace: true });
     }
-  }, [user?.role, activeRole, user?.roles, pathname, search, navigate]);
+  }, [
+    user?.role,
+    activeRole,
+    user?.roles,
+    location.pathname,
+    location.search,
+    navigate,
+  ]);
 
   return (
     <div className="min-h-screen flex flex-col">

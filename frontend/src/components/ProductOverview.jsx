@@ -228,9 +228,9 @@ export default function ProductOverview({ productId: propProductId }) {
 
   const requireAuth = (actionCallback) => {
     if (!user) {
-      // Force full page navigation to signin
+      // Navigate to signin using React Router
       const currentPath = encodeURIComponent(location.pathname);
-      window.location.replace(`/auth/signin?from=${currentPath}`);
+      navigate(`/auth/signin?from=${currentPath}`);
       return;
     }
     actionCallback();
@@ -278,7 +278,8 @@ export default function ProductOverview({ productId: propProductId }) {
     );
 
   // Determine user role for auction ended state
-  const isWinnerUser = user && (user.id === product?.price_holder || order?.buyer_id === user.id);
+  const isWinnerUser =
+    user && (user.id === product?.price_holder || order?.buyer_id === user.id);
   const isSellerUser = user && user.id === product?.seller_id;
 
   // Derive display values from backend data
@@ -766,7 +767,13 @@ export default function ProductOverview({ productId: propProductId }) {
                         </p>
                         <button
                           type="button"
-                          onClick={() => navigate(order ? `/transactions/${order.id}` : `/transactions/${productId}`)}
+                          onClick={() =>
+                            navigate(
+                              order
+                                ? `/transactions/${order.id}`
+                                : `/transactions/${productId}`
+                            )
+                          }
                           style={{
                             backgroundColor: "#10B981",
                             color: COLORS.WHITE,
@@ -821,7 +828,9 @@ export default function ProductOverview({ productId: propProductId }) {
                         {order && (
                           <button
                             type="button"
-                            onClick={() => navigate(`/transactions/${order.id}`)}
+                            onClick={() =>
+                              navigate(`/transactions/${order.id}`)
+                            }
                             style={{
                               backgroundColor: "#3B82F6",
                               color: COLORS.WHITE,
@@ -848,7 +857,11 @@ export default function ProductOverview({ productId: propProductId }) {
                           textAlign: "center",
                         }}
                       >
-                        <div style={{ fontSize: "32px", marginBottom: SPACING.S }}>⏱️</div>
+                        <div
+                          style={{ fontSize: "32px", marginBottom: SPACING.S }}
+                        >
+                          ⏱️
+                        </div>
                         <h3
                           style={{
                             fontSize: TYPOGRAPHY.SIZE_BODY_LARGE,
@@ -913,7 +926,7 @@ export default function ProductOverview({ productId: propProductId }) {
                         requireAuth(() => {
                           if (inWatchlist) {
                             const userId = user.id;
-                            window.location.href = `/watchlists/${userId}`;
+                            navigate(`/watchlists/${userId}`);
                             return;
                           }
                           watchlistService.addToWatchlist(product);

@@ -4,7 +4,7 @@ import Tabs from "../components/Tabs";
 import Sidebar from "../components/Sidebar";
 import BidderProfile from "../components/BidderProfile";
 import { useAuth } from "../context/AuthContext";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import userService from "../services/userService";
 import {
   COLORS,
@@ -17,6 +17,7 @@ import {
 export const BidderProfilePage = () => {
   const { user: currentUser } = useAuth();
   const { userId } = useParams();
+  const location = useLocation();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -52,7 +53,7 @@ export const BidderProfilePage = () => {
     }
 
     fetchUser();
-  }, [targetUserId]);
+  }, [targetUserId, location.pathname]);
 
   return (
     <div style={{ backgroundColor: COLORS.WHISPER, minHeight: "100vh" }}>

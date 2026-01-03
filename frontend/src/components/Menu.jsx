@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { categoryService } from "../services/categoryService";
 
 // Menu dropdown with parent & child category tables
@@ -10,6 +10,7 @@ const Menu = () => {
   const [hoverParentId, setHoverParentId] = useState(null);
   const [dropdownLeft, setDropdownLeft] = useState(0); // dynamic left position so parent panel stays fixed
   const navigate = useNavigate();
+  const location = useLocation();
   const menuButtonRef = useRef(null);
   const navRef = useRef(null);
 
@@ -89,7 +90,11 @@ const Menu = () => {
           <button
             type="button"
             onMouseEnter={() => setShowMenu(true)}
-            onClick={() => navigate("/products")}
+            onClick={() => {
+              setShowMenu(false);
+              setHoverParentId(null);
+              navigate("/products");
+            }}
             className="hover:text-gray-700 font-medium"
           >
             Menu
