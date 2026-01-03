@@ -6,6 +6,8 @@ const router = express.Router();
 
 router.post("/", authenticate, BidController.addBid);
 router.get("/", BidController.getProductBids);
+// Add route for /product/:productId to match frontend expectations
+router.get("/product/:productId", BidController.getProductBids);
 router.get("/user", authenticate, async (req, res, next) => {
   try {
     await BidController.getBidsByUser(req, res);

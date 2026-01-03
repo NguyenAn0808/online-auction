@@ -74,14 +74,22 @@ api.interceptors.response.use(
   (error) => {
     if (error.response) {
       const status = error.response.status;
-
+      const errorCode = error.response.data?.code;
+      const errorMessage = error.response.data?.message;
       // Handle 401 Unauthorized - Token expired or invalid
       if (status === 401) {
-        clearAccessToken();
-        localStorage.removeItem("user");
-        // Redirect to login if not already there
-        if (window.location.pathname !== "/auth/signin") {
-          window.location.href = "/auth/signin";
+        const isTokenError =
+          errorCode === "TOKEN_EXPIRED" ||
+          errorCode === "TOKEN_INVALID" ||
+          errorCode === "UNAUTHORIZED" ||
+          errorMessage?.toLowerCase().includes("token") ||
+          errorMessage?.toLowerCase().includes("unauthorized");
+        if (isTokenError) {
+          clearAccessToken();
+          localStorage.removeItem("user");
+          if (window.location.pathname !== "/auth/signin") {
+            window.location.href = "/auth/signin";
+          }
         }
       }
 

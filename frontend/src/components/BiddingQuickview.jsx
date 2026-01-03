@@ -19,6 +19,7 @@ export default function BiddingQuickView({
   open = false,
   onClose = () => { },
   product = null,
+  currentPrice: propCurrentPrice = null,
   onBidSuccess = () => { },
 }) {
   const navigate = useNavigate();
@@ -43,15 +44,17 @@ export default function BiddingQuickView({
   });
 
   // Calculate pricing from real product data
-  const currentPrice = product
+  // Use passed currentPrice if available (already filtered for rejected bids)
+  const currentPrice = propCurrentPrice !== null
+    ? Number(propCurrentPrice)
+    : product
     ? Number(product.current_price || product.start_price || 0)
     : 0;
 
   const stepPrice = Number(product?.step_price || 0);
 
-  // Min bid = current + step (for first bid, it's start_price)
-  const hasBids = product?.bid_count > 0 || product?.current_price > product?.start_price;
-  const minBid = hasBids ? currentPrice + stepPrice : currentPrice;
+  // Min bid = current price + step price (always add step price)
+  const minBid = currentPrice + stepPrice;
 
   // Buy now price (optional)
   const buyNowPrice = Number(product?.buy_now_price || 0);

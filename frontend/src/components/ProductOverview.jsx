@@ -283,9 +283,27 @@ export default function ProductOverview({ productId: propProductId }) {
   const isSellerUser = user && user.id === product?.seller_id;
 
   // Derive display values from backend data
-  const currentPrice = Number(
-    product.current_price || product.start_price || 0
-  );
+  // Priority: 1) highest bid from polling, 2) product.current_price, 3) start_price
+  // Calculate highest bid manually from bids array if highestBid is null
+  let calculatedHighestBid = highestBid?.amount;
+  
+  if (!calculatedHighestBid && Array.isArray(bids) && bids.length > 0) {
+    // Filter out rejected bids, only count pending or accepted bids
+    const activeBids = bids.filter(bid => bid.status !== 'rejected');
+    
+    if (activeBids.length > 0) {
+      const maxBid = activeBids.reduce((max, bid) => {
+        const bidAmount = Number(bid.amount || bid.max_bid || 0);
+        return bidAmount > max ? bidAmount : max;
+      }, 0);
+      calculatedHighestBid = maxBid > 0 ? maxBid : null;
+    }
+  }
+
+  const currentPrice = calculatedHighestBid
+    ? Number(calculatedHighestBid)
+    : Number(product.current_price || product.start_price || 0);
+
   const buyNowPrice = Number(product.buy_now_price || 0);
   const stepPrice = Number(product.step_price || 0);
 
@@ -975,6 +993,7 @@ export default function ProductOverview({ productId: propProductId }) {
         open={showBidQuickView}
         onClose={closeBidQuickView}
         product={product}
+        currentPrice={currentPrice}
       />
 
       {/* Edit product modal removed */}

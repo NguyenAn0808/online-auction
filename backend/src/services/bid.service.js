@@ -51,7 +51,8 @@ class BidService {
     }
 
     let bidRecord;
-    const previousHighestBidderId = currentHighest?.bidder_id;
+    // Store the previous price holder from the product table (before competition)
+    const previousPriceHolder = product.price_holder;
 
     // 7. ALWAYS ADD NEW BID (History requirement: one user can bid many times)
     // We don't update existing bids anymore. Every bid action is a new record.
@@ -91,7 +92,7 @@ class BidService {
       product,
       bidder_id,
       competitionResult,
-      previousHighestBidderId,
+      previousPriceHolder,
       extendedTime
     );
 
@@ -221,7 +222,7 @@ class BidService {
     product,
     bidderId,
     competitionResult,
-    previousHighestBidderId,
+    previousPriceHolder,
     extendedTime = null
   ) {
     (async () => {
@@ -250,13 +251,14 @@ class BidService {
           );
         }
 
-        // 1. To previous highest bidder if they were outbid
+        // To previous price holder if they were outbid
+        // Only send if there was a previous holder and they are no longer winning
         if (
-          previousHighestBidderId &&
-          previousHighestBidderId !== bidderId &&
-          competitionResult.winner?.bidder_id !== previousHighestBidderId
+          previousPriceHolder &&
+          previousPriceHolder !== bidderId &&
+          competitionResult.price_holder !== previousPriceHolder
         ) {
-          const previousBidder = await User.findById(previousHighestBidderId);
+          const previousBidder = await User.findById(previousPriceHolder);
           if (previousBidder?.email) {
             await EmailService.sendOutbidEmailToPreviousBidder(
               previousBidder.email,

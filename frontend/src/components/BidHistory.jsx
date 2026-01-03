@@ -196,7 +196,9 @@ export default function BidHistory({ isSeller = false, productId = null }) {
   // Monitor polling for NEW bids only (to trigger refresh if needed)
   // Don't directly overwrite localBids as polling doesn't respect blocklist
   useEffect(() => {
-    if (!realtimeBids || realtimeBids.length === 0 || localBids.length === 0) {
+    // Ensure realtimeBids and localBids are arrays before processing
+    if (!Array.isArray(realtimeBids) || realtimeBids.length === 0 || 
+        !Array.isArray(localBids) || localBids.length === 0) {
       return;
     }
 

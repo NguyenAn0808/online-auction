@@ -44,7 +44,10 @@ class BidController {
 
   static async getProductBids(req, res) {
     try {
-      const { product_id, status } = req.query;
+      // Support both query param (?product_id=xxx) and path param (/:productId)
+      const product_id = req.query.product_id || req.params.productId;
+      const { status } = req.query;
+      
       if (!product_id)
         return res
           .status(400)

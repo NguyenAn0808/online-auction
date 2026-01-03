@@ -17,8 +17,21 @@ export const useBidPolling = (productId, enabled = true) => {
     if (!productId) return;
 
     try {
-      const response = await api.get(`/bids/product/${productId}`);
-      setBids(response.data || []);
+      const response = await api.get(`/api/bids/product/${productId}`);
+
+      // Extract data from {success: true, data: [...]} response format
+      let bidsData = response.data?.data || response.data || [];
+
+      // If data is an object with a bids property, extract that
+      if (
+        bidsData &&
+        typeof bidsData === "object" &&
+        !Array.isArray(bidsData)
+      ) {
+        bidsData = bidsData.bids || [];
+      }
+
+      setBids(Array.isArray(bidsData) ? bidsData : []);
       setNotFound(false);
     } catch (err) {
       if (err.response?.status === 404) {
@@ -32,10 +45,11 @@ export const useBidPolling = (productId, enabled = true) => {
 
   usePolling(fetchBids, POLLING_INTERVALS.BIDS, enabled && !notFound);
 
-  // Get highest bid
+  // Get highest bid (excluding rejected bids)
+  const activeBids = bids.filter(bid => bid.status !== 'rejected');
   const highestBid =
-    bids.length > 0
-      ? bids.reduce((max, bid) => (bid.amount > max.amount ? bid : max))
+    activeBids.length > 0
+      ? activeBids.reduce((max, bid) => (bid.amount > max.amount ? bid : max))
       : null;
 
   return {

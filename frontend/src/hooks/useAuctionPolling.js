@@ -17,7 +17,7 @@ export const useAuctionPolling = (productId, enabled = true) => {
     if (!productId) return;
 
     try {
-      const response = await api.get(`/products/${productId}`);
+      const response = await api.get(`/api/products/${productId}`);
       setAuctionData(response.data);
       setNotFound(false);
     } catch (err) {
