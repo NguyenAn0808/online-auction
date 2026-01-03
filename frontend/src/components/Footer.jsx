@@ -1,10 +1,63 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useToast } from "../context/ToastContext";
 import { Link } from "react-router-dom";
 
 const Footer = () => {
   const [email, setEmail] = useState("");
+  const [categories, setCategories] = useState([]);
   const toast = useToast();
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      // Try multiple API endpoints in order
+      const apiUrls = [
+        import.meta.env.VITE_API_URL || null,
+        "http://localhost:8000",
+        window.location.origin,
+      ].filter(Boolean);
+
+      let data = null;
+      let lastError = null;
+
+      for (const apiUrl of apiUrls) {
+        try {
+          const url = `${apiUrl}/api/categories`;
+          console.log("Fetching categories from:", url);
+
+          const response = await fetch(url, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (response.ok) {
+            data = await response.json();
+            if (data.success && data.data) {
+              setCategories(data.data);
+              console.log("Categories loaded successfully");
+              return;
+            }
+          }
+        } catch (urlError) {
+          lastError = urlError;
+          console.log(`Failed to fetch from ${apiUrl}:`, urlError.message);
+        }
+      }
+
+      if (lastError) {
+        throw lastError;
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      // Set default empty state - categories section will show empty
+      setCategories([]);
+    }
+  };
 
   const handleNewsletterSubmit = (e) => {
     e.preventDefault();
@@ -20,106 +73,77 @@ const Footer = () => {
         {/* Top Section - 4 Column Grid */}
         <div className="py-10">
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {/* Shop Column */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-midnight">Shop</h3>
-              <ul className="space-y-3">
-                <li>
-                  <Link
-                    to="/products?category=electronics"
-                    className="text-sm text-pebble hover:text-midnight-ash transition-colors"
-                  >
-                    Electronics
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/products?category=fashion"
-                    className="text-sm text-pebble hover:text-midnight-ash transition-colors"
-                  >
-                    Fashion
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/products?category=collectibles"
-                    className="text-sm text-pebble hover:text-midnight-ash transition-colors"
-                  >
-                    Collectibles
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/products?category=home"
-                    className="text-sm text-pebble hover:text-midnight-ash transition-colors"
-                  >
-                    Home & Garden
-                  </Link>
-                </li>
-              </ul>
-            </div>
+            {/* Categories - Column 1 */}
+            {categories.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-midnight">
+                  Categories
+                </h3>
+                <ul className="space-y-3">
+                  {categories
+                    .slice(0, Math.ceil(categories.length / 3))
+                    .map((category) => (
+                      <li key={category.id}>
+                        <Link
+                          to={`/products?category_id=${category.id}`}
+                          className="text-sm text-pebble hover:text-midnight-ash transition-colors"
+                        >
+                          {category.name}
+                        </Link>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            )}
 
-            {/* Company Column */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-midnight">Company</h3>
-              <ul className="space-y-3">
-                <li>
-                  <Link
-                    to="/about"
-                    className="text-sm text-pebble hover:text-midnight-ash transition-colors"
-                  >
-                    Who we are
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/terms"
-                    className="text-sm text-pebble hover:text-midnight-ash transition-colors"
-                  >
-                    Terms & Conditions
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/privacy"
-                    className="text-sm text-pebble hover:text-midnight-ash transition-colors"
-                  >
-                    Privacy
-                  </Link>
-                </li>
-              </ul>
-            </div>
+            {/* Categories - Column 2 */}
+            {categories.length > Math.ceil(categories.length / 3) && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-midnight">
+                  More Categories
+                </h3>
+                <ul className="space-y-3">
+                  {categories
+                    .slice(
+                      Math.ceil(categories.length / 3),
+                      Math.ceil((2 * categories.length) / 3)
+                    )
+                    .map((category) => (
+                      <li key={category.id}>
+                        <Link
+                          to={`/products?category_id=${category.id}`}
+                          className="text-sm text-pebble hover:text-midnight-ash transition-colors"
+                        >
+                          {category.name}
+                        </Link>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            )}
 
-            {/* Account Column */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-midnight">Account</h3>
-              <ul className="space-y-3">
-                <li>
-                  <Link
-                    to="/profile"
-                    className="text-sm text-pebble hover:text-midnight-ash transition-colors"
-                  >
-                    Manage Account
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/returns"
-                    className="text-sm text-pebble hover:text-midnight-ash transition-colors"
-                  >
-                    Returns & Exchanges
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/help"
-                    className="text-sm text-pebble hover:text-midnight-ash transition-colors"
-                  >
-                    Help Center
-                  </Link>
-                </li>
-              </ul>
-            </div>
+            {/* Categories - Column 3 */}
+            {categories.length > 2 * Math.ceil(categories.length / 3) && (
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-midnight">
+                  All Categories
+                </h3>
+                <ul className="space-y-3">
+                  {categories
+                    .slice(Math.ceil((2 * categories.length) / 3))
+                    .map((category) => (
+                      <li key={category.id}>
+                        <Link
+                          to={`/products?category_id=${category.id}`}
+                          className="text-sm text-pebble hover:text-midnight-ash transition-colors"
+                        >
+                          {category.name}
+                        </Link>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            )}
 
             {/* Newsletter Column */}
             <div className="space-y-4">

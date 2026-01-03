@@ -555,34 +555,92 @@ export default function BidderProfile() {
           <div className="px-4 py-6 sm:p-8">
             <div className="max-w-2xl space-y-8">
               {/* Rating Stats */}
-              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-6">
-                <h3 className="text-lg font-semibold mb-4">
+              <div
+                style={{
+                  backgroundColor: COLORS.SOFT_CLOUD,
+                  borderRadius: BORDER_RADIUS.LG,
+                  padding: SPACING.L,
+                }}
+              >
+                <h3
+                  style={{
+                    fontSize: TYPOGRAPHY.SIZE_HEADING,
+                    fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                    marginBottom: SPACING.M,
+                    color: COLORS.MIDNIGHT,
+                  }}
+                >
                   Your Rating Score
                 </h3>
                 <div className="flex items-center gap-8">
                   <div className="text-center">
-                    <p className="text-4xl font-bold text-indigo-600">
+                    <p
+                      style={{
+                        fontSize: "2.25rem",
+                        fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+                        color: COLORS.MIDNIGHT_ASH,
+                      }}
+                    >
                       {user?.rating_points || 0}
                     </p>
-                    <p className="text-sm text-gray-600">Total Points</p>
+                    <p
+                      style={{
+                        fontSize: TYPOGRAPHY.SIZE_CAPTION,
+                        color: COLORS.PEBBLE,
+                      }}
+                    >
+                      Total Points
+                    </p>
                   </div>
                   <div className="flex gap-6">
                     <div className="flex items-center gap-2">
-                      <HandThumbUpIcon className="h-6 w-6 text-green-600" />
+                      <HandThumbUpIcon
+                        className="h-6 w-6"
+                        style={{ color: COLORS.MIDNIGHT_ASH }}
+                      />
                       <div>
-                        <p className="text-2xl font-semibold text-green-600">
+                        <p
+                          style={{
+                            fontSize: "1.5rem",
+                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                            color: COLORS.MIDNIGHT_ASH,
+                          }}
+                        >
                           {ratingStats.positive}
                         </p>
-                        <p className="text-xs text-gray-500">Positive</p>
+                        <p
+                          style={{
+                            fontSize: TYPOGRAPHY.SIZE_CAPTION,
+                            color: COLORS.PEBBLE,
+                          }}
+                        >
+                          Positive
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <HandThumbDownIcon className="h-6 w-6 text-red-600" />
+                      <HandThumbDownIcon
+                        className="h-6 w-6"
+                        style={{ color: COLORS.MIDNIGHT_ASH }}
+                      />
                       <div>
-                        <p className="text-2xl font-semibold text-red-600">
+                        <p
+                          style={{
+                            fontSize: "1.5rem",
+                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                            color: COLORS.MIDNIGHT_ASH,
+                          }}
+                        >
                           {ratingStats.negative}
                         </p>
-                        <p className="text-xs text-gray-500">Negative</p>
+                        <p
+                          style={{
+                            fontSize: TYPOGRAPHY.SIZE_CAPTION,
+                            color: COLORS.PEBBLE,
+                          }}
+                        >
+                          Negative
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -696,7 +754,7 @@ export default function BidderProfile() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-x-8 gap-y-8 py-10 md:grid-cols-3">
+      {/* <div className="grid grid-cols-1 gap-x-8 gap-y-8 py-10 md:grid-cols-3">
         <div className="px-4 sm:px-0">
           <h2 className="text-base/7 font-semibold text-gray-900">
             Notifications
@@ -944,7 +1002,7 @@ export default function BidderProfile() {
             </button>
           </div>
         </form>
-      </div>
+      </div> */}
 
       {/* Toast Notification */}
       {localToast && (
