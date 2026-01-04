@@ -106,7 +106,10 @@ export default function QuestionsHistory({ productId, product }) {
   // Ask question (Bidder)
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!questionText.trim()) return;
+    if (!questionText.trim()) {
+      toast.warning("Please enter your question before submitting");
+      return;
+    }
 
     try {
       setSending(true);
@@ -131,7 +134,10 @@ export default function QuestionsHistory({ productId, product }) {
 
   // Answer question (Seller)
   const handleReplySubmit = async (questionId) => {
-    if (!replyText.trim()) return;
+    if (!replyText.trim()) {
+      toast.warning("Please enter your reply before submitting");
+      return;
+    }
 
     try {
       setReplying(true);
@@ -177,7 +183,10 @@ export default function QuestionsHistory({ productId, product }) {
   };
 
   const saveEdit = async () => {
-    if (!editText.trim()) return;
+    if (!editText.trim()) {
+      toast.warning("Content cannot be empty");
+      return;
+    }
     try {
       if (editingItem.type === "question") {
         await QA_API.updateQuestion(editingItem.id, editText);

@@ -121,6 +121,23 @@ export default function BidderProfile() {
     const birthdate = form["birthdate"].value;
     const email = form["email"].value;
 
+    // Validation
+    if (!fullName.trim()) {
+      toast.warning("Full name is required");
+      return;
+    }
+    if (fullName.trim().length < 2) {
+      toast.warning("Full name is too short");
+      return;
+    }
+    if (!user?.googleId && !user?.facebookId && email) {
+      const emailRegex = /^\S+@\S+\.\S+$/;
+      if (!emailRegex.test(email.trim())) {
+        toast.warning("Please enter a valid email address");
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const response = await api.put(`/api/users/${user.id}`, {

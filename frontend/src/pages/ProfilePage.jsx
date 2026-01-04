@@ -182,6 +182,24 @@ export default function ProfilePage() {
 
   async function handleUpdatePersonalInfo(e) {
     e.preventDefault();
+
+    // Validation
+    if (!fullName.trim()) {
+      showToast("Full name is required");
+      return;
+    }
+    if (fullName.trim().length < 2) {
+      showToast("Full name is too short");
+      return;
+    }
+    if (!user?.googleId && !user?.facebookId && email) {
+      const emailRegex = /^\S+@\S+\.\S+$/;
+      if (!emailRegex.test(email.trim())) {
+        showToast("Please enter a valid email address");
+        return;
+      }
+    }
+
     try {
       setLoading(true);
       const res = await api.put(`/api/users/${user.id}`, {
@@ -203,12 +221,16 @@ export default function ProfilePage() {
 
   async function handleChangePassword(e) {
     e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      showToast("Passwords do not match");
-      return;
-    }
     if (!oldPassword || !newPassword) {
       showToast("Please fill all password fields");
+      return;
+    }
+    if (newPassword.length < 6) {
+      showToast("New password must be at least 6 characters");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showToast("Passwords do not match");
       return;
     }
     try {

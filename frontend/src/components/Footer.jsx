@@ -61,6 +61,16 @@ const Footer = () => {
 
   const handleNewsletterSubmit = (e) => {
     e.preventDefault();
+    // Validate email
+    if (!email.trim()) {
+      toast.warning("Please enter your email address");
+      return;
+    }
+    const emailRegex = /^\S+@\S+\.\S+$/;
+    if (!emailRegex.test(email.trim())) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
     // TODO: Implement newsletter subscription
     console.log("Newsletter signup:", email);
     setEmail("");

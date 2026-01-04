@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { HandThumbUpIcon, HandThumbDownIcon } from "@heroicons/react/24/solid";
+import { useToast } from "../context/ToastContext";
 
 export default function WriteReviewModal({ open, onClose, onSubmit }) {
   // DB constraint: ratings.score only allows 1 or -1 (like/dislike system)
@@ -7,6 +8,7 @@ export default function WriteReviewModal({ open, onClose, onSubmit }) {
   const [content, setContent] = useState("");
   const panelRef = useRef(null);
   const MAX = 500;
+  const toast = useToast();
 
   useEffect(() => {
     if (open) {
@@ -31,13 +33,21 @@ export default function WriteReviewModal({ open, onClose, onSubmit }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!content.trim() || rating === null) return;
+    if (rating === null) {
+      toast.warning("Please select a rating (positive or negative)");
+      return;
+    }
+    if (!content.trim()) {
+      toast.warning("Please write a review comment");
+      return;
+    }
     try {
       // DB constraint: ratings.score must be 1 or -1
       await onSubmit?.({ rating, content });
       onClose?.();
     } catch (err) {
       console.error("Submit review failed", err);
+      toast.error("Failed to submit review. Please try again.");
     }
   };
 

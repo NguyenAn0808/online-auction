@@ -9,9 +9,9 @@ export default function ForgotPassword() {
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
   const validate = () => {
-    // if (!email) return "Email is required";
-    // const re = /^\S+@\S+\.\S+$/;
-    // if (!re.test(email)) return "Enter a valid email";
+    if (!email.trim()) return "Email is required";
+    const re = /^\S+@\S+\.\S+$/;
+    if (!re.test(email.trim())) return "Enter a valid email address";
     return null;
   };
 

@@ -1,14 +1,19 @@
 import React, { useState } from "react";
 import { HandThumbUpIcon, HandThumbDownIcon } from "@heroicons/react/24/solid";
+import { useToast } from "../context/ToastContext";
 
 export default function RatingForm({ initial = {}, onSubmit }) {
   // DB constraint: ratings.score only allows 1 or -1 (like/dislike system)
   const [rating, setRating] = useState(initial.rating || null); // 1 (thumb up) or -1 (thumb down)
   const [comment, setComment] = useState(initial.comment || "");
+  const toast = useToast();
 
   function submit(e) {
     e.preventDefault();
-    if (rating === null) return;
+    if (rating === null) {
+      toast.warning("Please select a rating (positive or negative)");
+      return;
+    }
     // DB constraint: ratings.score must be 1 or -1
     onSubmit && onSubmit({ rating, comment });
   }
