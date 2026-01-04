@@ -13,13 +13,6 @@ import { ratingService } from "../services/ratingService";
 import { ORDER_STATUS } from "../services/orderService";
 import { productService } from "../services/productService";
 import api from "../services/api";
-import {
-  COLORS,
-  TYPOGRAPHY,
-  SPACING,
-  BORDER_RADIUS,
-  SHADOWS,
-} from "../constants/designSystem";
 
 // Helper function to format product data for BidOfferCard
 function formatProductForCard(product, type = "bid") {
@@ -106,6 +99,7 @@ export default function BidsOffers() {
   const [loadingBids, setLoadingBids] = useState(false);
   // Seller-specific state
   const [sellerActiveProducts, setSellerActiveProducts] = useState([]);
+  const [sellerSoldProducts, setSellerSoldProducts] = useState([]);
   const [loadingSellerProducts, setLoadingSellerProducts] = useState(false);
   const navigate = useNavigate();
 
@@ -341,10 +335,26 @@ export default function BidsOffers() {
           return new Date(p.end_time) > now;
         });
         setSellerActiveProducts(active);
+
+        // Filter sold products: ended AND has a winner
+        const sold = allProducts
+          .filter((p) => {
+            const isOwnProduct = p.seller_id === user.id;
+            if (!isOwnProduct) return false;
+            // Check if auction has ended
+            if (!p.end_time) return false;
+            const isEnded = new Date(p.end_time) <= now;
+            // Check if there's a winner
+            const hasWinner = p.price_holder || p.winner_id || p.buyer_id;
+            return isEnded && hasWinner;
+          })
+          .sort((a, b) => new Date(b.end_time) - new Date(a.end_time)); // newest sold first
+        setSellerSoldProducts(sold);
       } catch (err) {
         console.error("Failed to load seller products:", err);
         if (!mounted) return;
         setSellerActiveProducts([]);
+        setSellerSoldProducts([]);
       } finally {
         if (mounted) setLoadingSellerProducts(false);
       }
@@ -443,7 +453,7 @@ export default function BidsOffers() {
         const product = productMap[pid] || {};
         const endTime = product.end_time ? new Date(product.end_time) : null;
         const isActive = endTime ? endTime > now : true; // assume active if missing end_time
-        const won = wonItems.some((w) => w.id === pid);
+        const won = wonItems.some((w) => String(w.id) === String(pid));
         const name = product.name || product.productName || "Unnamed Product";
         const thumbnail =
           product.thumbnail ||
@@ -465,11 +475,14 @@ export default function BidsOffers() {
         );
 
         if (isActive) {
-          const top = highestMap[pid];
           const currentUserId = user?.id;
-          if (top && currentUserId) {
-            card.status =
-              top.bidder_id === currentUserId ? "Highest Bid" : "Outbid";
+          const productPriceHolderId = product?.price_holder;
+          const topBidderId = highestMap[pid]?.bidder_id;
+          const highestBidderId = productPriceHolderId ?? topBidderId;
+          if (currentUserId != null && highestBidderId != null) {
+            const isWinning = String(highestBidderId) === String(currentUserId);
+            card.isWinning = isWinning;
+            card.status = isWinning ? "Winning" : "Outbid";
           }
         }
 
@@ -579,230 +592,178 @@ export default function BidsOffers() {
   }, [transactions, myBids]);
 
   return (
-    <div style={{ backgroundColor: COLORS.WHISPER, minHeight: "100vh" }}>
+    <div className="bg-whisper min-h-screen">
       <Header />
 
-      <div
-        style={{ maxWidth: "1400px", margin: "0 auto", padding: SPACING.M }}
-        className="mx-auto px-4 sm:px-6 lg:px-8 mt-6"
-      >
-        <div className="lg:flex lg:space-x-6">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 mt-6 py-4">
+        <div className="lg:flex lg:gap-6">
           {/* Sidebar */}
-          <div className="hidden lg:block" style={{ width: "256px" }}>
+          <div className="hidden lg:block w-64 shrink-0">
             <Sidebar />
           </div>
 
           {/* Main area */}
           <div className="flex-1 min-w-0">
-            <div style={{ marginBottom: SPACING.L }}>
+            <div className="mb-6">
               <Tabs />
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: SPACING.XL,
-              }}
-            >
+            <div className="flex flex-col gap-8">
               {/* ========== SELLER SECTION ========== */}
               {user?.role === "seller" && (
-                <section>
-                  <h2
-                    style={{
-                      fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
-                      fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
-                      color: COLORS.MIDNIGHT_ASH,
-                      marginBottom: SPACING.S,
-                    }}
-                  >
-                    YOUR ACTIVE LISTINGS
-                  </h2>
-                  <p
-                    style={{
-                      fontSize: TYPOGRAPHY.SIZE_LABEL,
-                      color: COLORS.PEBBLE,
-                      marginBottom: SPACING.M,
-                    }}
-                  >
-                    Products you are currently selling
-                  </p>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: SPACING.S,
-                    }}
-                  >
-                    {loadingSellerProducts ? (
-                      <div
-                        style={{
-                          borderRadius: BORDER_RADIUS.MEDIUM,
-                          border: `2px dashed ${COLORS.MORNING_MIST}`,
-                          backgroundColor: COLORS.WHITE,
-                          padding: SPACING.L,
-                          textAlign: "center",
-                          color: COLORS.PEBBLE,
-                        }}
-                      >
-                        Loading your listings...
-                      </div>
-                    ) : sellerActiveProducts.length === 0 ? (
-                      <div
-                        style={{
-                          borderRadius: BORDER_RADIUS.MEDIUM,
-                          border: `2px dashed ${COLORS.MORNING_MIST}`,
-                          backgroundColor: COLORS.WHITE,
-                          padding: SPACING.L,
-                          textAlign: "center",
-                          color: COLORS.PEBBLE,
-                        }}
-                      >
-                        No active listings. Start selling now!
-                      </div>
-                    ) : (
-                      sellerActiveProducts.map((product) => {
-                        const thumbnail =
-                          product.thumbnail ||
-                          product.images?.[0]?.image_url ||
-                          "/images/sample.jpg";
-                        const currentPrice =
-                          product.current_price || product.start_price || 0;
-                        const bidCount = product.bid_count || 0;
-                        return (
-                          <div
-                            key={product.id}
-                            onClick={() => navigate(`/products/${product.id}`)}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: SPACING.M,
-                              backgroundColor: COLORS.WHITE,
-                              border: `1px solid ${COLORS.MORNING_MIST}`,
-                              padding: SPACING.M,
-                              borderRadius: BORDER_RADIUS.MEDIUM,
-                              cursor: "pointer",
-                              transition: "box-shadow 0.2s",
-                            }}
-                            onMouseEnter={(e) =>
-                              (e.currentTarget.style.boxShadow =
-                                SHADOWS.CARD_HOVER)
-                            }
-                            onMouseLeave={(e) =>
-                              (e.currentTarget.style.boxShadow = "none")
-                            }
-                          >
-                            <img
-                              src={thumbnail}
-                              alt={product.name}
-                              style={{
-                                width: "64px",
-                                height: "64px",
-                                objectFit: "cover",
-                                borderRadius: BORDER_RADIUS.SMALL,
-                              }}
-                            />
-                            <div style={{ flex: 1 }}>
-                              <div
-                                style={{
-                                  fontSize: TYPOGRAPHY.SIZE_BODY,
-                                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                                  color: COLORS.MIDNIGHT_ASH,
-                                }}
-                              >
-                                {product.name}
+                <>
+                  <section>
+                    <h2 className="text-lg font-bold text-midnight-ash mb-2">
+                      YOUR ACTIVE LISTINGS
+                    </h2>
+                    <p className="text-sm text-pebble mb-4">
+                      Products you are currently selling
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {loadingSellerProducts ? (
+                        <div className="rounded-lg border-2 border-dashed border-morning-mist bg-white p-6 text-center text-pebble">
+                          Loading your listings...
+                        </div>
+                      ) : sellerActiveProducts.length === 0 ? (
+                        <div className="rounded-lg border-2 border-dashed border-morning-mist bg-white p-6 text-center text-pebble">
+                          No active listings. Start selling now!
+                        </div>
+                      ) : (
+                        sellerActiveProducts.map((product) => {
+                          const thumbnail =
+                            product.thumbnail ||
+                            product.images?.[0]?.image_url ||
+                            "/images/sample.jpg";
+                          const currentPrice =
+                            product.current_price || product.start_price || 0;
+                          const bidCount = product.bid_count || 0;
+                          return (
+                            <div
+                              key={product.id}
+                              onClick={() =>
+                                navigate(`/products/${product.id}`)
+                              }
+                              className="flex items-center gap-4 bg-white border border-morning-mist p-4 rounded-lg cursor-pointer transition-shadow hover:shadow-md"
+                            >
+                              <img
+                                src={thumbnail}
+                                alt={product.name}
+                                className="w-16 h-16 object-cover rounded"
+                              />
+                              <div className="flex-1">
+                                <div className="text-base font-semibold text-midnight-ash">
+                                  {product.name}
+                                </div>
+                                <div className="text-sm text-pebble mt-1">
+                                  {bidCount} bid{bidCount !== 1 ? "s" : ""}
+                                </div>
                               </div>
-                              <div
-                                style={{
-                                  fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                  color: COLORS.PEBBLE,
-                                  marginTop: "4px",
-                                }}
-                              >
-                                {bidCount} bid{bidCount !== 1 ? "s" : ""}
+                              <div className="text-right">
+                                <div className="text-base font-bold text-midnight-ash">
+                                  {Number(currentPrice).toLocaleString("vi-VN")}{" "}
+                                  VND
+                                </div>
+                                <div className="text-sm text-green-600 mt-1">
+                                  Active
+                                </div>
                               </div>
                             </div>
-                            <div style={{ textAlign: "right" }}>
-                              <div
-                                style={{
-                                  fontSize: TYPOGRAPHY.SIZE_BODY,
-                                  fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
-                                  color: COLORS.MIDNIGHT_ASH,
-                                }}
-                              >
-                                {Number(currentPrice).toLocaleString("vi-VN")}{" "}
-                                VND
+                          );
+                        })
+                      )}
+                    </div>
+                  </section>
+
+                  {/* ========== SELLER SOLD PRODUCTS SECTION ========== */}
+                  <section>
+                    <h2 className="text-lg font-bold text-midnight-ash mb-2">
+                      SOLD PRODUCTS
+                    </h2>
+                    <p className="text-sm text-pebble mb-4">
+                      Products that have ended and have a buyer
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {loadingSellerProducts ? (
+                        <div className="rounded-lg border-2 border-dashed border-morning-mist bg-white p-6 text-center text-pebble">
+                          Loading sold products...
+                        </div>
+                      ) : sellerSoldProducts.length === 0 ? (
+                        <div className="rounded-lg border-2 border-dashed border-morning-mist bg-white p-6 text-center text-pebble">
+                          No sold products yet
+                        </div>
+                      ) : (
+                        sellerSoldProducts.map((product) => {
+                          const thumbnail =
+                            product.thumbnail ||
+                            product.images?.[0]?.image_url ||
+                            "/images/sample.jpg";
+                          const finalPrice =
+                            product.final_price ||
+                            product.current_price ||
+                            product.start_price ||
+                            0;
+                          const winnerName =
+                            product.price_holder_name ||
+                            product.winner_name ||
+                            product.buyer_name ||
+                            "Buyer";
+                          const endDate = product.end_time
+                            ? new Date(product.end_time).toLocaleDateString()
+                            : "N/A";
+                          return (
+                            <div
+                              key={product.id}
+                              onClick={() =>
+                                navigate(`/products/${product.id}`)
+                              }
+                              className="flex items-center gap-4 bg-white border border-morning-mist p-4 rounded-lg cursor-pointer transition-shadow hover:shadow-md"
+                            >
+                              <img
+                                src={thumbnail}
+                                alt={product.name}
+                                className="w-16 h-16 object-cover rounded"
+                              />
+                              <div className="flex-1">
+                                <div className="text-base font-semibold text-midnight-ash">
+                                  {product.name}
+                                </div>
+                                <div className="text-sm text-pebble mt-1">
+                                  Sold to: {winnerName} • Ended: {endDate}
+                                </div>
                               </div>
-                              <div
-                                style={{
-                                  fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                  color: "#16a34a",
-                                  marginTop: "4px",
-                                }}
-                              >
-                                Active
+                              <div className="text-right">
+                                <div className="text-base font-bold text-midnight-ash">
+                                  {Number(finalPrice).toLocaleString("vi-VN")}{" "}
+                                  VND
+                                </div>
+                                <div className="text-sm text-green-600 mt-1">
+                                  Sold
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </section>
+                          );
+                        })
+                      )}
+                    </div>
+                  </section>
+                </>
               )}
 
               {/* ========== BUYER BIDDING ACTIVITY SECTION ========== */}
               <section>
-                <h2
-                  style={{
-                    fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
-                    fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
-                    color: COLORS.MIDNIGHT_ASH,
-                    marginBottom: SPACING.S,
-                  }}
-                >
+                <h2 className="text-lg font-bold text-midnight-ash mb-2">
                   YOUR BIDDING ACTIVITY
                 </h2>
-                <p
-                  style={{
-                    fontSize: TYPOGRAPHY.SIZE_LABEL,
-                    color: COLORS.PEBBLE,
-                    marginBottom: SPACING.M,
-                  }}
-                >
+                <p className="text-sm text-pebble mb-4">
                   Auctions you are currently participating in
                 </p>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: SPACING.S,
-                  }}
-                >
+                <div className="flex flex-col gap-2">
                   {loadingBids ? (
-                    <div
-                      style={{
-                        borderRadius: BORDER_RADIUS.MEDIUM,
-                        border: `2px dashed ${COLORS.MORNING_MIST}`,
-                        backgroundColor: COLORS.WHITE,
-                        padding: SPACING.L,
-                        textAlign: "center",
-                        color: COLORS.PEBBLE,
-                      }}
-                    >
+                    <div className="rounded-lg border-2 border-dashed border-morning-mist bg-white p-6 text-center text-pebble">
                       Loading your bids...
                     </div>
                   ) : activeBids.length === 0 ? (
-                    <div
-                      style={{
-                        borderRadius: BORDER_RADIUS.MEDIUM,
-                        border: `2px dashed ${COLORS.MORNING_MIST}`,
-                        backgroundColor: COLORS.WHITE,
-                        padding: SPACING.L,
-                        textAlign: "center",
-                        color: COLORS.PEBBLE,
-                      }}
-                    >
+                    <div className="rounded-lg border-2 border-dashed border-morning-mist bg-white p-6 text-center text-pebble">
                       No active bids
                     </div>
                   ) : (
@@ -825,44 +786,17 @@ export default function BidsOffers() {
                 in the transaction/order response from the server.
               */}
               <section>
-                <h2
-                  style={{
-                    fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
-                    fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
-                    color: COLORS.MIDNIGHT_ASH,
-                    marginBottom: SPACING.S,
-                  }}
-                >
+                <h2 className="text-lg font-bold text-midnight-ash mb-2">
                   TRANSACTION HISTORY
                 </h2>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    marginBottom: SPACING.S,
-                  }}
-                >
-                  <p
-                    style={{
-                      fontSize: TYPOGRAPHY.SIZE_LABEL,
-                      color: COLORS.PEBBLE,
-                    }}
-                  >
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-pebble">
                     Your completed and pending transactions
                   </p>
                   {transactions.length > 0 && (
                     <button
                       onClick={() => navigate("/transactions")}
-                      style={{
-                        fontSize: TYPOGRAPHY.SIZE_LABEL,
-                        fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                        color: COLORS.DEEP_CHARCOAL,
-                        backgroundColor: "transparent",
-                        padding: `4px ${SPACING.M}`,
-                        cursor: "pointer",
-                      }}
-                      className="hover:bg-gray-50 underline"
+                      className="text-sm font-semibold text-deep-charcoal bg-transparent px-4 py-1 cursor-pointer hover:bg-gray-50 underline"
                     >
                       View All
                     </button>
@@ -873,70 +807,27 @@ export default function BidsOffers() {
                 ) : txError ? (
                   <div className="text-red-500">{txError}</div>
                 ) : transactions.length === 0 ? (
-                  <div
-                    style={{
-                      borderRadius: BORDER_RADIUS.MEDIUM,
-                      border: `2px dashed ${COLORS.MORNING_MIST}`,
-                      backgroundColor: COLORS.WHITE,
-                      padding: SPACING.L,
-                      textAlign: "center",
-                      color: COLORS.PEBBLE,
-                    }}
-                  >
+                  <div className="rounded-lg border-2 border-dashed border-morning-mist bg-white p-6 text-center text-pebble">
                     No transactions found
                   </div>
                 ) : (
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: SPACING.S,
-                    }}
-                  >
+                  <div className="flex flex-col gap-2">
                     {txCards.map((card) => (
                       <div
                         key={card.id}
                         onClick={() => navigate(`/transactions/${card.id}`)}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: SPACING.M,
-                          backgroundColor: COLORS.WHITE,
-                          border: `1px solid ${COLORS.MORNING_MIST}`,
-                          padding: SPACING.M,
-                          borderRadius: BORDER_RADIUS.MEDIUM,
-                          cursor: "pointer",
-                        }}
+                        className="flex items-center gap-4 bg-white border border-morning-mist p-4 rounded-lg cursor-pointer"
                       >
                         <img
                           src={card.imageSrc}
                           alt={card.name}
-                          style={{
-                            width: "64px",
-                            height: "64px",
-                            objectFit: "cover",
-                            borderRadius: BORDER_RADIUS.SMALL,
-                          }}
+                          className="w-16 h-16 object-cover rounded"
                         />
-                        <div style={{ flex: 1 }}>
-                          <div
-                            style={{
-                              fontSize: TYPOGRAPHY.SIZE_BODY,
-                              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                              color: COLORS.MIDNIGHT_ASH,
-                            }}
-                          >
+                        <div className="flex-1">
+                          <div className="text-base font-semibold text-midnight-ash">
                             {card.name}
                           </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              gap: SPACING.L,
-                              marginTop: SPACING.S,
-                              fontSize: TYPOGRAPHY.SIZE_LABEL,
-                              color: COLORS.MIDNIGHT_ASH,
-                            }}
-                          >
+                          <div className="flex gap-6 mt-2 text-sm text-midnight-ash">
                             <span>
                               Your bid:{" "}
                               <span className="text-midnight-ash font-bold ml-1">
@@ -955,17 +846,15 @@ export default function BidsOffers() {
                             </span>
                           </div>
                         </div>
-                        <div style={{ textAlign: "right" }}>
+                        <div className="text-right">
                           <div
-                            style={{
-                              fontSize: TYPOGRAPHY.SIZE_LABEL,
-                              color:
-                                card.status === "completed"
-                                  ? "#16a34a"
-                                  : card.status === "cancelled"
-                                  ? "#dc2626"
-                                  : "#b45309",
-                            }}
+                            className={`text-sm ${
+                              card.status === "completed"
+                                ? "text-green-600"
+                                : card.status === "cancelled"
+                                ? "text-red-600"
+                                : "text-amber-600"
+                            }`}
                           >
                             {card.status || "Unknown"}
                           </div>
@@ -978,56 +867,19 @@ export default function BidsOffers() {
 
               {/* ========== WON ITEMS SECTION ========== */}
               <section>
-                <h2
-                  style={{
-                    fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
-                    fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
-                    color: COLORS.MIDNIGHT_ASH,
-                    marginBottom: SPACING.S,
-                  }}
-                >
+                <h2 className="text-lg font-bold text-midnight-ash mb-2">
                   WON AUCTIONS
                 </h2>
-                <p
-                  style={{
-                    fontSize: TYPOGRAPHY.SIZE_LABEL,
-                    color: COLORS.PEBBLE,
-                    marginBottom: SPACING.M,
-                  }}
-                >
+                <p className="text-sm text-pebble mb-4">
                   Auctions where your bid was successful
                 </p>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: SPACING.S,
-                  }}
-                >
+                <div className="flex flex-col gap-2">
                   {loadingWon ? (
-                    <div
-                      style={{
-                        borderRadius: BORDER_RADIUS.MEDIUM,
-                        border: `2px dashed ${COLORS.MORNING_MIST}`,
-                        backgroundColor: COLORS.WHITE,
-                        padding: SPACING.L,
-                        textAlign: "center",
-                        color: COLORS.PEBBLE,
-                      }}
-                    >
+                    <div className="rounded-lg border-2 border-dashed border-morning-mist bg-white p-6 text-center text-pebble">
                       Loading won items...
                     </div>
                   ) : wonItems.length === 0 ? (
-                    <div
-                      style={{
-                        borderRadius: BORDER_RADIUS.MEDIUM,
-                        border: `2px dashed ${COLORS.MORNING_MIST}`,
-                        backgroundColor: COLORS.WHITE,
-                        padding: SPACING.L,
-                        textAlign: "center",
-                        color: COLORS.PEBBLE,
-                      }}
-                    >
+                    <div className="rounded-lg border-2 border-dashed border-morning-mist bg-white p-6 text-center text-pebble">
                       You haven't won any items yet
                     </div>
                   ) : (
@@ -1065,43 +917,15 @@ export default function BidsOffers() {
 
               {/* ========== DIDN'T WIN SECTION ========== */}
               <section>
-                <h2
-                  style={{
-                    fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
-                    fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
-                    color: COLORS.MIDNIGHT_ASH,
-                    marginBottom: SPACING.S,
-                  }}
-                >
+                <h2 className="text-lg font-bold text-midnight-ash mb-2">
                   OUTBID AUCTIONS
                 </h2>
-                <p
-                  style={{
-                    fontSize: TYPOGRAPHY.SIZE_LABEL,
-                    color: COLORS.PEBBLE,
-                    marginBottom: SPACING.M,
-                  }}
-                >
+                <p className="text-sm text-pebble mb-4">
                   Auctions that ended without your winning bid
                 </p>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: SPACING.S,
-                  }}
-                >
+                <div className="flex flex-col gap-2">
                   {lostItems.length === 0 ? (
-                    <div
-                      style={{
-                        borderRadius: BORDER_RADIUS.MEDIUM,
-                        border: `2px dashed ${COLORS.MORNING_MIST}`,
-                        backgroundColor: COLORS.WHITE,
-                        padding: SPACING.L,
-                        textAlign: "center",
-                        color: COLORS.PEBBLE,
-                      }}
-                    >
+                    <div className="rounded-lg border-2 border-dashed border-morning-mist bg-white p-6 text-center text-pebble">
                       No lost items
                     </div>
                   ) : (

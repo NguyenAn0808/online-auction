@@ -6,7 +6,6 @@ import {
   BORDER_RADIUS,
   SHADOWS,
 } from "../constants/designSystem";
-import { useNavigate } from "react-router-dom";
 
 /**
  * BidOfferCard - Universal reusable card for bids, offers, lost items, and won items
@@ -16,6 +15,7 @@ import { useNavigate } from "react-router-dom";
  *   - imageSrc: image URL
  *   - amount: bid/offer/price amount
  *   - status: "Highest Bid", "Outbid", "Offer pending", "Lost", "Won"
+ *   - isWinning: boolean (optional) - for bid cards, visually indicate winning state
  *   - endTime: time remaining or end time
  *   - type: "bid" | "offer" | "lost" | "won"
  *   - onAction: callback for action button click (receives item data)
@@ -27,17 +27,20 @@ export default function BidOfferCard({
   imageSrc,
   amount,
   status,
+  isWinning,
   endTime,
   type,
   onAction,
   onFeedback,
 }) {
-  const navigate = useNavigate();
   const handleCardClick = (e) => {
     if (e.target.closest("button")) {
       return;
     }
   };
+
+  const effectiveStatus =
+    isWinning === true || status === "Highest Bid" ? "Winning" : status;
 
   // Format amount to VND: xx.xxx.xxx VND
   const formatVND = (value) => {
@@ -73,8 +76,10 @@ export default function BidOfferCard({
 
   // Determine status color (PDF palette)
   const getStatusColor = () => {
-    if (status === "Highest Bid" || status === "Won") return "#6CA977"; // Green
-    if (status === "Outbid" || status === "Lost") return "#C85A54"; // Red
+    if (effectiveStatus === "Winning" || effectiveStatus === "Won")
+      return "#6CA977"; // Green
+    if (effectiveStatus === "Outbid" || effectiveStatus === "Lost")
+      return "#C85A54"; // Red
     return COLORS.PEBBLE;
   };
 
@@ -107,14 +112,18 @@ export default function BidOfferCard({
   return (
     <div
       style={{
-        backgroundColor: COLORS.WHITE,
-        border: `1px solid rgba(179, 191, 185, 0.2)`,
         borderRadius: BORDER_RADIUS.MEDIUM,
         boxShadow: SHADOWS.SUBTLE,
         overflow: "hidden",
         transition: "transform 0.2s ease, box-shadow 0.2s ease",
       }}
-      className="hover:shadow-light hover:scale-101"
+      className={
+        isWinning === true
+          ? "bg-green-50 border border-green-500 hover:shadow-light hover:scale-101"
+          : effectiveStatus === "Outbid"
+          ? "bg-red-50 border border-orange-300 hover:shadow-light hover:scale-101"
+          : "bg-white border border-[rgba(179,191,185,0.2)] hover:shadow-light hover:scale-101"
+      }
       onClick={handleCardClick}
     >
       <div
@@ -188,7 +197,7 @@ export default function BidOfferCard({
                   color: getStatusColor(),
                 }}
               >
-                {status}
+                {effectiveStatus}
               </p>
             </div>
 

@@ -73,6 +73,7 @@ export default function Checkout() {
 
         <form
           onSubmit={handleSubmit}
+          noValidate
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 1fr",

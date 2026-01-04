@@ -149,14 +149,17 @@ function maskName(fullName, userId, bidderUserData) {
   // Remove spaces and get the actual name string
   const nameWithoutSpaces = nameToMask.trim().replace(/\s+/g, "");
 
-  // If name is less than 3 characters, mask completely
-  if (nameWithoutSpaces.length < 3) {
+  // If name is less than 2 characters, mask completely
+  if (nameWithoutSpaces.length < 2) {
     return "*".repeat(nameWithoutSpaces.length);
   }
 
-  // Always show "****" followed by last 3 characters
-  const last3 = nameWithoutSpaces.slice(-3);
-  return "****" + last3;
+  // Mask every other character: 'nndkhoa' → 'n*d*h*a'
+  let masked = "";
+  for (let i = 0; i < nameWithoutSpaces.length; i++) {
+    masked += i % 2 === 0 ? nameWithoutSpaces[i] : "*";
+  }
+  return masked;
 }
 
 export default function BidHistory({ isSeller = false, productId = null }) {
@@ -197,8 +200,12 @@ export default function BidHistory({ isSeller = false, productId = null }) {
   // Don't directly overwrite localBids as polling doesn't respect blocklist
   useEffect(() => {
     // Ensure realtimeBids and localBids are arrays before processing
-    if (!Array.isArray(realtimeBids) || realtimeBids.length === 0 || 
-        !Array.isArray(localBids) || localBids.length === 0) {
+    if (
+      !Array.isArray(realtimeBids) ||
+      realtimeBids.length === 0 ||
+      !Array.isArray(localBids) ||
+      localBids.length === 0
+    ) {
       return;
     }
 
@@ -465,6 +472,22 @@ export default function BidHistory({ isSeller = false, productId = null }) {
               >
                 Bidder
               </th>
+              {isSeller && (
+                <th
+                  style={{
+                    paddingLeft: SPACING.M,
+                    paddingRight: SPACING.M,
+                    paddingTop: SPACING.M,
+                    paddingBottom: SPACING.M,
+                    textAlign: "left",
+                    fontSize: TYPOGRAPHY.SIZE_LABEL,
+                    fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                    color: COLORS.MIDNIGHT_ASH,
+                  }}
+                >
+                  Rating Info
+                </th>
+              )}
               <th
                 style={{
                   paddingLeft: SPACING.M,
@@ -549,25 +572,31 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                           color: COLORS.MIDNIGHT_ASH,
                         }}
                       >
-                        {maskName(
-                          bid.name,
-                          bid.bidder_id,
-                          bidderInfo[bid.bidder_id]
-                        )}{" "}
-                        {(() => {
-                          const txt = getBidderRatingText(bid.bidder_id);
-                          return txt ? (
-                            <span
-                              style={{
-                                marginLeft: SPACING.S,
-                                fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                color: COLORS.PEBBLE,
-                              }}
-                            >
-                              ({txt})
-                            </span>
-                          ) : null;
-                        })()}
+                        {isSeller
+                          ? bidderInfo[bid.bidder_id]?.full_name ||
+                            bidderInfo[bid.bidder_id]?.fullName ||
+                            bid.name ||
+                            "-"
+                          : maskName(
+                              bid.name,
+                              bid.bidder_id,
+                              bidderInfo[bid.bidder_id]
+                            )}{" "}
+                        {!isSeller &&
+                          (() => {
+                            const txt = getBidderRatingText(bid.bidder_id);
+                            return txt ? (
+                              <span
+                                style={{
+                                  marginLeft: SPACING.S,
+                                  fontSize: TYPOGRAPHY.SIZE_LABEL,
+                                  color: COLORS.PEBBLE,
+                                }}
+                              >
+                                ({txt})
+                              </span>
+                            ) : null;
+                          })()}
                         {isHighest ? (
                           <span
                             style={{
@@ -583,6 +612,31 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                       </div>
                     </div>
                   </td>
+                  {isSeller && (
+                    <td
+                      style={{
+                        paddingLeft: SPACING.M,
+                        paddingRight: SPACING.M,
+                        paddingTop: SPACING.M,
+                        paddingBottom: SPACING.M,
+                        fontSize: TYPOGRAPHY.SIZE_BODY,
+                      }}
+                    >
+                      <a
+                        href={`/user/${bid.bidder_id}/ratings`}
+                        style={{
+                          color: "#2563eb",
+                          textDecoration: "underline",
+                          fontSize: TYPOGRAPHY.SIZE_LABEL,
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                      >
+                        View Ratings
+                      </a>
+                    </td>
+                  )}
                   <td
                     style={{
                       paddingLeft: SPACING.M,

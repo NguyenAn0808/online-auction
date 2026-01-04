@@ -274,7 +274,7 @@ const EditProductModal = ({ isOpen, onClose, product, onUpdate }) => {
 
   return (
     <Modal isOpen={isOpen} title="Edit Product" size="xl">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-0">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-0" noValidate>
         {/* Tabs */}
         <TabGroup selectedIndex={selectedTab} onChange={setSelectedTab}>
           <TabList className="flex border-b bg-gray-50">

@@ -230,7 +230,7 @@ const ListingForm = () => {
   return (
     <div className="container max-w-5xl mx-auto py-8 px-4">
       <h3 className="text-3xl font-bold mb-6">Create your listing</h3>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8" noValidate>
         {/* PHOTOS & VIDEO */}
         <section className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex justify-between items-start mb-4">

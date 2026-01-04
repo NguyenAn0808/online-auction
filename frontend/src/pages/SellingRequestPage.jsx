@@ -36,7 +36,7 @@ export default function SellingRequestPage() {
   async function fetchRequestStatus() {
     try {
       const res = await api.get("/api/upgrade-requests/my-status");
-      
+
       // If a request exists, set the status
       if (res.data && res.data.status) {
         setRequestStatus(res.data.status);
@@ -86,8 +86,13 @@ export default function SellingRequestPage() {
       isValid = false;
     } else {
       const maxSize = 5 * 1024 * 1024;
-      const allowedTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
-      
+      const allowedTypes = [
+        "application/pdf",
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+      ];
+
       for (const file of files) {
         if (file.size > maxSize) {
           newErrors.documents = `File "${file.name}" exceeds 5MB limit.`;
@@ -133,7 +138,8 @@ export default function SellingRequestPage() {
       setSelectedFiles([]);
       setShowSuccessDialog(true);
     } catch (err) {
-      const errorMsg = err.response?.data?.message || "Failed to submit request";
+      const errorMsg =
+        err.response?.data?.message || "Failed to submit request";
       setErrors((prev) => ({ ...prev, documents: errorMsg }));
     } finally {
       setSubmitting(false);
@@ -240,7 +246,9 @@ export default function SellingRequestPage() {
                       color: "#78350F",
                     }}
                   >
-                    We have received your request. Our team is currently reviewing your documents. This process usually takes 24-48 hours.
+                    We have received your request. Our team is currently
+                    reviewing your documents. This process usually takes 24-48
+                    hours.
                   </p>
                 </div>
               )}
@@ -385,318 +393,320 @@ export default function SellingRequestPage() {
 
               {requestStatus === null && (
                 <section>
-                <div
-                  style={{
-                    backgroundColor: COLORS.WHITE,
-                    borderRadius: BORDER_RADIUS.MEDIUM,
-                    boxShadow: SHADOWS.SUBTLE,
-                    padding: SPACING.L,
-                  }}
-                >
-                  <h2
+                  <div
                     style={{
-                      fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
-                      fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
-                      color: COLORS.MIDNIGHT_ASH,
-                      marginBottom: SPACING.S,
+                      backgroundColor: COLORS.WHITE,
+                      borderRadius: BORDER_RADIUS.MEDIUM,
+                      boxShadow: SHADOWS.SUBTLE,
+                      padding: SPACING.L,
                     }}
                   >
-                    Request to Sell
-                  </h2>
-                  <p
-                    style={{
-                      fontSize: TYPOGRAPHY.SIZE_BODY,
-                      color: COLORS.PEBBLE,
-                      marginBottom: SPACING.L,
-                    }}
-                  >
-                    Fill this form to request an upgrade to seller. Admin will
-                    review within 7 days.
-                  </p>
+                    <h2
+                      style={{
+                        fontSize: TYPOGRAPHY.SIZE_CATEGORY_TITLE,
+                        fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
+                        color: COLORS.MIDNIGHT_ASH,
+                        marginBottom: SPACING.S,
+                      }}
+                    >
+                      Request to Sell
+                    </h2>
+                    <p
+                      style={{
+                        fontSize: TYPOGRAPHY.SIZE_BODY,
+                        color: COLORS.PEBBLE,
+                        marginBottom: SPACING.L,
+                      }}
+                    >
+                      Fill this form to request an upgrade to seller. Admin will
+                      review within 7 days.
+                    </p>
 
-                  <form
-                    onSubmit={handleSubmit}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: SPACING.L,
-                    }}
-                  >
-                    <div>
-                      <label
-                        style={{
-                          display: "block",
-                          fontSize: TYPOGRAPHY.SIZE_LABEL_LARGE,
-                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                          color: COLORS.MIDNIGHT_ASH,
-                          marginBottom: SPACING.S,
-                        }}
-                      >
-                        Reason <span style={{ color: "#DC2626" }}>*</span>
-                      </label>
-                      <textarea
-                        name="reason"
-                        style={{
-                          display: "block",
-                          width: "100%",
-                          borderRadius: BORDER_RADIUS.MEDIUM,
-                          backgroundColor: COLORS.WHITE,
-                          padding: `${SPACING.S} ${SPACING.M}`,
-                          color: COLORS.MIDNIGHT_ASH,
-                          border: `1.5px solid ${
-                            errors.reason ? "#DC2626" : COLORS.MORNING_MIST
-                          }`,
-                          fontSize: TYPOGRAPHY.SIZE_BODY,
-                          fontFamily: "inherit",
-                        }}
-                        rows={4}
-                        placeholder="Explain why you want to become a seller on our platform (minimum 20 characters)"
-                        onChange={() =>
-                          errors.reason &&
-                          setErrors((prev) => ({ ...prev, reason: "" }))
-                        }
-                      />
-                      {errors.reason && (
-                        <p
+                    <form
+                      onSubmit={handleSubmit}
+                      noValidate
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: SPACING.L,
+                      }}
+                    >
+                      <div>
+                        <label
                           style={{
-                            color: "#DC2626",
-                            fontSize: TYPOGRAPHY.SIZE_LABEL,
-                            marginTop: SPACING.XS,
+                            display: "block",
+                            fontSize: TYPOGRAPHY.SIZE_LABEL_LARGE,
+                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                            color: COLORS.MIDNIGHT_ASH,
+                            marginBottom: SPACING.S,
                           }}
                         >
-                          {errors.reason}
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label
-                        style={{
-                          display: "block",
-                          fontSize: TYPOGRAPHY.SIZE_LABEL_LARGE,
-                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                          color: COLORS.MIDNIGHT_ASH,
-                          marginBottom: SPACING.S,
-                        }}
-                      >
-                        Contact Info <span style={{ color: "#DC2626" }}>*</span>
-                      </label>
-                      <input
-                        name="contact"
-                        type="text"
-                        style={{
-                          display: "block",
-                          width: "100%",
-                          borderRadius: BORDER_RADIUS.MEDIUM,
-                          backgroundColor: COLORS.WHITE,
-                          padding: `${SPACING.S} ${SPACING.M}`,
-                          color: COLORS.MIDNIGHT_ASH,
-                          border: `1.5px solid ${
-                            errors.contact ? "#DC2626" : COLORS.MORNING_MIST
-                          }`,
-                          fontSize: TYPOGRAPHY.SIZE_BODY,
-                          fontFamily: "inherit",
-                        }}
-                        placeholder="your.email@example.com or phone number"
-                        onChange={() =>
-                          errors.contact &&
-                          setErrors((prev) => ({ ...prev, contact: "" }))
-                        }
-                      />
-                      {errors.contact && (
-                        <p
+                          Reason <span style={{ color: "#DC2626" }}>*</span>
+                        </label>
+                        <textarea
+                          name="reason"
                           style={{
-                            color: "#DC2626",
-                            fontSize: TYPOGRAPHY.SIZE_LABEL,
-                            marginTop: SPACING.XS,
+                            display: "block",
+                            width: "100%",
+                            borderRadius: BORDER_RADIUS.MEDIUM,
+                            backgroundColor: COLORS.WHITE,
+                            padding: `${SPACING.S} ${SPACING.M}`,
+                            color: COLORS.MIDNIGHT_ASH,
+                            border: `1.5px solid ${
+                              errors.reason ? "#DC2626" : COLORS.MORNING_MIST
+                            }`,
+                            fontSize: TYPOGRAPHY.SIZE_BODY,
+                            fontFamily: "inherit",
                           }}
-                        >
-                          {errors.contact}
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label
-                        style={{
-                          display: "block",
-                          fontSize: TYPOGRAPHY.SIZE_LABEL_LARGE,
-                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                          color: COLORS.MIDNIGHT_ASH,
-                          marginBottom: SPACING.S,
-                        }}
-                      >
-                        Supporting documents (ID, samples){" "}
-                        <span style={{ color: "#DC2626" }}>*</span>
-                      </label>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "center",
-                          borderRadius: BORDER_RADIUS.MEDIUM,
-                          border: `2px dashed ${
-                            errors.documents ? "#DC2626" : COLORS.MORNING_MIST
-                          }`,
-                          padding: SPACING.XL,
-                          backgroundColor: COLORS.WHITE,
-                        }}
-                      >
-                        <div style={{ textAlign: "center" }}>
-                          <svg
-                            style={{
-                              margin: "0 auto",
-                              height: "48px",
-                              width: "48px",
-                              color: COLORS.PEBBLE,
-                            }}
-                            stroke="currentColor"
-                            fill="none"
-                            viewBox="0 0 48 48"
-                            aria-hidden="true"
-                          >
-                            <path
-                              d="M28 8H12a4 4 0 00-4 4v20a4 4 0 004 4h24a4 4 0 004-4V20m-8-12v12m0 0l-3-3m3 3l3-3"
-                              strokeWidth={2}
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                          <div
-                            style={{
-                              marginTop: SPACING.M,
-                              display: "flex",
-                              fontSize: TYPOGRAPHY.SIZE_BODY,
-                              color: COLORS.PEBBLE,
-                              justifyContent: "center",
-                            }}
-                          >
-                            <label
-                              htmlFor="documents-upload"
-                              style={{
-                                position: "relative",
-                                cursor: "pointer",
-                                borderRadius: BORDER_RADIUS.MEDIUM,
-                                backgroundColor: COLORS.WHITE,
-                                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                                color: COLORS.MIDNIGHT_ASH,
-                              }}
-                              className="hover:text-blue-600"
-                            >
-                              <span>Upload files</span>
-                              <input
-                                id="documents-upload"
-                                name="documents"
-                                type="file"
-                                multiple
-                                accept="image/*,.pdf"
-                                onChange={handleFileChange}
-                                style={{ display: "none" }}
-                              />
-                            </label>
-                            <p style={{ paddingLeft: SPACING.S }}>
-                              or drag and drop
-                            </p>
-                          </div>
+                          rows={4}
+                          placeholder="Explain why you want to become a seller on our platform (minimum 20 characters)"
+                          onChange={() =>
+                            errors.reason &&
+                            setErrors((prev) => ({ ...prev, reason: "" }))
+                          }
+                        />
+                        {errors.reason && (
                           <p
                             style={{
+                              color: "#DC2626",
                               fontSize: TYPOGRAPHY.SIZE_LABEL,
-                              color: COLORS.PEBBLE,
-                              marginTop: SPACING.S,
+                              marginTop: SPACING.XS,
                             }}
                           >
-                            PNG, JPG, PDF up to 5MB each
+                            {errors.reason}
                           </p>
-                          {selectedFiles.length > 0 && (
+                        )}
+                      </div>
+
+                      <div>
+                        <label
+                          style={{
+                            display: "block",
+                            fontSize: TYPOGRAPHY.SIZE_LABEL_LARGE,
+                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                            color: COLORS.MIDNIGHT_ASH,
+                            marginBottom: SPACING.S,
+                          }}
+                        >
+                          Contact Info{" "}
+                          <span style={{ color: "#DC2626" }}>*</span>
+                        </label>
+                        <input
+                          name="contact"
+                          type="text"
+                          style={{
+                            display: "block",
+                            width: "100%",
+                            borderRadius: BORDER_RADIUS.MEDIUM,
+                            backgroundColor: COLORS.WHITE,
+                            padding: `${SPACING.S} ${SPACING.M}`,
+                            color: COLORS.MIDNIGHT_ASH,
+                            border: `1.5px solid ${
+                              errors.contact ? "#DC2626" : COLORS.MORNING_MIST
+                            }`,
+                            fontSize: TYPOGRAPHY.SIZE_BODY,
+                            fontFamily: "inherit",
+                          }}
+                          placeholder="your.email@example.com or phone number"
+                          onChange={() =>
+                            errors.contact &&
+                            setErrors((prev) => ({ ...prev, contact: "" }))
+                          }
+                        />
+                        {errors.contact && (
+                          <p
+                            style={{
+                              color: "#DC2626",
+                              fontSize: TYPOGRAPHY.SIZE_LABEL,
+                              marginTop: SPACING.XS,
+                            }}
+                          >
+                            {errors.contact}
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label
+                          style={{
+                            display: "block",
+                            fontSize: TYPOGRAPHY.SIZE_LABEL_LARGE,
+                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                            color: COLORS.MIDNIGHT_ASH,
+                            marginBottom: SPACING.S,
+                          }}
+                        >
+                          Supporting documents (ID, samples){" "}
+                          <span style={{ color: "#DC2626" }}>*</span>
+                        </label>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "center",
+                            borderRadius: BORDER_RADIUS.MEDIUM,
+                            border: `2px dashed ${
+                              errors.documents ? "#DC2626" : COLORS.MORNING_MIST
+                            }`,
+                            padding: SPACING.XL,
+                            backgroundColor: COLORS.WHITE,
+                          }}
+                        >
+                          <div style={{ textAlign: "center" }}>
+                            <svg
+                              style={{
+                                margin: "0 auto",
+                                height: "48px",
+                                width: "48px",
+                                color: COLORS.PEBBLE,
+                              }}
+                              stroke="currentColor"
+                              fill="none"
+                              viewBox="0 0 48 48"
+                              aria-hidden="true"
+                            >
+                              <path
+                                d="M28 8H12a4 4 0 00-4 4v20a4 4 0 004 4h24a4 4 0 004-4V20m-8-12v12m0 0l-3-3m3 3l3-3"
+                                strokeWidth={2}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
                             <div
                               style={{
                                 marginTop: SPACING.M,
-                                fontSize: TYPOGRAPHY.SIZE_LABEL_LARGE,
-                                color: COLORS.MIDNIGHT_ASH,
-                                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                                display: "flex",
+                                fontSize: TYPOGRAPHY.SIZE_BODY,
+                                color: COLORS.PEBBLE,
+                                justifyContent: "center",
                               }}
                             >
-                              {selectedFiles.length} file(s) selected:
-                              <ul
+                              <label
+                                htmlFor="documents-upload"
                                 style={{
-                                  marginTop: SPACING.S,
-                                  fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                  color: COLORS.PEBBLE,
-                                  listStyle: "none",
-                                  padding: 0,
+                                  position: "relative",
+                                  cursor: "pointer",
+                                  borderRadius: BORDER_RADIUS.MEDIUM,
+                                  backgroundColor: COLORS.WHITE,
+                                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                                  color: COLORS.MIDNIGHT_ASH,
+                                }}
+                                className="hover:text-blue-600"
+                              >
+                                <span>Upload files</span>
+                                <input
+                                  id="documents-upload"
+                                  name="documents"
+                                  type="file"
+                                  multiple
+                                  accept="image/*,.pdf"
+                                  onChange={handleFileChange}
+                                  style={{ display: "none" }}
+                                />
+                              </label>
+                              <p style={{ paddingLeft: SPACING.S }}>
+                                or drag and drop
+                              </p>
+                            </div>
+                            <p
+                              style={{
+                                fontSize: TYPOGRAPHY.SIZE_LABEL,
+                                color: COLORS.PEBBLE,
+                                marginTop: SPACING.S,
+                              }}
+                            >
+                              PNG, JPG, PDF up to 5MB each
+                            </p>
+                            {selectedFiles.length > 0 && (
+                              <div
+                                style={{
+                                  marginTop: SPACING.M,
+                                  fontSize: TYPOGRAPHY.SIZE_LABEL_LARGE,
+                                  color: COLORS.MIDNIGHT_ASH,
+                                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
                                 }}
                               >
-                                {selectedFiles.map((file, idx) => (
-                                  <li key={idx}>
-                                    {file.name} ({Math.round(file.size / 1024)}{" "}
-                                    KB)
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
+                                {selectedFiles.length} file(s) selected:
+                                <ul
+                                  style={{
+                                    marginTop: SPACING.S,
+                                    fontSize: TYPOGRAPHY.SIZE_LABEL,
+                                    color: COLORS.PEBBLE,
+                                    listStyle: "none",
+                                    padding: 0,
+                                  }}
+                                >
+                                  {selectedFiles.map((file, idx) => (
+                                    <li key={idx}>
+                                      {file.name} (
+                                      {Math.round(file.size / 1024)} KB)
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
                         </div>
+                        {errors.documents && (
+                          <p
+                            style={{
+                              color: "#DC2626",
+                              fontSize: TYPOGRAPHY.SIZE_LABEL,
+                              marginTop: SPACING.XS,
+                            }}
+                          >
+                            {errors.documents}
+                          </p>
+                        )}
                       </div>
-                      {errors.documents && (
-                        <p
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "flex-end",
+                          gap: SPACING.M,
+                          paddingTop: SPACING.L,
+                          borderTop: `1px solid ${COLORS.MORNING_MIST}`,
+                        }}
+                      >
+                        <button
+                          type="button"
                           style={{
-                            color: "#DC2626",
-                            fontSize: TYPOGRAPHY.SIZE_LABEL,
-                            marginTop: SPACING.XS,
+                            fontSize: TYPOGRAPHY.SIZE_BODY,
+                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                            color: COLORS.MIDNIGHT_ASH,
+                            backgroundColor: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            borderRadius: BORDER_RADIUS.FULL,
+                            padding: `${SPACING.S} ${SPACING.L}`,
+                            transition: "opacity 0.2s ease",
+                          }}
+                          className="hover:opacity-70"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={submitting}
+                          style={{
+                            borderRadius: BORDER_RADIUS.FULL,
+                            backgroundColor: COLORS.MIDNIGHT_ASH,
+                            padding: `${SPACING.S} ${SPACING.L}`,
+                            fontSize: TYPOGRAPHY.SIZE_BODY,
+                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                            color: COLORS.WHITE,
+                            border: "none",
+                            cursor: submitting ? "not-allowed" : "pointer",
+                            opacity: submitting ? 0.6 : 1,
+                            transition: "opacity 0.2s ease",
                           }}
                         >
-                          {errors.documents}
-                        </p>
-                      )}
-                    </div>
-
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "flex-end",
-                        gap: SPACING.M,
-                        paddingTop: SPACING.L,
-                        borderTop: `1px solid ${COLORS.MORNING_MIST}`,
-                      }}
-                    >
-                      <button
-                        type="button"
-                        style={{
-                          fontSize: TYPOGRAPHY.SIZE_BODY,
-                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                          color: COLORS.MIDNIGHT_ASH,
-                          backgroundColor: "transparent",
-                          border: "none",
-                          cursor: "pointer",
-                          borderRadius: BORDER_RADIUS.FULL,
-                          padding: `${SPACING.S} ${SPACING.L}`,
-                          transition: "opacity 0.2s ease",
-                        }}
-                        className="hover:opacity-70"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={submitting}
-                        style={{
-                          borderRadius: BORDER_RADIUS.FULL,
-                          backgroundColor: COLORS.MIDNIGHT_ASH,
-                          padding: `${SPACING.S} ${SPACING.L}`,
-                          fontSize: TYPOGRAPHY.SIZE_BODY,
-                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                          color: COLORS.WHITE,
-                          border: "none",
-                          cursor: submitting ? "not-allowed" : "pointer",
-                          opacity: submitting ? 0.6 : 1,
-                          transition: "opacity 0.2s ease",
-                        }}
-                      >
-                        {submitting ? "Submitting..." : "Submit request"}
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </section>
+                          {submitting ? "Submitting..." : "Submit request"}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </section>
               )}
             </div>
           </div>

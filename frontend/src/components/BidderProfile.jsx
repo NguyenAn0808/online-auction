@@ -281,6 +281,7 @@ export default function BidderProfile() {
         <form
           className="bg-white ring-1 shadow-xs ring-gray-900/5 sm:rounded-xl md:col-span-2"
           onSubmit={handlePersonalInfoSubmit}
+          noValidate
         >
           <div className="px-4 py-6 sm:p-8">
             <div className="grid max-w-2xl grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
@@ -409,6 +410,7 @@ export default function BidderProfile() {
           <form
             className="bg-white ring-1 shadow-xs ring-gray-900/5 sm:rounded-xl md:col-span-2"
             onSubmit={handlePasswordChange}
+            noValidate
           >
             <div className="px-4 py-6 sm:p-8">
               <div className="space-y-6">
@@ -739,7 +741,7 @@ export default function BidderProfile() {
                           </div>
                           <button
                             onClick={() => openUpdateRatingModal(rating)}
-                            className="px-3 py-1 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors flex-shrink-0"
+                            className="px-3 py-1 text-xs text-pebble hover:text-midnight-ash/90 hover:bg-midnight-ash/10 rounded-lg transition-colors flex-shrink-0"
                           >
                             Update
                           </button>
@@ -765,7 +767,7 @@ export default function BidderProfile() {
           </p>
         </div>
 
-        <form className="bg-white ring-1 shadow-xs ring-gray-900/5 sm:rounded-xl md:col-span-2">
+        <form className="bg-white ring-1 shadow-xs ring-gray-900/5 sm:rounded-xl md:col-span-2" noValidate>
           <div className="px-4 py-6 sm:p-8">
             <div className="max-w-2xl space-y-10 md:col-span-2">
               <fieldset>

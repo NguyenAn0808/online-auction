@@ -208,7 +208,11 @@ export default function QuestionsHistory({ productId, product }) {
 
       {/* ASK FORM */}
       {!isSeller && (
-        <form onSubmit={handleSubmit} style={{ marginBottom: SPACING.L }}>
+        <form
+          onSubmit={handleSubmit}
+          style={{ marginBottom: SPACING.L }}
+          noValidate
+        >
           <label
             style={{
               fontSize: TYPOGRAPHY.SIZE_LABEL,

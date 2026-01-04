@@ -306,7 +306,7 @@ const CategoryManagementPage = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmitCreate}>
+            <form onSubmit={handleSubmitCreate} noValidate>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Category Name <span className="text-red-500">*</span>
@@ -379,7 +379,7 @@ const CategoryManagementPage = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmitEdit}>
+            <form onSubmit={handleSubmitEdit} noValidate>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Category Name <span className="text-red-500">*</span>

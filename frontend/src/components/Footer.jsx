@@ -150,7 +150,11 @@ const Footer = () => {
               <h3 className="text-sm font-semibold text-midnight">
                 Sign up for our newsletter
               </h3>
-              <form onSubmit={handleNewsletterSubmit} className="space-y-3">
+              <form
+                onSubmit={handleNewsletterSubmit}
+                className="space-y-3"
+                noValidate
+              >
                 <div>
                   <label htmlFor="newsletter-email" className="sr-only">
                     Email address

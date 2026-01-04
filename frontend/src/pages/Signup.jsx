@@ -280,7 +280,7 @@ export default function Signup() {
             </div>
             <div className="mt-10">
               {stage === "form" && (
-                <form onSubmit={onSubmit} className="space-y-6">
+                <form onSubmit={onSubmit} className="space-y-6" noValidate>
                   <div>
                     <label
                       htmlFor="username"

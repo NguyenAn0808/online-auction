@@ -14,7 +14,7 @@ export default function RatingForm({ initial = {}, onSubmit }) {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4">
+    <form onSubmit={submit} className="space-y-4" noValidate>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Rating

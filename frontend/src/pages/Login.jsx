@@ -79,7 +79,7 @@ export default function Login() {
 
         <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-[480px]">
           <div className="bg-white px-6 py-12 shadow-sm sm:rounded-lg sm:px-12">
-            <form onSubmit={onSubmit} className="space-y-6">
+            <form onSubmit={onSubmit} className="space-y-6" noValidate>
               <div>
                 <label
                   htmlFor="email"

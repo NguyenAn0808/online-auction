@@ -303,7 +303,7 @@ export default function ProfilePage() {
           {activeTab === "info" && (
             <div className="space-y-8">
               {/* Personal Info Form */}
-              <form onSubmit={handleUpdatePersonalInfo}>
+              <form onSubmit={handleUpdatePersonalInfo} noValidate>
                 <h2 className="text-xl font-semibold mb-4">
                   Personal Information
                 </h2>
@@ -365,7 +365,7 @@ export default function ProfilePage() {
 
               {/* Change Password Form */}
               {!user?.googleId && !user?.facebookId && (
-                <form onSubmit={handleChangePassword}>
+                <form onSubmit={handleChangePassword} noValidate>
                   <h2 className="text-xl font-semibold mb-4 pt-6 border-t">
                     Change Password
                   </h2>

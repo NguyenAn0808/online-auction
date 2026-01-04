@@ -68,7 +68,8 @@ export default function ForgotPassword() {
                 Reset your password
               </h2>
               <p className="mt-2 text-sm text-gray-600">
-                Enter your email address and we will send you an OTP to reset your password.
+                Enter your email address and we will send you an OTP to reset
+                your password.
               </p>
             </div>
 
@@ -107,7 +108,7 @@ export default function ForgotPassword() {
               </div>
             ) : (
               /* Form State */
-              <form onSubmit={onSubmit} className="space-y-6">
+              <form onSubmit={onSubmit} className="space-y-6" noValidate>
                 <div>
                   <label
                     htmlFor="email"

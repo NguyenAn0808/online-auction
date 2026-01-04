@@ -12,7 +12,7 @@ export default function PaymentInvoiceForm({ initial, onSubmit }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       <div>
         <label className="block text-sm font-medium text-gray-700">
           Payment method

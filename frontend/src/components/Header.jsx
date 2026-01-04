@@ -87,6 +87,7 @@ const Header = () => {
           <form
             onSubmit={handleSearch}
             className="search-bar w-36 sm:w-64 md:w-80"
+            noValidate
           >
             <input
               type="text"

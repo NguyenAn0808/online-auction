@@ -35,6 +35,7 @@ import Watchlist from "./pages/Watchlist";
 // Pages - User & Profile
 import { BidderProfilePage } from "./pages/BidderProfilePage";
 import Ratings from "./pages/Ratings";
+import RatingsPage from "./pages/RatingsPage";
 
 // Pages - Transactions
 import TransactionHistory from "./pages/TransactionHistory";
@@ -74,6 +75,8 @@ const router = createBrowserRouter(
         {/* Product Routes */}
         <Route path="products" element={<ProductListingPage />} />
         <Route path="products/:productId" element={<ProductDetails />} />
+        {/* Public User Ratings Page */}
+        <Route path="user/:userId/ratings" element={<RatingsPage />} />
 
         {/* PROTECTED ROUTES (Logged in Users Only - Bidders & Sellers) */}
         <Route

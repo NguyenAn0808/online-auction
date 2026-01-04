@@ -65,7 +65,7 @@ export default function WriteReviewModal({ open, onClose, onSubmit }) {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-6">
+        <form onSubmit={handleSubmit} className="mt-6" noValidate>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Rate this Item
           </label>

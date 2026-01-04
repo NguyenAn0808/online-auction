@@ -96,7 +96,7 @@ function VerifyResetOTP() {
           </div>
         )}
 
-        <form onSubmit={onSubmit} className="w-full space-y-4">
+        <form onSubmit={onSubmit} className="w-full space-y-4" noValidate>
           <div>
             <label
               htmlFor="otp"

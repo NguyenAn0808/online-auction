@@ -1,7 +1,6 @@
 "use client";
 import { useAuth } from "../context/AuthContext";
-import { useToast } from "../context/ToastContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import {
@@ -10,11 +9,6 @@ import {
   DisclosurePanel,
   Radio,
   RadioGroup,
-  Tab,
-  TabGroup,
-  TabList,
-  TabPanel,
-  TabPanels,
 } from "@headlessui/react";
 import { StarIcon } from "@heroicons/react/20/solid";
 import {
@@ -39,10 +33,6 @@ import { useAuctionPolling } from "../hooks/useAuctionPolling";
 import { useBidPolling } from "../hooks/useBidPolling";
 import { useAuctionCountdown } from "../hooks/useAuctionCountdown";
 
-function classNames(...classes) {
-  return classes.filter(Boolean).join(" ");
-}
-
 // Format date to DD/MM/YYYY
 function formatDescriptionDate(dateString) {
   const date = new Date(dateString);
@@ -53,18 +43,58 @@ function formatDescriptionDate(dateString) {
   });
 }
 
-// Mask display name: show **** + last 3 characters (no spaces)
+// Mask display name: mask every other character ('nndkhoa' → 'n*d*h*a')
 function maskDisplayName(name) {
   if (!name || typeof name !== "string") return "-";
   const trimmed = name.trim().replace(/\s+/g, "");
-  if (trimmed.length < 3) return "*".repeat(trimmed.length);
-  const last3 = trimmed.slice(-3);
-  return "****" + last3;
+  if (trimmed.length < 2) return "*".repeat(trimmed.length);
+  // Mask every other character
+  let masked = "";
+  for (let i = 0; i < trimmed.length; i++) {
+    masked += i % 2 === 0 ? trimmed[i] : "*";
+  }
+  return masked;
+}
+
+// Decode HTML entities if backend stored/returned escaped HTML.
+function decodeHtmlEntities(html) {
+  if (!html) return "";
+  const raw = String(html);
+  if (typeof document === "undefined") return raw;
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.innerHTML = raw;
+    let decoded = textarea.value;
+    // Handle common double-encoding (e.g., &amp;lt;p&amp;gt;)
+    if (decoded.includes("&lt;") || decoded.includes("&gt;")) {
+      textarea.innerHTML = decoded;
+      decoded = textarea.value;
+    }
+    return decoded;
+  } catch {
+    return raw;
+  }
+}
+
+// Basic HTML sanitizer: strips script tags + inline event handlers.
+function sanitizeHtml(html) {
+  if (!html) return "";
+  try {
+    return String(html)
+      .replace(/<\s*script[^>]*>.*?<\s*\/\s*script\s*>/gis, "")
+      .replace(/on[a-zA-Z]+\s*=\s*"[^"]*"/g, "")
+      .replace(/on[a-zA-Z]+\s*=\s*'[^']*'/g, "");
+  } catch {
+    return String(html);
+  }
+}
+
+function getSafeDescriptionHtml(html) {
+  return sanitizeHtml(decodeHtmlEntities(html));
 }
 
 export default function ProductOverview({ productId: propProductId }) {
   const { user } = useAuth(); // Check if user is logged in
-  const toast = useToast();
   const { productId: paramProductId } = useParams();
   const productId = propProductId || paramProductId;
   const location = useLocation();
@@ -79,13 +109,43 @@ export default function ProductOverview({ productId: propProductId }) {
 
   const [showBidQuickView, setShowBidQuickView] = useState(false);
   const [isEnded, setIsEnded] = useState(false);
-  const [isWinner, setIsWinner] = useState(false);
   const [isEditDescOpen, setIsEditDescOpen] = useState(false);
   const [descriptionHistory, setDescriptionHistory] = useState([]);
   const [sellerInfo, setSellerInfo] = useState(null);
 
+  // Product image slideshow
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  const imageCount =
+    Array.isArray(product?.images) && product.images.length > 0
+      ? product.images.length
+      : product?.thumbnail
+      ? 1
+      : 1;
+
+  useEffect(() => {
+    // reset slide on product change
+    setActiveImageIndex(0);
+  }, [productId]);
+
+  useEffect(() => {
+    // keep index in range
+    setActiveImageIndex((prev) => {
+      if (!imageCount || imageCount <= 0) return 0;
+      return Math.min(prev, imageCount - 1);
+    });
+  }, [imageCount]);
+
+  useEffect(() => {
+    if (imageCount <= 1) return;
+    const timer = setInterval(() => {
+      setActiveImageIndex((prev) => (prev + 1) % imageCount);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [imageCount]);
+
   // ✨ Real-time polling hooks
-  const { auctionData, loading: auctionLoading } = useAuctionPolling(productId);
+  const { auctionData } = useAuctionPolling(productId);
   const { bids, highestBid, bidCount } = useBidPolling(productId);
   const { timeRemaining, hasEnded } = useAuctionCountdown(
     auctionData?.end_time || product?.end_time,
@@ -96,7 +156,7 @@ export default function ProductOverview({ productId: propProductId }) {
   );
 
   // Fetch description history
-  const fetchDescriptionHistory = async () => {
+  const fetchDescriptionHistory = useCallback(async () => {
     if (!productId) return;
     try {
       const history = await productService.getDescriptionHistory(productId);
@@ -115,7 +175,7 @@ export default function ProductOverview({ productId: propProductId }) {
         ]);
       }
     }
-  };
+  }, [productId, product?.description, product?.created_at]);
 
   // Fetch product data
   useEffect(() => {
@@ -174,7 +234,7 @@ export default function ProductOverview({ productId: propProductId }) {
     };
 
     fetchProduct();
-  }, [productId]);
+  }, [productId, navigate, user]);
 
   // Update product data when polling detects changes
   useEffect(() => {
@@ -196,35 +256,11 @@ export default function ProductOverview({ productId: propProductId }) {
     if (product?.id) {
       fetchDescriptionHistory();
     }
-  }, [product?.id]);
+  }, [product?.id, fetchDescriptionHistory]);
 
-  const openBidQuickView = () => {
-    setShowBidQuickView(true);
-  };
   const closeBidQuickView = () => setShowBidQuickView(false);
   const openEditDesc = () => setIsEditDescOpen(true);
   const closeEditDesc = () => setIsEditDescOpen(false);
-
-  const handleUpdateProduct = async (productId, data) => {
-    try {
-      const payload = {
-        name: data.name,
-        description: data.description,
-        start_price: data.start_price,
-        step_price: data.step_price,
-        buy_now_price: data.buy_now_price ?? null,
-        allow_unrated_bidder: !!data.allow_unrated_bidder,
-        auto_extend: !!data.auto_extend,
-      };
-      await productService.updateProduct(productId, payload);
-      toast.success("Product updated successfully!");
-      // Reload product to reflect changes
-      const updated = await productService.getProductById(productId);
-      setProduct(updated);
-    } catch (e) {
-      toast.error("Failed to update product");
-    }
-  };
 
   const requireAuth = (actionCallback) => {
     if (!user) {
@@ -236,7 +272,7 @@ export default function ProductOverview({ productId: propProductId }) {
     actionCallback();
   };
 
-  const handleUpdateDescription = async (productId, data) => {
+  const handleUpdateDescription = async () => {
     // Refresh description history after adding new description
     await fetchDescriptionHistory();
   };
@@ -264,11 +300,10 @@ export default function ProductOverview({ productId: propProductId }) {
     });
   };
 
-  const handleAddToBag = () => {
-    requireAuth(() => {
-      console.log("Added to bag!");
-    });
-  };
+  const safeProductDescriptionHtml = useMemo(
+    () => getSafeDescriptionHtml(product?.description),
+    [product?.description]
+  );
 
   if (loading)
     return <div className="p-10 text-center">Loading product details...</div>;
@@ -286,11 +321,11 @@ export default function ProductOverview({ productId: propProductId }) {
   // Priority: 1) highest bid from polling, 2) product.current_price, 3) start_price
   // Calculate highest bid manually from bids array if highestBid is null
   let calculatedHighestBid = highestBid?.amount;
-  
+
   if (!calculatedHighestBid && Array.isArray(bids) && bids.length > 0) {
     // Filter out rejected bids, only count pending or accepted bids
-    const activeBids = bids.filter(bid => bid.status !== 'rejected');
-    
+    const activeBids = bids.filter((bid) => bid.status !== "rejected");
+
     if (activeBids.length > 0) {
       const maxBid = activeBids.reduce((max, bid) => {
         const bidAmount = Number(bid.amount || bid.max_bid || 0);
@@ -344,7 +379,6 @@ export default function ProductOverview({ productId: propProductId }) {
     sellerInfo?.full_name ||
     product.seller_id ||
     "Seller";
-  const sellerRating = product.seller_rating || null;
 
   // Auction status
   const endTime = product.end_time ? new Date(product.end_time) : null;
@@ -358,59 +392,123 @@ export default function ProductOverview({ productId: propProductId }) {
       <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-24 lg:max-w-7xl lg:px-8">
         <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-8">
           {/* Image gallery */}
-          <TabGroup className="flex flex-col-reverse">
-            {/* Image selector */}
+          <div className="flex flex-col-reverse">
+            {/* Thumbnails */}
             <div className="mx-auto mt-6 hidden w-full max-w-2xl sm:block lg:max-w-none">
-              <TabList className="grid grid-cols-4 gap-6">
-                {normalizedImages.map((image) => (
-                  <Tab
-                    key={image.id}
-                    className="group relative flex h-24 cursor-pointer items-center justify-center rounded-md uppercase focus:ring-3 focus:ring-offset-4 focus:outline-hidden"
-                    style={{
-                      backgroundColor: COLORS.WHITE,
-                      fontSize: TYPOGRAPHY.SIZE_BODY,
-                      fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                      color: COLORS.MIDNIGHT_ASH,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = COLORS.SOFT_CLOUD;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = COLORS.WHITE;
-                    }}
-                  >
-                    <span className="sr-only">Image</span>
-                    <span className="absolute inset-0 overflow-hidden rounded-md">
-                      <img
-                        alt=""
-                        src={image.src}
-                        className="size-full object-cover"
-                      />
-                    </span>
-                    <span
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-0 rounded-md ring-2 ring-transparent ring-offset-2"
+              <div className="grid grid-cols-4 gap-6">
+                {normalizedImages.map((image, index) => {
+                  const isActive = index === activeImageIndex;
+                  return (
+                    <button
+                      key={image.id}
+                      type="button"
+                      onClick={() => setActiveImageIndex(index)}
+                      className={
+                        "group relative flex h-24 cursor-pointer items-center justify-center rounded-md focus:outline-hidden " +
+                        (isActive
+                          ? "ring-2 ring-offset-2 ring-gray-900"
+                          : "hover:ring-2 hover:ring-offset-2 hover:ring-gray-300")
+                      }
                       style={{
-                        ringColor: COLORS.MIDNIGHT_ASH,
+                        backgroundColor: COLORS.WHITE,
                       }}
-                    />
-                  </Tab>
-                ))}
-              </TabList>
+                      aria-label={`View image ${index + 1}`}
+                    >
+                      <span className="absolute inset-0 overflow-hidden rounded-md">
+                        <img
+                          alt={image.alt}
+                          src={image.src}
+                          className="size-full object-cover"
+                          loading={index === 0 ? "eager" : "lazy"}
+                        />
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            <TabPanels>
-              {normalizedImages.map((image) => (
-                <TabPanel key={image.id}>
+            {/* Slideshow */}
+            <div className="relative aspect-square w-full overflow-hidden sm:rounded-lg bg-white">
+              {normalizedImages.map((image, index) => (
+                <div
+                  key={image.id}
+                  className={
+                    "absolute inset-0 transition-opacity duration-700 ease-in-out " +
+                    (index === activeImageIndex
+                      ? "opacity-100"
+                      : "opacity-0 pointer-events-none")
+                  }
+                >
                   <img
                     alt={image.alt}
                     src={image.src}
-                    className="aspect-square w-full object-cover sm:rounded-lg"
+                    className="size-full object-cover"
+                    loading={index === 0 ? "eager" : "lazy"}
                   />
-                </TabPanel>
+                </div>
               ))}
-            </TabPanels>
-          </TabGroup>
+
+              {normalizedImages.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveImageIndex(
+                        (prev) =>
+                          (prev - 1 + normalizedImages.length) %
+                          normalizedImages.length
+                      )
+                    }
+                    className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow"
+                    aria-label="Previous image"
+                  >
+                    <svg
+                      className="w-5 h-5 text-gray-800"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="m15 19-7-7 7-7"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveImageIndex(
+                        (prev) => (prev + 1) % normalizedImages.length
+                      )
+                    }
+                    className="absolute right-3 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow"
+                    aria-label="Next image"
+                  >
+                    <svg
+                      className="w-5 h-5 text-gray-800"
+                      aria-hidden="true"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="m9 5 7 7-7 7"
+                      />
+                    </svg>
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
 
           {/* Product info */}
           <div className="mt-10 px-4 sm:mt-16 sm:px-0 lg:mt-0">
@@ -465,26 +563,50 @@ export default function ProductOverview({ productId: propProductId }) {
 
               {/* Winning Bidder Info - Source of Truth: product.price_holder */}
               {product.price_holder && (
-                <div
-                  className="mt-2 text-sm font-medium"
-                  style={{
-                    color:
-                      product.price_holder === user?.id ? "#16a34a" : "#2563eb",
-                    backgroundColor:
-                      product.price_holder === user?.id ? "#f0fdf4" : "#eff6ff",
-                    padding: "4px 12px",
-                    borderRadius: BORDER_RADIUS.FULL,
-                    display: "inline-block",
-                  }}
-                >
-                  🏆{" "}
-                  {product.price_holder === user?.id
-                    ? "You are currently winning!"
-                    : `${
-                        product.price_holder_name
-                          ? maskDisplayName(product.price_holder_name)
-                          : "A bidder"
-                      } is currently winning`}
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                  <div
+                    className="text-sm font-medium"
+                    style={{
+                      color:
+                        product.price_holder === user?.id
+                          ? "#16a34a"
+                          : COLORS.MIDNIGHT_ASH,
+                      backgroundColor:
+                        product.price_holder === user?.id
+                          ? "#f0fdf4"
+                          : COLORS.SOFT_CLOUD,
+                      padding: "4px 12px",
+                      borderRadius: BORDER_RADIUS.FULL,
+                      display: "inline-block",
+                    }}
+                  >
+                    🏆{" "}
+                    {product.price_holder === user?.id
+                      ? "You are currently winning!"
+                      : `${
+                          product.price_holder_name
+                            ? maskDisplayName(product.price_holder_name)
+                            : "A bidder"
+                        } is currently winning`}
+                  </div>
+                  {product.price_holder !== user?.id && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(`/user/${product.price_holder}/ratings`)
+                      }
+                      className="text-xs underline hover:opacity-70 transition-opacity"
+                      style={{
+                        color: COLORS.PEBBLE,
+                        backgroundColor: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 0,
+                      }}
+                    >
+                      View Ratings
+                    </button>
+                  )}
                 </div>
               )}
               <div
@@ -579,12 +701,25 @@ export default function ProductOverview({ productId: propProductId }) {
                   <div
                     style={{
                       fontSize: TYPOGRAPHY.SIZE_LABEL,
-                      color: COLORS.PEBBLE,
                     }}
                   >
-                    {sellerRating
-                      ? `Rating: ${sellerRating}`
-                      : "No ratings yet"}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(`/user/${product.seller_id}/ratings`)
+                      }
+                      className="underline hover:opacity-70 transition-opacity"
+                      style={{
+                        color: COLORS.PEBBLE,
+                        backgroundColor: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 0,
+                        fontSize: TYPOGRAPHY.SIZE_LABEL,
+                      }}
+                    >
+                      View Ratings
+                    </button>
                   </div>
                 </div>
               </div>
@@ -648,7 +783,7 @@ export default function ProductOverview({ productId: propProductId }) {
                     className="mt-1"
                     style={{
                       fontSize: TYPOGRAPHY.SIZE_LABEL,
-                      color: "#2563eb",
+                      color: COLORS.PEBBLE,
                     }}
                   >
                     ⏱️ Auto-extend enabled (extends if bid placed near end)
@@ -719,30 +854,35 @@ export default function ProductOverview({ productId: propProductId }) {
                         )}
                       </div>
                       <div
+                        className="[&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:mb-1 [&_a]:underline [&_img]:max-w-full [&_img]:h-auto [&_blockquote]:pl-4 [&_blockquote]:border-l-4"
                         style={{
                           fontSize: TYPOGRAPHY.SIZE_BODY_LARGE,
                           color: COLORS.MIDNIGHT_ASH,
                           lineHeight: TYPOGRAPHY.LINE_HEIGHT_RELAXED,
                         }}
-                        dangerouslySetInnerHTML={{ __html: desc.content }}
+                        dangerouslySetInnerHTML={{
+                          __html: getSafeDescriptionHtml(desc.content),
+                        }}
                       />
                     </div>
                   ))
                 ) : (
                   <div
-                    className="p-4 rounded-lg border border-gray-200 bg-white"
+                    className="p-4 rounded-lg border border-gray-200 bg-white [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:mb-1 [&_a]:underline [&_img]:max-w-full [&_img]:h-auto [&_blockquote]:pl-4 [&_blockquote]:border-l-4"
                     style={{
                       fontSize: TYPOGRAPHY.SIZE_BODY_LARGE,
                       color: COLORS.MIDNIGHT_ASH,
                       lineHeight: TYPOGRAPHY.LINE_HEIGHT_RELAXED,
                     }}
-                    dangerouslySetInnerHTML={{ __html: product.description }}
+                    dangerouslySetInnerHTML={{
+                      __html: safeProductDescriptionHtml,
+                    }}
                   />
                 )}
               </div>
             </div>
 
-            <form className="mt-6">
+            <form className="mt-6" noValidate>
               <div className="mt-10 flex flex-col gap-4">
                 {isEnded ? (
                   // Role-based UI when auction has ended

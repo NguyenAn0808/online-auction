@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useToast } from "../context/ToastContext";
+import FileUploadBox from "./FileUploadBox";
 
 export default function ShippingInvoiceForm({ initial = {}, onSubmit }) {
   const [shippingCode, setShippingCode] = useState(initial.tracking || "");
@@ -30,7 +31,7 @@ export default function ShippingInvoiceForm({ initial = {}, onSubmit }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       <div>
         <label className="block text-sm font-medium text-gray-700">
           Shipping code
@@ -43,59 +44,14 @@ export default function ShippingInvoiceForm({ initial = {}, onSubmit }) {
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Upload Shipping Receipt
-        </label>
-
-        {/* Changed from div to label so the WHOLE box is clickable */}
-        <label
-          htmlFor="shipping-file-upload"
-          className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md cursor-pointer hover:bg-gray-50 transition-colors"
-        >
-          <div className="space-y-1 text-center">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              stroke="currentColor"
-              fill="none"
-              viewBox="0 0 48 48"
-              aria-hidden="true"
-            >
-              <path
-                d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <div className="text-sm text-gray-600">
-              <span className="font-medium text-indigo-600 hover:text-indigo-500">
-                Click to upload a file
-              </span>
-              <span className="pl-1">or drag and drop</span>
-
-              {/* HIDDEN INPUT */}
-              <input
-                id="shipping-file-upload"
-                name="shipping-file-upload"
-                type="file"
-                className="sr-only"
-                accept="image/*"
-                onChange={(e) => setFile(e.target.files[0])}
-              />
-            </div>
-            <p className="text-xs text-gray-500">
-              {file ? (
-                <span className="text-green-600 font-bold">
-                  Selected: {file.name}
-                </span>
-              ) : (
-                "PNG, JPG, GIF up to 10MB"
-              )}
-            </p>
-          </div>
-        </label>
-      </div>
+      <FileUploadBox
+        id="shipping-file-upload"
+        label="Upload Shipping Receipt"
+        file={file}
+        onFileChange={setFile}
+        accept="image/*"
+        helpText="Upload a photo of the shipping receipt or tracking info"
+      />
 
       <div className="flex justify-end">
         <button

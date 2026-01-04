@@ -91,7 +91,7 @@ export default function FeedbackModal({ isOpen, item, onSubmit, onClose }) {
           </div>
 
           {/* Body */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <form onSubmit={handleSubmit} className="p-6 space-y-6" noValidate>
             {/* Rating Selection */}
             <div>
               <p className="text-sm font-medium text-gray-900 mb-3">

@@ -1,20 +1,19 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import {
+  useParams,
+  useNavigate,
+  useSearchParams,
+  useLocation,
+} from "react-router-dom";
 import Header from "../components/Header";
 import TransactionStepper from "../components/TransactionStepper";
 import TransactionSummary from "../components/TransactionSummary";
 import ShippingInvoiceForm from "../components/ShippingInvoiceForm";
+import FileUploadBox from "../components/FileUploadBox";
 import { Radio, RadioGroup } from "@headlessui/react";
 import { HandThumbUpIcon, HandThumbDownIcon } from "@heroicons/react/24/solid";
 import { CheckCircleIcon } from "@heroicons/react/20/solid";
 import { ChevronDownIcon } from "@heroicons/react/16/solid";
-import {
-  COLORS,
-  TYPOGRAPHY,
-  SPACING,
-  BORDER_RADIUS,
-  SHADOWS,
-} from "../constants/designSystem";
 import { useAuth } from "../context/AuthContext";
 import * as TransactionService from "../services/transactionService"; // Legacy service (deprecated)
 import { STATUS } from "../services/transactionService"; // Legacy status constants (deprecated)
@@ -28,63 +27,21 @@ import { useToast } from "../context/ToastContext";
 // CancelledView Component - Displays when order is cancelled
 function CancelledView({ order, isSeller, navigate }) {
   return (
-    <div
-      style={{
-        backgroundColor: "#FEF2F2",
-        border: "1px solid #FECACA",
-        borderRadius: "12px",
-        padding: "48px 32px",
-        textAlign: "center",
-        maxWidth: "500px",
-        margin: "0 auto",
-      }}
-    >
+    <div className="bg-red-50 border border-red-200 rounded-xl py-12 px-8 text-center max-w-md mx-auto">
       {/* Icon */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          marginBottom: "24px",
-        }}
-      >
-        <div
-          style={{
-            width: "80px",
-            height: "80px",
-            backgroundColor: "#FEE2E2",
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <XCircleIcon
-            style={{ width: "48px", height: "48px", color: "#DC2626" }}
-          />
+      <div className="flex justify-center mb-6">
+        <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center">
+          <XCircleIcon className="w-12 h-12 text-red-600" />
         </div>
       </div>
 
       {/* Title */}
-      <h2
-        style={{
-          fontSize: "24px",
-          fontWeight: "700",
-          color: "#991B1B",
-          marginBottom: "12px",
-        }}
-      >
+      <h2 className="text-2xl font-bold text-red-800 mb-3">
         {isSeller ? "Transaction Cancelled" : "Order Cancelled by Seller"}
       </h2>
 
       {/* Message */}
-      <p
-        style={{
-          fontSize: "15px",
-          color: "#7F1D1D",
-          marginBottom: "32px",
-          lineHeight: "1.6",
-        }}
-      >
+      <p className="text-sm text-red-900 mb-8 leading-relaxed">
         {isSeller
           ? "You have successfully cancelled this transaction. The buyer has been rated -1 automatically."
           : "The seller has cancelled this order. If you believe this is an error, please contact support."}
@@ -92,46 +49,26 @@ function CancelledView({ order, isSeller, navigate }) {
 
       {/* Order Info */}
       {order && (
-        <div
-          style={{
-            backgroundColor: "#FFFFFF",
-            border: "1px solid #FECACA",
-            borderRadius: "8px",
-            padding: "16px",
-            marginBottom: "24px",
-            textAlign: "left",
-          }}
-        >
-          <div
-            style={{ fontSize: "13px", color: "#6B7280", marginBottom: "4px" }}
-          >
-            Order ID
-          </div>
-          <div
-            style={{ fontSize: "14px", fontWeight: "600", color: "#374151" }}
-          >
+        <div className="bg-white border border-red-200 rounded-lg p-4 mb-6 text-left">
+          <div className="text-xs text-gray-500 mb-1">Order ID</div>
+          <div className="text-sm font-semibold text-gray-700">
             #{order.id?.slice(0, 8) || "N/A"}
           </div>
           {order.productName && (
             <>
-              <div
-                style={{
-                  fontSize: "13px",
-                  color: "#6B7280",
-                  marginTop: "12px",
-                  marginBottom: "4px",
-                }}
-              >
-                Product
-              </div>
-              <div
-                style={{
-                  fontSize: "14px",
-                  fontWeight: "600",
-                  color: "#374151",
-                }}
-              >
+              <div className="text-xs text-gray-500 mt-3 mb-1">Product</div>
+              <div className="text-sm font-semibold text-gray-700">
                 {order.productName}
+              </div>
+            </>
+          )}
+          {order.cancellation_reason && (
+            <>
+              <div className="text-xs text-gray-500 mt-3 mb-1">
+                Cancellation Reason
+              </div>
+              <div className="text-sm text-red-700 italic">
+                {order.cancellation_reason}
               </div>
             </>
           )}
@@ -139,23 +76,10 @@ function CancelledView({ order, isSeller, navigate }) {
       )}
 
       {/* Actions */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+      <div className="flex flex-col gap-3">
         <button
           onClick={() => navigate("/")}
-          style={{
-            width: "100%",
-            padding: "14px 24px",
-            backgroundColor: "#1F1F1F",
-            color: "#FFFFFF",
-            border: "none",
-            borderRadius: "8px",
-            fontSize: "15px",
-            fontWeight: "600",
-            cursor: "pointer",
-            transition: "background-color 0.2s",
-          }}
-          onMouseOver={(e) => (e.target.style.backgroundColor = "#374151")}
-          onMouseOut={(e) => (e.target.style.backgroundColor = "#1F1F1F")}
+          className="w-full py-3.5 px-6 bg-gray-900 text-white border-none rounded-lg text-sm font-semibold cursor-pointer transition-colors hover:bg-gray-700"
         >
           Return to Dashboard
         </button>
@@ -164,20 +88,7 @@ function CancelledView({ order, isSeller, navigate }) {
             onClick={() =>
               (window.location.href = "mailto:support@auction.com")
             }
-            style={{
-              width: "100%",
-              padding: "14px 24px",
-              backgroundColor: "#FFFFFF",
-              color: "#DC2626",
-              border: "1px solid #FECACA",
-              borderRadius: "8px",
-              fontSize: "15px",
-              fontWeight: "600",
-              cursor: "pointer",
-              transition: "background-color 0.2s",
-            }}
-            onMouseOver={(e) => (e.target.style.backgroundColor = "#FEF2F2")}
-            onMouseOut={(e) => (e.target.style.backgroundColor = "#FFFFFF")}
+            className="w-full py-3.5 px-6 bg-white text-red-600 border border-red-200 rounded-lg text-sm font-semibold cursor-pointer transition-colors hover:bg-red-50"
           >
             Contact Support
           </button>
@@ -229,6 +140,7 @@ export default function TransactionPage() {
   const [localToast, setLocalToast] = useState(null);
   const [isCancelModalOpen, setCancelModalOpen] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [viewStep, setViewStep] = useState(null); // Step being viewed (for navigation)
   // Step 1 Form State (Buyer Creating Order)
   const [formData, setFormData] = useState({
     firstName: "",
@@ -591,6 +503,25 @@ export default function TransactionPage() {
 
   const hasUserRated = tx?.ratings?.[userRole];
 
+  // The step being viewed (defaults to currentStep if not set)
+  const activeViewStep = viewStep ?? currentStep;
+
+  // Whether viewing a completed (read-only) step
+  const isViewingPastStep = activeViewStep < currentStep;
+
+  // Handler for step navigation
+  const handleStepClick = (stepId) => {
+    // Only allow navigation to completed steps or current step
+    if (stepId <= currentStep) {
+      setViewStep(stepId);
+    }
+  };
+
+  // Reset viewStep when currentStep changes (e.g., after submitting)
+  useEffect(() => {
+    setViewStep(null);
+  }, [currentStep]);
+
   const shouldShowFinalReceipt = useMemo(() => {
     // Case 1: The transaction status is globally final (Step 5)
     if (currentStep === 5) return true;
@@ -608,15 +539,7 @@ export default function TransactionPage() {
   if (loading)
     return <div className="p-10 text-center">Loading transaction...</div>;
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: COLORS.SOFT_CLOUD }}>
-      <style>
-        {`
-          @keyframes fadeSlideIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-        `}
-      </style>
+    <div className="min-h-screen bg-soft-cloud">
       <Header />
       {notification && (
         <div
@@ -658,27 +581,13 @@ export default function TransactionPage() {
           <span className="font-medium text-sm">{notification.message}</span>
         </div>
       )}
-      <div style={{ display: "flex", height: "calc(100vh - 64px)" }}>
+      <div className="flex h-[calc(100vh-64px)]">
         {/* LEFT: Main Wizard Content */}
-        <div style={{ flex: 1, overflowY: "auto", padding: SPACING.L }}>
-          <div style={{ maxWidth: "896px", margin: "0 auto" }}>
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-4xl mx-auto">
             {/* Header */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                marginBottom: SPACING.L,
-                gap: SPACING.M,
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: SPACING.M,
-                }}
-              >
+            <div className="flex items-start justify-between mb-6 gap-4">
+              <div className="flex items-center gap-4">
                 {(tx?.productImage ||
                   productDetails?.thumbnail ||
                   productDetails?.images?.[0]?.image_url) && (
@@ -689,52 +598,19 @@ export default function TransactionPage() {
                       productDetails?.images?.[0]?.image_url
                     }
                     alt="Product"
-                    style={{
-                      width: "64px",
-                      height: "64px",
-                      objectFit: "cover",
-                      borderRadius: BORDER_RADIUS.MEDIUM,
-                      boxShadow: SHADOWS.SUBTLE,
-                    }}
+                    className="w-16 h-16 object-cover rounded-lg shadow-sm"
                   />
                 )}
                 <div>
                   {/* Product Name - Primary */}
-                  <h1
-                    style={{
-                      fontSize: "26px",
-                      fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
-                      color: COLORS.MIDNIGHT_ASH,
-                      marginBottom: "6px",
-                      lineHeight: "1.3",
-                    }}
-                  >
+                  <h1 className="text-2xl font-bold text-midnight-ash mb-1.5 leading-tight">
                     {productDetails?.name || "Loading product..."}
                   </h1>
 
                   {/* Transaction Info Row */}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                      flexWrap: "wrap",
-                    }}
-                  >
+                  <div className="flex items-center gap-3 flex-wrap">
                     {/* Order ID Badge */}
-                    <span
-                      style={{
-                        fontSize: "12px",
-                        fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                        backgroundColor: COLORS.SOFT_CLOUD,
-                        padding: "4px 10px",
-                        borderRadius: "16px",
-                        color: COLORS.PEBBLE,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "4px",
-                      }}
-                    >
+                    <span className="text-xs font-medium bg-soft-cloud py-1 px-2.5 rounded-full text-pebble inline-flex items-center gap-1">
                       <svg
                         width="12"
                         height="12"
@@ -749,19 +625,15 @@ export default function TransactionPage() {
                     </span>
 
                     {/* Separator */}
-                    <span style={{ color: COLORS.MORNING_MIST }}>•</span>
+                    <span className="text-morning-mist">•</span>
 
                     {/* Role Badge */}
                     <span
-                      style={{
-                        fontSize: "12px",
-                        fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                        backgroundColor:
-                          userRole === "buyer" ? "#DBEAFE" : "#D1FAE5",
-                        color: userRole === "buyer" ? "#1D4ED8" : "#047857",
-                        padding: "4px 10px",
-                        borderRadius: "16px",
-                      }}
+                      className={`text-xs font-semibold py-1 px-2.5 rounded-full ${
+                        userRole === "buyer"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-green-100 text-green-700"
+                      }`}
                     >
                       {userRole === "buyer" ? "🛒 Buyer" : "🏪 Seller"}
                     </span>
@@ -769,39 +641,21 @@ export default function TransactionPage() {
                 </div>
               </div>
 
-              {/* Seller Cancel Button */}
+              {/* Seller Cancel Button - Disabled after Confirm Receipt (Step 4+) */}
               {isSeller && !isCompleted && !isCancelled && (
                 <button
-                  onClick={() => setCancelModalOpen(true)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "10px 16px",
-                    backgroundColor: "#FEF2F2",
-                    color: "#DC2626",
-                    border: "1px solid #FECACA",
-                    borderRadius: BORDER_RADIUS.MEDIUM,
-                    fontSize: "14px",
-                    fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                    boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#FEE2E2";
-                    e.currentTarget.style.borderColor = "#FCA5A5";
-                    e.currentTarget.style.transform = "translateY(-1px)";
-                    e.currentTarget.style.boxShadow =
-                      "0 4px 6px rgba(220, 38, 38, 0.15)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "#FEF2F2";
-                    e.currentTarget.style.borderColor = "#FECACA";
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow =
-                      "0 1px 2px rgba(0,0,0,0.05)";
-                  }}
+                  onClick={() => currentStep < 4 && setCancelModalOpen(true)}
+                  disabled={currentStep >= 4}
+                  title={
+                    currentStep >= 4
+                      ? "Cannot cancel after buyer confirmed receipt"
+                      : "Cancel this transaction"
+                  }
+                  className={`flex items-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold shadow-sm transition-all ${
+                    currentStep >= 4
+                      ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-60"
+                      : "bg-red-50 text-red-600 border border-red-200 cursor-pointer hover:bg-red-100 hover:border-red-300 hover:-translate-y-0.5 hover:shadow-md"
+                  }`}
                 >
                   <svg
                     width="18"
@@ -831,417 +685,381 @@ export default function TransactionPage() {
             ) : (
               <>
                 {/* Stepper */}
-                <div
-                  style={{
-                    backgroundColor: COLORS.WHITE,
-                    padding: SPACING.L,
-                    borderRadius: BORDER_RADIUS.MEDIUM,
-                    boxShadow: SHADOWS.SUBTLE,
-                    marginBottom: SPACING.L,
-                  }}
-                >
-                  <TransactionStepper current={currentStep} />
+                <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
+                  <TransactionStepper
+                    current={currentStep}
+                    viewStep={activeViewStep}
+                    onStepClick={handleStepClick}
+                  />
                 </div>
+
+                {/* Read-only banner when viewing past step */}
+                {isViewingPastStep && (
+                  <div className="bg-pebble border border-blue-200 rounded-lg p-4 mb-4 flex items-center gap-3">
+                    <svg
+                      className="w-5 h-5 text-soft-cloud flex-shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <div className="flex-1">
+                      <span className="text-sm text-soft-cloud font-medium">
+                        Viewing completed step (read-only)
+                      </span>
+                      <span className="text-xs text-soft-cloud ml-2">
+                        This step has already been completed and cannot be
+                        modified.
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setViewStep(currentStep)}
+                      className="text-xs bg-midnight-ash text-soft-cloud py-1.5 px-3 rounded-lg font-medium hover:bg-midnight-ash/90 transition-colors cursor-pointer"
+                    >
+                      Go to Current Step
+                    </button>
+                  </div>
+                )}
 
                 {/* Step Content */}
                 <div
-                  style={{
-                    backgroundColor: COLORS.WHITE,
-                    padding: SPACING.L,
-                    borderRadius: BORDER_RADIUS.MEDIUM,
-                    boxShadow: SHADOWS.SUBTLE,
-                    transition: "all 0.4s ease-in-out",
-                    opacity: tx ? 1 : 0.95,
-                  }}
+                  className={`bg-white p-6 rounded-lg shadow-sm transition-all duration-400 ${
+                    tx ? "opacity-100" : "opacity-95"
+                  }`}
                 >
-                  {/* STEP 1: CREATE (Buyer View) */}
-                  {currentStep === 1 && isBuyer && (
-                    <div style={{ animation: "fadeSlideIn 0.4s ease-out" }}>
-                      {tx?.status ===
-                      ORDER_STATUS.PENDING_SELLER_CONFIRMATION ? (
-                        /* Waiting State */
-                        <div
-                          style={{
-                            backgroundColor: "#F0FDF4",
-                            padding: SPACING.L,
-                            borderRadius: BORDER_RADIUS.MEDIUM,
-                            border: `1px solid #BBF7D0`,
-                          }}
-                        >
-                          <h3
-                            style={{
-                              fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
-                              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                              color: "#16A34A",
-                            }}
-                          >
-                            ✓ Order Submitted
-                          </h3>
-                          <p style={{ color: "#16A34A" }}>
-                            Waiting for seller to confirm payment.
-                          </p>
-                        </div>
-                      ) : (
-                        /* Form State */
+                  {/* ===== STEP 1: PAYMENT & DELIVERY ===== */}
+                  {activeViewStep === 1 && (
+                    <div className="animate-fadeSlideIn">
+                      {/* READ-ONLY: Step 1 completed (viewing past step) */}
+                      {isViewingPastStep ? (
                         <div>
-                          <h3
-                            style={{
-                              fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
-                              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                              color: COLORS.MIDNIGHT_ASH,
-                              marginBottom: SPACING.S,
-                            }}
-                          >
-                            Step 1 — Provide Payment & Delivery Address
+                          <h3 className="text-lg font-semibold text-midnight-ash mb-4 flex items-center gap-2">
+                            <span className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs">
+                              ✓
+                            </span>
+                            Step 1 — Payment & Delivery (Completed)
                           </h3>
-
-                          {/* Form Inputs */}
-                          <div
-                            style={{
-                              backgroundColor: COLORS.SOFT_CLOUD,
-                              padding: SPACING.L,
-                              borderRadius: BORDER_RADIUS.MEDIUM,
-                              marginBottom: SPACING.L,
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: "grid",
-                                gridTemplateColumns: "1fr 1fr",
-                                gap: SPACING.M,
-                              }}
-                            >
-                              <input
-                                name="firstName"
-                                placeholder="First Name"
-                                onChange={handleInputChange}
-                                style={{
-                                  padding: SPACING.M,
-                                  border: "1px solid #ddd",
-                                  borderRadius: BORDER_RADIUS.MEDIUM,
-                                }}
-                              />
-                              <input
-                                name="lastName"
-                                placeholder="Last Name"
-                                onChange={handleInputChange}
-                                style={{
-                                  padding: SPACING.M,
-                                  border: "1px solid #ddd",
-                                  borderRadius: BORDER_RADIUS.MEDIUM,
-                                }}
-                              />
-                              <input
-                                name="address"
-                                placeholder="Address"
-                                onChange={handleInputChange}
-                                style={{
-                                  padding: SPACING.M,
-                                  border: "1px solid #ddd",
-                                  borderRadius: BORDER_RADIUS.MEDIUM,
-                                  gridColumn: "1 / -1",
-                                }}
-                              />
-                              <input
-                                name="city"
-                                placeholder="City"
-                                onChange={handleInputChange}
-                                style={{
-                                  padding: SPACING.M,
-                                  border: "1px solid #ddd",
-                                  borderRadius: BORDER_RADIUS.MEDIUM,
-                                }}
-                              />
-                              <input
-                                name="phone"
-                                placeholder="Phone"
-                                onChange={handleInputChange}
-                                style={{
-                                  padding: SPACING.M,
-                                  border: "1px solid #ddd",
-                                  borderRadius: BORDER_RADIUS.MEDIUM,
-                                }}
-                              />
+                          <div className="bg-soft-cloud p-6 rounded-lg">
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="text-pebble font-medium">
+                                  Shipping Address:
+                                </span>
+                                <p className="text-midnight-ash mt-1">
+                                  {tx?.shipping_address || "—"}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-pebble font-medium">
+                                  Payment Proof:
+                                </span>
+                                <p className="mt-1">
+                                  {tx?.payment_proof_image ? (
+                                    <a
+                                      href={tx.payment_proof_image}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-blue-600 underline inline-flex items-center gap-1"
+                                    >
+                                      View Image →
+                                    </a>
+                                  ) : (
+                                    <span className="text-pebble">—</span>
+                                  )}
+                                </p>
+                              </div>
                             </div>
                           </div>
-
-                          {/* Payment Proof */}
-                          <div style={{ marginBottom: SPACING.L }}>
-                            <label
-                              style={{
-                                display: "block",
-                                marginBottom: SPACING.S,
-                                fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                              }}
-                            >
-                              Upload Payment Proof
-                            </label>
-                            <div
-                              style={{
-                                padding: SPACING.L,
-                                border: "2px dashed #ccc",
-                                borderRadius: BORDER_RADIUS.MEDIUM,
-                                textAlign: "center",
-                              }}
-                            >
-                              <input
-                                type="file"
+                        </div>
+                      ) : isBuyer ? (
+                        /* BUYER: Active Step 1 */
+                        tx?.status ===
+                        ORDER_STATUS.PENDING_SELLER_CONFIRMATION ? (
+                          <div className="bg-green-50 p-6 rounded-lg border border-green-200">
+                            <h3 className="text-lg font-semibold text-green-600">
+                              ✓ Order Submitted
+                            </h3>
+                            <p className="text-green-600">
+                              Waiting for seller to confirm payment.
+                            </p>
+                          </div>
+                        ) : (
+                          <div>
+                            <h3 className="text-lg font-semibold text-midnight-ash mb-2">
+                              Step 1 — Provide Payment & Delivery Address
+                            </h3>
+                            <div className="bg-soft-cloud p-6 rounded-lg mb-6">
+                              <div className="grid grid-cols-2 gap-4">
+                                <input
+                                  name="firstName"
+                                  placeholder="First Name"
+                                  onChange={handleInputChange}
+                                  className="p-4 border border-gray-300 rounded-lg"
+                                />
+                                <input
+                                  name="lastName"
+                                  placeholder="Last Name"
+                                  onChange={handleInputChange}
+                                  className="p-4 border border-gray-300 rounded-lg"
+                                />
+                                <input
+                                  name="address"
+                                  placeholder="Address"
+                                  onChange={handleInputChange}
+                                  className="p-4 border border-gray-300 rounded-lg col-span-2"
+                                />
+                                <input
+                                  name="city"
+                                  placeholder="City"
+                                  onChange={handleInputChange}
+                                  className="p-4 border border-gray-300 rounded-lg"
+                                />
+                                <input
+                                  name="phone"
+                                  placeholder="Phone"
+                                  onChange={handleInputChange}
+                                  className="p-4 border border-gray-300 rounded-lg"
+                                />
+                              </div>
+                            </div>
+                            <div className="mb-6">
+                              <FileUploadBox
+                                id="payment-proof-upload"
+                                label="Upload Payment Proof"
+                                file={paymentProofFile}
+                                onFileChange={setPaymentProofFile}
                                 accept="image/*"
-                                onChange={(e) =>
-                                  setPaymentProofFile(e.target.files?.[0])
-                                }
+                                helpText="Upload a screenshot or photo of your payment confirmation"
                               />
                             </div>
+                            <button
+                              onClick={handleCreateOrder}
+                              disabled={!isFormValid}
+                              className={`w-full p-4 rounded-lg border-none ${
+                                isFormValid
+                                  ? "bg-midnight-ash text-white cursor-pointer"
+                                  : "bg-pebble text-white cursor-not-allowed"
+                              }`}
+                            >
+                              Submit Payment & Address
+                            </button>
                           </div>
-
-                          <button
-                            onClick={handleCreateOrder}
-                            disabled={!isFormValid}
-                            style={{
-                              width: "100%",
-                              backgroundColor: isFormValid
-                                ? COLORS.MIDNIGHT_ASH
-                                : COLORS.PEBBLE,
-                              color: COLORS.WHITE,
-                              padding: SPACING.M,
-                              borderRadius: BORDER_RADIUS.MEDIUM,
-                              border: "none",
-                              cursor: isFormValid ? "pointer" : "not-allowed",
-                            }}
-                          >
-                            Submit Payment & Address
-                          </button>
+                        )
+                      ) : (
+                        /* SELLER: Waiting for buyer */
+                        <div className="p-6">
+                          <h3 className="font-semibold mb-6 text-midnight-ash">
+                            Step 1 — Buyer Payment Information
+                          </h3>
+                          {tx?.payment_proof_image && tx?.shipping_address ? (
+                            <div className="bg-soft-cloud p-6 rounded-lg mb-6">
+                              <div className="mb-4">
+                                <p className="font-semibold mb-2">
+                                  <strong>Shipping Address:</strong>
+                                </p>
+                                <p className="text-midnight-ash">
+                                  {tx.shipping_address}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="font-semibold mb-2">
+                                  <strong>Payment Proof:</strong>
+                                </p>
+                                <a
+                                  href={tx.payment_proof_image}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-blue-600 underline inline-flex items-center gap-2"
+                                >
+                                  View Payment Proof Image →
+                                </a>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-12">
+                              <div className="text-4xl mb-4">⏳</div>
+                              <h3 className="font-semibold">
+                                Waiting for Buyer
+                              </h3>
+                              <p className="text-pebble">
+                                The buyer has not yet submitted payment proof
+                                and shipping address.
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
                   )}
 
-                  {/* STEP 1: SELLER WAITING */}
-                  {currentStep === 1 && isSeller && (
-                    <div style={{ padding: SPACING.L }}>
-                      <h3
-                        style={{
-                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                          marginBottom: SPACING.L,
-                          color: COLORS.MIDNIGHT_ASH,
-                        }}
-                      >
-                        Step 1 — Buyer Payment Information
-                      </h3>
-
-                      {tx?.payment_proof_image && tx?.shipping_address ? (
-                        <div
-                          style={{
-                            backgroundColor: COLORS.SOFT_CLOUD,
-                            padding: SPACING.L,
-                            borderRadius: BORDER_RADIUS.MEDIUM,
-                            marginBottom: SPACING.L,
-                          }}
-                        >
-                          <div style={{ marginBottom: SPACING.M }}>
-                            <p
-                              style={{
-                                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                                marginBottom: SPACING.S,
-                              }}
-                            >
-                              <strong>Shipping Address:</strong>
-                            </p>
-                            <p style={{ color: COLORS.MIDNIGHT_ASH }}>
-                              {tx.shipping_address}
-                            </p>
+                  {/* ===== STEP 2: SELLER CONFIRMATION ===== */}
+                  {activeViewStep === 2 && (
+                    <div className="animate-fadeSlideIn">
+                      {/* READ-ONLY: Step 2 completed */}
+                      {isViewingPastStep ? (
+                        <div>
+                          <h3 className="text-lg font-semibold text-midnight-ash mb-4 flex items-center gap-2">
+                            <span className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs">
+                              ✓
+                            </span>
+                            Step 2 — Seller Confirmation (Completed)
+                          </h3>
+                          <div className="bg-soft-cloud p-6 rounded-lg">
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="text-pebble font-medium">
+                                  Shipping Code:
+                                </span>
+                                <p className="text-midnight-ash mt-1 font-mono">
+                                  {tx?.shipping_code || "—"}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-pebble font-medium">
+                                  Shipping Receipt:
+                                </span>
+                                <p className="mt-1">
+                                  {tx?.shipping_receipt_image ? (
+                                    <a
+                                      href={tx.shipping_receipt_image}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-blue-600 underline inline-flex items-center gap-1"
+                                    >
+                                      View Receipt →
+                                    </a>
+                                  ) : (
+                                    <span className="text-pebble">—</span>
+                                  )}
+                                </p>
+                              </div>
+                              <div className="col-span-2">
+                                <span className="text-pebble font-medium">
+                                  Shipped To:
+                                </span>
+                                <p className="text-midnight-ash mt-1">
+                                  {tx?.shipping_address || "—"}
+                                </p>
+                              </div>
+                            </div>
                           </div>
-
-                          <div>
-                            <p
-                              style={{
-                                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                                marginBottom: SPACING.S,
-                              }}
-                            >
+                        </div>
+                      ) : isSeller ? (
+                        /* SELLER: Active Step 2 */
+                        <div>
+                          <h3 className="font-semibold mb-6">
+                            Step 2 — Verify Payment & Ship
+                          </h3>
+                          <div className="bg-soft-cloud p-4 rounded-lg mb-6">
+                            <p>
+                              <strong>Ship To:</strong> {tx?.shipping_address}
+                            </p>
+                            <p>
                               <strong>Payment Proof:</strong>
                             </p>
-                            <a
-                              href={tx.payment_proof_image}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{
-                                color: "#2563EB",
-                                textDecoration: "underline",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: SPACING.S,
-                              }}
-                            >
-                              View Payment Proof Image →
-                            </a>
+                            {tx?.payment_proof_image ? (
+                              <a
+                                href={tx.payment_proof_image}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-blue-600 underline"
+                              >
+                                View Proof Image
+                              </a>
+                            ) : (
+                              <span className="text-red-600 font-bold">
+                                Not Uploaded
+                              </span>
+                            )}
                           </div>
+                          <ShippingInvoiceForm onSubmit={handleSellerConfirm} />
                         </div>
                       ) : (
-                        <div
-                          style={{ textAlign: "center", padding: SPACING.XXL }}
-                        >
-                          <div
-                            style={{
-                              fontSize: "40px",
-                              marginBottom: SPACING.M,
-                            }}
-                          >
-                            ⏳
-                          </div>
-                          <h3
-                            style={{ fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD }}
-                          >
-                            Waiting for Buyer
-                          </h3>
-                          <p style={{ color: COLORS.PEBBLE }}>
-                            The buyer has not yet submitted payment proof and
-                            shipping address.
+                        /* BUYER: Waiting for seller */
+                        <div className="text-center py-12">
+                          <div className="text-4xl mb-4">📦</div>
+                          <h3 className="font-semibold">Processing</h3>
+                          <p className="text-pebble">
+                            Seller is verifying your payment.
                           </p>
                         </div>
                       )}
                     </div>
                   )}
 
-                  {/* STEP 2: SELLER SHIP */}
-                  {currentStep === 2 && isSeller && (
-                    <div style={{ animation: "fadeSlideIn 0.4s ease-out" }}>
-                      <h3
-                        style={{
-                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                          marginBottom: SPACING.L,
-                        }}
-                      >
-                        Step 2 — Verify Payment & Ship
-                      </h3>
-
-                      {/* Proof Display */}
-                      <div
-                        style={{
-                          backgroundColor: COLORS.SOFT_CLOUD,
-                          padding: SPACING.M,
-                          borderRadius: BORDER_RADIUS.MEDIUM,
-                          marginBottom: SPACING.L,
-                        }}
-                      >
-                        <p>
-                          <strong>Ship To:</strong> {tx.shipping_address}
-                        </p>
-                        <p>
-                          <strong>Payment Proof:</strong>
-                        </p>
-                        {tx.payment_proof_image ? (
-                          <a
-                            href={tx.payment_proof_image}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{
-                              color: "#2563EB",
-                              textDecoration: "underline",
-                            }}
+                  {/* ===== STEP 3: CONFIRM RECEIPT ===== */}
+                  {activeViewStep === 3 && (
+                    <div className="animate-fadeSlideIn">
+                      {/* READ-ONLY: Step 3 completed */}
+                      {isViewingPastStep ? (
+                        <div>
+                          <h3 className="text-lg font-semibold text-midnight-ash mb-4 flex items-center gap-2">
+                            <span className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs">
+                              ✓
+                            </span>
+                            Step 3 — Receipt Confirmed (Completed)
+                          </h3>
+                          <div className="bg-soft-cloud p-6 rounded-lg">
+                            <div className="text-sm">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-green-600">✓</span>
+                                <span className="text-midnight-ash">
+                                  Buyer confirmed receipt of the product
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-pebble font-medium">
+                                  Tracking Code:
+                                </span>
+                                <span className="ml-2 font-mono text-midnight-ash">
+                                  {tx?.shipping_code || "—"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : isBuyer ? (
+                        /* BUYER: Active Step 3 */
+                        <div>
+                          <h3 className="font-semibold mb-6">
+                            Step 3 — Confirm Receipt
+                          </h3>
+                          <div className="bg-soft-cloud p-4 rounded-lg mb-6">
+                            <p>
+                              <strong>Tracking Code:</strong>{" "}
+                              {tx?.shipping_code}
+                            </p>
+                          </div>
+                          <button
+                            onClick={handleBuyerConfirmReceipt}
+                            className="w-full bg-midnight-ash text-white p-4 rounded-lg border-none cursor-pointer"
                           >
-                            View Proof Image
-                          </a>
-                        ) : (
-                          <span
-                            style={{ color: "#DC2626", fontWeight: "bold" }}
-                          >
-                            Not Uploaded
-                          </span>
-                        )}
-                      </div>
-
-                      <ShippingInvoiceForm onSubmit={handleSellerConfirm} />
+                            I Have Received the Product
+                          </button>
+                        </div>
+                      ) : (
+                        /* SELLER: Waiting for buyer */
+                        <div className="text-center py-12">
+                          <div className="text-4xl mb-4">🚚</div>
+                          <h3 className="font-semibold">In Transit</h3>
+                          <p className="text-pebble">
+                            Waiting for buyer to receive package.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {/* STEP 2: BUYER WAITING */}
-                  {currentStep === 2 && isBuyer && (
-                    <div style={{ textAlign: "center", padding: SPACING.XXL }}>
-                      <div
-                        style={{ fontSize: "40px", marginBottom: SPACING.M }}
-                      >
-                        📦
-                      </div>
-                      <h3 style={{ fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD }}>
-                        Processing
-                      </h3>
-                      <p style={{ color: COLORS.PEBBLE }}>
-                        Seller is verifying your payment.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* STEP 3: BUYER CONFIRM RECEIPT */}
-                  {currentStep === 3 && isBuyer && (
-                    <div style={{ animation: "fadeSlideIn 0.4s ease-out" }}>
-                      <h3
-                        style={{
-                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                          marginBottom: SPACING.L,
-                        }}
-                      >
-                        Step 3 — Confirm Receipt
-                      </h3>
-                      <div
-                        style={{
-                          backgroundColor: COLORS.SOFT_CLOUD,
-                          padding: SPACING.M,
-                          borderRadius: BORDER_RADIUS.MEDIUM,
-                          marginBottom: SPACING.L,
-                        }}
-                      >
-                        <p>
-                          <strong>Tracking Code:</strong> {tx.shipping_code}
-                        </p>
-                      </div>
-                      <button
-                        onClick={handleBuyerConfirmReceipt}
-                        style={{
-                          width: "100%",
-                          backgroundColor: COLORS.MIDNIGHT_ASH,
-                          color: COLORS.WHITE,
-                          padding: SPACING.M,
-                          borderRadius: BORDER_RADIUS.MEDIUM,
-                          border: "none",
-                          cursor: "pointer",
-                        }}
-                      >
-                        I Have Received the Product
-                      </button>
-                    </div>
-                  )}
-
-                  {/* STEP 3: SELLER WAITING */}
-                  {currentStep === 3 && isSeller && (
-                    <div style={{ textAlign: "center", padding: SPACING.XXL }}>
-                      <div
-                        style={{ fontSize: "40px", marginBottom: SPACING.M }}
-                      >
-                        🚚
-                      </div>
-                      <h3 style={{ fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD }}>
-                        In Transit
-                      </h3>
-                      <p style={{ color: COLORS.PEBBLE }}>
-                        Waiting for buyer to receive package.
-                      </p>
-                    </div>
-                  )}
-
-                  {(currentStep === 4 || currentStep === 5) && (
-                    <div
-                      style={{
-                        animation: "fadeSlideIn 0.4s ease-out",
-                        textAlign: "center",
-                      }}
-                    >
-                      <h3
-                        style={{
-                          fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                          marginBottom: SPACING.L,
-                        }}
-                      >
+                  {/* ===== STEP 4: RATINGS ===== */}
+                  {(activeViewStep === 4 || currentStep === 5) && (
+                    <div className="animate-fadeSlideIn text-center">
+                      <h3 className="font-semibold mb-6">
                         Step {currentStep} —{" "}
                         {currentStep === 4
                           ? "Rate Your Experience"
@@ -1250,21 +1068,8 @@ export default function TransactionPage() {
 
                       {/* Info banner for re-rating */}
                       {!shouldShowFinalReceipt && hasUserRated && (
-                        <div
-                          style={{
-                            backgroundColor: "#FEF3C7",
-                            padding: SPACING.M,
-                            borderRadius: BORDER_RADIUS.MEDIUM,
-                            marginBottom: SPACING.L,
-                            border: "1px solid #FCD34D",
-                          }}
-                        >
-                          <p
-                            style={{
-                              color: "#92400E",
-                              fontSize: TYPOGRAPHY.SIZE_LABEL,
-                            }}
-                          >
+                        <div className="bg-amber-100 p-4 rounded-lg mb-6 border border-amber-300">
+                          <p className="text-amber-800 text-sm">
                             ℹ️ You have already rated this transaction. You can
                             update your rating below.
                           </p>
@@ -1273,31 +1078,12 @@ export default function TransactionPage() {
 
                       {shouldShowFinalReceipt ? (
                         /* CONDITION 1: FINAL RECEIPT (Triggers if Step 5 OR if rating was just submitted/exists) */
-                        <div
-                          style={{
-                            padding: SPACING.XXL,
-                            backgroundColor: "#E0F2F1", // Light Cyan/Teal
-                            borderRadius: BORDER_RADIUS.MEDIUM,
-                            border: "1px solid #2DD4BF", // Teal border
-                            color: "#0D9488", // Dark Teal text
-                          }}
-                        >
-                          <CheckCircleIcon
-                            style={{
-                              width: "40px",
-                              margin: "0 auto",
-                              marginBottom: SPACING.M,
-                            }}
-                          />
-                          <h4
-                            style={{
-                              fontWeight: TYPOGRAPHY.WEIGHT_BOLD,
-                              fontSize: TYPOGRAPHY.SIZE_HEADING_SM,
-                            }}
-                          >
+                        <div className="py-12 bg-teal-50 rounded-lg border border-teal-400 text-teal-700">
+                          <CheckCircleIcon className="w-10 mx-auto mb-4" />
+                          <h4 className="font-bold text-lg">
                             Transaction Complete!
                           </h4>
-                          <p style={{ marginTop: SPACING.S }}>
+                          <p className="mt-2">
                             Thank you for using eBid. All steps are finalized.
                             {currentStep === 4 &&
                               " (Waiting for counterparty rating to move to Step 5)"}{" "}
@@ -1309,107 +1095,47 @@ export default function TransactionPage() {
                         <div>
                           {/* Your active Rating Buttons, Textarea, and Submit Button JSX go here */}
                           {/* ... (Copy the full rating form block from your Step 4 logic) ... */}
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "center",
-                              gap: SPACING.L,
-                              marginBottom: SPACING.L,
-                            }}
-                          >
+                          <div className="flex justify-center gap-6 mb-6">
                             {/* ... Thumb Up/Down Buttons ... */}
                             <button
                               onClick={() => setSelectedRating(1)}
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                gap: SPACING.S,
-                                padding: SPACING.L,
-                                backgroundColor:
-                                  selectedRating === 1
-                                    ? "#F0FDF4"
-                                    : COLORS.SOFT_CLOUD,
-                                border:
-                                  selectedRating === 1
-                                    ? `2px solid #16A34A`
-                                    : `2px solid transparent`,
-                                borderRadius: BORDER_RADIUS.MEDIUM,
-                                cursor: "pointer",
-                                transition: "all 0.3s ease",
-                                minWidth: "100px",
-                                transform:
-                                  selectedRating === 1
-                                    ? "scale(1.05)"
-                                    : "scale(1)",
-                              }}
+                              className={`flex flex-col items-center gap-2 p-6 rounded-lg cursor-pointer transition-all min-w-[100px] ${
+                                selectedRating === 1
+                                  ? "bg-green-50 border-2 border-green-600 scale-105"
+                                  : "bg-soft-cloud border-2 border-transparent"
+                              }`}
                             >
-                              <HandThumbUpIcon
-                                style={{ width: "30px", color: "#16A34A" }}
-                              />{" "}
+                              <HandThumbUpIcon className="w-8 text-green-600" />{" "}
                               +1
                             </button>
                             <button
                               onClick={() => setSelectedRating(-1)}
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                gap: SPACING.S,
-                                padding: SPACING.L,
-                                backgroundColor:
-                                  selectedRating === -1
-                                    ? "#FEF2F2"
-                                    : COLORS.SOFT_CLOUD,
-                                border:
-                                  selectedRating === -1
-                                    ? `2px solid #DC2626`
-                                    : `2px solid transparent`,
-                                borderRadius: BORDER_RADIUS.MEDIUM,
-                                cursor: "pointer",
-                                transition: "all 0.3s ease",
-                                minWidth: "100px",
-                                transform:
-                                  selectedRating === -1
-                                    ? "scale(1.05)"
-                                    : "scale(1)",
-                              }}
+                              className={`flex flex-col items-center gap-2 p-6 rounded-lg cursor-pointer transition-all min-w-[100px] ${
+                                selectedRating === -1
+                                  ? "bg-red-50 border-2 border-red-600 scale-105"
+                                  : "bg-soft-cloud border-2 border-transparent"
+                              }`}
                             >
-                              <HandThumbDownIcon
-                                style={{ width: "30px", color: "#DC2626" }}
-                              />{" "}
+                              <HandThumbDownIcon className="w-8 text-red-600" />{" "}
                               -1
                             </button>
                           </div>
                           <textarea
-                            value={"Người thắng không chịu thanh toán."}
-                            disabled
-                            style={{
-                              resize: "none",
-                              backgroundColor: "#f5f5f5",
-                              cursor: "not-allowed",
-                            }}
+                            value={ratingComment}
+                            onChange={(e) => setRatingComment(e.target.value)}
+                            placeholder="Add a comment about your experience (optional)"
+                            className="w-full p-4 border border-gray-300 rounded-lg resize-none mb-4"
+                            rows={3}
                           />
 
                           <button
                             onClick={handleRatingSubmit}
                             disabled={!selectedRating}
-                            style={{
-                              width: "100%",
-                              padding: `${SPACING.M} ${SPACING.L}`,
-                              backgroundColor: selectedRating
-                                ? COLORS.MIDNIGHT_ASH
-                                : COLORS.PEBBLE,
-                              color: COLORS.WHITE,
-                              border: "none",
-                              borderRadius: BORDER_RADIUS.MEDIUM,
-                              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                              fontSize: TYPOGRAPHY.SIZE_BODY,
-                              cursor: selectedRating
-                                ? "pointer"
-                                : "not-allowed",
-                              transition: "all 0.3s ease",
-                            }}
+                            className={`w-full py-4 px-6 border-none rounded-lg font-semibold text-base transition-all ${
+                              selectedRating
+                                ? "bg-midnight-ash text-white cursor-pointer"
+                                : "bg-pebble text-white cursor-not-allowed"
+                            }`}
                           >
                             {hasUserRated ? "Update Rating" : "Submit Rating"}
                           </button>
@@ -1418,26 +1144,7 @@ export default function TransactionPage() {
                           {!hasUserRated && (
                             <button
                               onClick={handleSkipRating}
-                              style={{
-                                width: "100%",
-                                padding: `${SPACING.M} ${SPACING.L}`,
-                                backgroundColor: "transparent",
-                                color: COLORS.MIDNIGHT_ASH,
-                                border: `2px solid ${COLORS.PEBBLE}`,
-                                borderRadius: BORDER_RADIUS.MEDIUM,
-                                fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                                fontSize: TYPOGRAPHY.SIZE_BODY,
-                                cursor: "pointer",
-                                transition: "all 0.3s ease",
-                                marginTop: SPACING.S,
-                              }}
-                              onMouseEnter={(e) => {
-                                e.target.style.backgroundColor =
-                                  COLORS.SOFT_CLOUD;
-                              }}
-                              onMouseLeave={(e) => {
-                                e.target.style.backgroundColor = "transparent";
-                              }}
+                              className="w-full py-4 px-6 bg-transparent text-midnight-ash border-2 border-pebble rounded-lg font-medium text-base cursor-pointer transition-all mt-2 hover:bg-soft-cloud"
                             >
                               Skip rating, I will rate later
                             </button>
@@ -1448,21 +1155,8 @@ export default function TransactionPage() {
                   )}
                   {currentStep === 5 && (
                     <button
-                      onClick={() => navigate("/transactions")} // Navigate to the history list
-                      style={{
-                        backgroundColor: COLORS.MIDNIGHT_ASH,
-                        color: COLORS.WHITE,
-                        padding: `${SPACING.S} ${SPACING.M}`,
-                        borderRadius: BORDER_RADIUS.MEDIUM,
-                        border: "none",
-                        fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-
-                        cursor: "pointer",
-                        marginTop: SPACING.M, // Give it some space
-                        transition: "background-color 0.2s",
-                        // Adding hover effect (Requires styling solution to handle :hover)
-                        // ':hover': { backgroundColor: '#334155' }
-                      }}
+                      onClick={() => navigate("/transactions")}
+                      className="bg-midnight-ash text-white py-2 px-4 rounded-lg border-none font-semibold cursor-pointer mt-4 transition-colors hover:bg-gray-700"
                     >
                       View Transaction History
                     </button>
@@ -1475,33 +1169,11 @@ export default function TransactionPage() {
       </div>
 
       {localToast && (
-        <div
-          style={{
-            position: "fixed",
-            top: "24px", // Move to TOP
-            left: "50%", // Center horizontally
-            transform: "translateX(-50%)",
-            zIndex: 9999, // Ensure it is above everything
-            backgroundColor: "#1F2937", // Dark Gray (Tailwind gray-800)
-            color: "#FFFFFF",
-            padding: "12px 24px",
-            borderRadius: "9999px", // Capsule shape
-            boxShadow:
-              "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            minWidth: "300px",
-            justifyContent: "center",
-            animation: "slideDown 0.3s ease-out forwards", // Add animation
-          }}
-        >
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] bg-gray-800 text-white py-3 px-6 rounded-full shadow-lg flex items-center gap-3 min-w-[300px] justify-center animate-slideDown">
           {/* Optional Icon based on success/error */}
-          <span style={{ fontSize: "18px" }}>🔔</span>
+          <span className="text-lg">🔔</span>
 
-          <span style={{ fontWeight: 500, fontSize: "14px" }}>
-            {localToast}
-          </span>
+          <span className="font-medium text-sm">{localToast}</span>
         </div>
       )}
 
@@ -1511,6 +1183,16 @@ export default function TransactionPage() {
           @keyframes slideDown {
             from { transform: translate(-50%, -20px); opacity: 0; }
             to { transform: translate(-50%, 0); opacity: 1; }
+          }
+          @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .animate-fadeSlideIn {
+            animation: fadeSlideIn 0.4s ease-out;
+          }
+          .animate-slideDown {
+            animation: slideDown 0.3s ease-out forwards;
           }
         `}
       </style>

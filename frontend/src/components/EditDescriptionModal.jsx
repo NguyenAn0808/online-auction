@@ -179,7 +179,11 @@ const EditDescriptionModal = ({ isOpen, onClose, product, onUpdate }) => {
 
   return (
     <Modal isOpen={isOpen} title="Edit Product Description" size="lg">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 p-6">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="space-y-6 p-6"
+        noValidate
+      >
         {/* Product Info */}
         <section className="border-b pb-5">
           <h3 className="text-sm font-bold text-gray-500 mb-3">PRODUCT INFO</h3>

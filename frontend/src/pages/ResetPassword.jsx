@@ -92,7 +92,7 @@ export default function ResetPassword() {
 
             {!success ? (
               /* Form State */
-              <form onSubmit={onSubmit} className="space-y-5">
+              <form onSubmit={onSubmit} className="space-y-5" noValidate>
                 {/* OTP Field - Made larger and centered */}
                 <div>
                   <label
