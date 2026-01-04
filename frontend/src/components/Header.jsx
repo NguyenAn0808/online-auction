@@ -7,6 +7,7 @@ import { Dialog, DialogBackdrop, DialogPanel } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "../context/AuthContext";
 import { COLORS, TYPOGRAPHY } from "../constants/designSystem";
+import SearchBar from "./SearchBar";
 
 const Header = () => {
   const { user, activeRole } = useAuth();
@@ -14,9 +15,21 @@ const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    navigate(`/products?search=${searchTerm}`);
+  const handleSearch = () => {
+    const term = (searchTerm || "").trim();
+    if (term.length === 0) {
+      // Navigate to products without search when empty
+      navigate("/products?page=1");
+      return;
+    }
+    navigate(`/products?search=${encodeURIComponent(term)}&page=1`);
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSearch();
+    }
   };
 
   const [showCart, setShowCart] = useState(false);
@@ -84,18 +97,13 @@ const Header = () => {
 
         {/* Search Bar, List Product Button, Cart, Profile */}
         <div className="flex flex-wrap items-center gap-4 justify-end">
-          <form
-            onSubmit={handleSearch}
-            className="search-bar w-36 sm:w-64 md:w-80"
-            noValidate
-          >
-            <input
-              type="text"
-              placeholder="Search... "
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </form>
+          <SearchBar
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onSearch={handleSearch}
+            placeholder="Search..."
+            onKeyDown={handleSearchKeyDown}
+          />
 
           <button
             onClick={handleListing}

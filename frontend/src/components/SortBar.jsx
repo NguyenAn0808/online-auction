@@ -1,16 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { FunnelIcon as FunnelOutline } from "@heroicons/react/24/outline";
+import { FunnelIcon as FunnelSolid } from "@heroicons/react/24/solid";
 
 const SortBar = ({ categoryName = "" }) => {
   const [showSortMenu, setShowSortMenu] = useState(false);
 
-  // 🔕 FILTER STATE DISABLED
-  // const [showFilterMenu, setShowFilterMenu] = useState(false);
-
   const sortRef = useRef(null);
-
-  // 🔕 FILTER REF DISABLED
-  // const filterRef = useRef(null);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -25,30 +21,37 @@ const SortBar = ({ categoryName = "" }) => {
       ) {
         setShowSortMenu(false);
       }
-
-      // 🔕 FILTER OUTSIDE CLICK HANDLING DISABLED
-      // if (
-      //   showFilterMenu &&
-      //   filterRef.current &&
-      //   !filterRef.current.contains(e.target)
-      // ) {
-      //   setShowFilterMenu(false);
-      // }
     };
 
-    // 🔕 FILTER CONDITION REMOVED
     if (showSortMenu) {
       document.addEventListener("mousedown", handler);
     }
 
     return () => document.removeEventListener("mousedown", handler);
-
-    // 🔕 DEPENDENCY UPDATED
   }, [showSortMenu]);
 
   const searchParams = new URLSearchParams(location.search);
   const searchQuery = searchParams.get("search") || "";
   const categoryId = searchParams.get("category_id");
+
+  const activeSortParams = [
+    "price_asc",
+    "price_desc",
+    "end_time_desc",
+    "bid_amount_asc",
+    "bid_amount_desc",
+  ];
+  const anySortActive = activeSortParams.some((p) => searchParams.has(p));
+
+  const getActiveSortLabel = () => {
+    if (searchParams.has("price_asc")) return "Price: Low → High";
+    if (searchParams.has("price_desc")) return "Price: High → Low";
+    if (searchParams.has("end_time_desc")) return "End Time";
+    if (searchParams.has("bid_amount_asc")) return "Bid Amount: Low → High";
+    if (searchParams.has("bid_amount_desc")) return "Bid Amount: High → Low";
+    return "Sort by";
+  };
+  const activeSortLabel = getActiveSortLabel();
 
   const getResultsText = () => {
     if (searchQuery) return `Results for "${searchQuery}"`;
@@ -66,32 +69,27 @@ const SortBar = ({ categoryName = "" }) => {
       </div>
 
       <div className="flex gap-3">
-        {/* ===== SORT BUTTON ===== */}
         <div className="relative">
           <button
             onClick={() => {
               setShowSortMenu((v) => !v);
-
-              // 🔕 FILTER TOGGLE DISABLED
-              // setShowFilterMenu(false);
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className={`flex items-center gap-2 px-4 py-2 bg-white border rounded-lg transition-colors ${
+              anySortActive
+                ? "border-blue-500 bg-whisper"
+                : "border-gray-300 hover:bg-gray-50"
+            }`}
           >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
+            {anySortActive ? (
+              <FunnelSolid className="w-5 h-5 text-pebble" />
+            ) : (
+              <FunnelOutline className="w-5 h-5 text-midnight-ash" />
+            )}
+            <span
+              className={`font-medium ${anySortActive ? "text-pebble" : ""}`}
             >
-              <path
-                d="M3 7H21M6 12H18M9 17H15"
-                stroke="#191919"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-            <span className="font-medium">Sort by</span>
+              {anySortActive ? activeSortLabel : "Sort by"}
+            </span>
           </button>
 
           {showSortMenu && (
@@ -199,8 +197,8 @@ const SortOption = ({ label, param }) => {
     <button
       type="button"
       onClick={applySort}
-      className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors ${
-        isActive ? "bg-blue-50 text-blue-700" : "hover:bg-gray-50"
+      className={`w-full text-left px-4 py-3 text-sm font-medium  text-midnight-ash hover:text-pebble transition-colors ${
+        isActive ? "bg-whisper" : "hover:bg-whisper"
       }`}
     >
       {label}
@@ -240,7 +238,7 @@ const ClearSortOption = () => {
       disabled={!anyActive}
       className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors ${
         anyActive
-          ? "hover:bg-red-50 text-red-600"
+          ? "hover:bg-gray-50 text-red-600"
           : "text-gray-400 cursor-default"
       }`}
     >

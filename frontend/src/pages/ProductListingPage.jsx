@@ -51,7 +51,12 @@ const ProductListingPage = () => {
     fetchCategories();
   }, []);
 
-  // Fetch products from backend API (fetch all, paginate client-side)
+  // Reset to first page when filters/sorts change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [categoryId, searchTerm, sortPriceAsc, sortPriceDesc, sortEndTimeDesc]);
+
+  // Fetch products from backend API using server-side pagination
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -59,8 +64,9 @@ const ProductListingPage = () => {
 
         // Build query params from URL search params
         const params = {
-          // fetch a large batch to approximate "all"
-          limit: 1000,
+          // use server-side pagination
+          page: currentPage,
+          limit: productsPerPage,
         };
 
         if (categoryId) params.category_id = categoryId;
@@ -72,19 +78,17 @@ const ProductListingPage = () => {
         else if (sortEndTimeDesc) params.sort = "end_time_desc";
         else params.sort = "newest";
 
-        // Note: Backend doesn't support price range filtering yet
-        // These params are ignored for now
-        // if (priceType === "start") {
-        //   if (minStartPrice) params.min_start_price = minStartPrice;
-        //   if (maxStartPrice) params.max_start_price = maxStartPrice;
-        // }
-
         const response = await productService.getProducts(params);
-        const allItems = response.items || response.data || response || [];
-        const items = Array.isArray(allItems) ? allItems : [];
+        const items = Array.isArray(response?.items)
+          ? response.items
+          : Array.isArray(response?.data)
+          ? response.data
+          : Array.isArray(response)
+          ? response
+          : [];
+
         setProducts(items);
-        setTotalPages(Math.ceil(items.length / productsPerPage) || 1);
-        setCurrentPage(1);
+        setTotalPages(response?.pagination?.totalPages || 1);
       } catch (error) {
         console.error("Error fetching products list:", error);
         setProducts([]);
@@ -95,19 +99,20 @@ const ProductListingPage = () => {
     };
 
     fetchProducts();
-  }, [categoryId, searchTerm, sortPriceAsc, sortPriceDesc, sortEndTimeDesc, location.search]);
+  }, [
+    categoryId,
+    searchTerm,
+    sortPriceAsc,
+    sortPriceDesc,
+    sortEndTimeDesc,
+    location.search,
+    currentPage,
+  ]);
 
   // Get category name for display
   const getCategoryName = () => {
     return activeCategory ? activeCategory.name : "";
   };
-
-  // Client-side pagination
-  const startIndex = (currentPage - 1) * productsPerPage;
-  const currentProducts = products.slice(
-    startIndex,
-    startIndex + productsPerPage
-  );
 
   return (
     <div className="min-h-screen bg-whisper">
@@ -130,9 +135,9 @@ const ProductListingPage = () => {
               <div className="flex justify-center items-center min-h-[40vh]">
                 <div className="text-lg text-gray-600">Loading products...</div>
               </div>
-            ) : currentProducts.length > 0 ? (
+            ) : products.length > 0 ? (
               <div className="space-y-4">
-                {currentProducts.map((product) => {
+                {products.map((product) => {
                   const handleClick = () => {
                     navigate(`/products/${product.id}`);
                   };
