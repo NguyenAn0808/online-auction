@@ -234,7 +234,7 @@ class BidService {
         if (currentBidder?.email) {
           await EmailService.sendBidSuccessEmailToBidder(
             currentBidder.email,
-            currentBidder.full_name,
+            currentBidder.fullName,
             product.name,
             winningAmount
           );
@@ -247,7 +247,7 @@ class BidService {
             seller.email,
             product.name,
             winningAmount,
-            currentBidder?.full_name || "A bidder"
+            currentBidder?.fullName || "A bidder"
           );
         }
 
@@ -262,7 +262,7 @@ class BidService {
           if (previousBidder?.email) {
             await EmailService.sendOutbidEmailToPreviousBidder(
               previousBidder.email,
-              previousBidder.full_name,
+              previousBidder.fullName,
               product.name,
               winningAmount
             );
@@ -319,9 +319,22 @@ class BidService {
 
     await ProductModel.updateCurrentPrice(product_id, newPrice, newHolder);
 
-    // 6. NOTIFY (Optional: notify new winner, etc.)
-    // For now we might just return the result.
-    // Ideally we should notify the denied bidder.
+    // 6. SEND EMAIL NOTIFICATION TO BLOCKED BIDDER
+    (async () => {
+      try {
+        const blockedBidder = await User.findById(bidder_id);
+        if (blockedBidder?.email) {
+          await EmailService.sendBidRejectNotification(
+            blockedBidder.email,
+            blockedBidder.fullName,
+            product.name
+          );
+          console.log("📧 Bid rejection email sent to:", blockedBidder.email);
+        }
+      } catch (error) {
+        console.error("❌ Error sending bid rejection email:", error);
+      }
+    })();
 
     return {
       success: true,

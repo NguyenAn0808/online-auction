@@ -42,7 +42,7 @@ export const sendEmail = async (email, subject, htmlContent) => {
 // Bid place successfully (To the bidder)
 export const sendBidSuccessEmailToBidder = async (
   bidderEmail,
-  fullname,
+  fullName,
   productName,
   amount
 ) => {
@@ -50,7 +50,7 @@ export const sendBidSuccessEmailToBidder = async (
   const html = `
     <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd;">
       <h2 style="color: #27ae60;">Bid Successful!</h2>
-      <p>Hello <strong>${fullname}</strong>,</p>
+      <p>Hello <strong>${fullName}</strong>,</p>
       <p>You have successfully placed a bid on <strong>${productName}</strong>.</p>
       <p>Your Bid Amount: <strong style="font-size: 18px;">$${parseFloat(
         amount
@@ -90,7 +90,7 @@ export const sendBidNotificationToSeller = async (
 // Bid place successfully (To the previous highest bidder)
 export const sendOutbidEmailToPreviousBidder = async (
   email,
-  fullname,
+  fullName,
   productName,
   newAmount
 ) => {
@@ -98,7 +98,7 @@ export const sendOutbidEmailToPreviousBidder = async (
   const html = `
     <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e74c3c;">
       <h2 style="color: #c0392b;">You've been outbid!</h2>
-      <p>Hello <strong>${fullname}</strong>,</p>
+      <p>Hello <strong>${fullName}</strong>,</p>
       <p>Another user has placed a higher bid on <strong>${productName}</strong>.</p>
       <p>Current Highest Bid: <strong>$${parseFloat(
         newAmount
