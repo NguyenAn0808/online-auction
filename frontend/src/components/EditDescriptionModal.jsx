@@ -49,45 +49,17 @@ const EditDescriptionModal = ({ isOpen, onClose, product, onUpdate }) => {
 
   // Load description history from backend API
   useEffect(() => {
-    if (product && product.id) {
-      const loadDescriptionHistory = async () => {
-        try {
-          const history = await productService.getDescriptionHistory(
-            product.id
-          );
+    // Load once when modal opens; ignore product object changes due to polling
+    if (!isOpen || !product?.id) return;
 
-          // If no history, initialize with original description
-          if (!history || history.length === 0) {
-            setDescriptions([
-              {
-                id: "initial",
-                content: product.description || "",
-                created_at:
-                  product.created_at ||
-                  product.postedAt ||
-                  new Date().toISOString(),
-                author_id: product.seller_id,
-                author_name: "System",
-                type: "initial",
-              },
-            ]);
-          } else {
-            // Map backend response to component format
-            const mappedHistory = history.map((desc, index) => ({
-              id: desc.id || `desc-${index}`,
-              content: desc.content,
-              timestamp: desc.created_at,
-              created_at: desc.created_at,
-              author_id: desc.author_id,
-              author: desc.author_name || "Unknown",
-              author_name: desc.author_name || "Unknown",
-              type: index === 0 ? "initial" : "supplement",
-            }));
-            setDescriptions(mappedHistory);
-          }
-        } catch (err) {
-          console.error("Failed to load description history:", err);
-          // Fallback to original description if API fails
+    let cancelled = false;
+
+    const loadDescriptionHistory = async () => {
+      try {
+        const history = await productService.getDescriptionHistory(product.id);
+        if (cancelled) return;
+
+        if (!history || history.length === 0) {
           setDescriptions([
             {
               id: "initial",
@@ -101,13 +73,46 @@ const EditDescriptionModal = ({ isOpen, onClose, product, onUpdate }) => {
               type: "initial",
             },
           ]);
+        } else {
+          const mappedHistory = history.map((desc, index) => ({
+            id: desc.id || `desc-${index}`,
+            content: desc.content,
+            timestamp: desc.created_at,
+            created_at: desc.created_at,
+            author_id: desc.author_id,
+            author: desc.author_name || "Unknown",
+            author_name: desc.author_name || "Unknown",
+            type: index === 0 ? "initial" : "supplement",
+          }));
+          setDescriptions(mappedHistory);
         }
-      };
+      } catch (err) {
+        if (cancelled) return;
+        console.error("Failed to load description history:", err);
+        setDescriptions([
+          {
+            id: "initial",
+            content: product.description || "",
+            created_at:
+              product.created_at ||
+              product.postedAt ||
+              new Date().toISOString(),
+            author_id: product.seller_id,
+            author_name: "System",
+            type: "initial",
+          },
+        ]);
+      }
+    };
 
-      loadDescriptionHistory();
-      reset({ newDescription: "" });
-    }
-  }, [product, reset]);
+    loadDescriptionHistory();
+    // Reset input when opening the modal
+    reset({ newDescription: "" });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, product?.id, reset]); // <-- depend on isOpen/product.id only
 
   // Form submit handler
   const onSubmit = async (data) => {
@@ -240,7 +245,7 @@ const EditDescriptionModal = ({ isOpen, onClose, product, onUpdate }) => {
                         <div>
                           <span className="font-medium">Date:</span>{" "}
                           {new Date(desc.timestamp).toLocaleDateString(
-                            "vi-VN",
+                            "en-US",
                             {
                               weekday: "long",
                               year: "numeric",

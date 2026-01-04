@@ -10,9 +10,9 @@ import {
   Radio,
   RadioGroup,
 } from "@headlessui/react";
-import { StarIcon } from "@heroicons/react/20/solid";
+import { StarIcon, HeartIcon as HeartSolid } from "@heroicons/react/20/solid";
 import {
-  HeartIcon,
+  HeartIcon as HeartOutline,
   MinusIcon,
   PlusIcon,
   PencilIcon,
@@ -775,18 +775,18 @@ export default function ProductOverview({ productId: propProductId }) {
                       color: COLORS.PEBBLE,
                     }}
                   >
-                    📊 {bidCount} bid{bidCount !== 1 ? "s" : ""}
+                    {`Bid counts: `} {bidCount} bid{bidCount !== 1 ? "s" : ""}
                   </p>
                 )}
                 {autoExtend && (
                   <p
-                    className="mt-1"
+                    className="mt-1 italic"
                     style={{
                       fontSize: TYPOGRAPHY.SIZE_LABEL,
                       color: COLORS.PEBBLE,
                     }}
                   >
-                    ⏱️ Auto-extend enabled (extends if bid placed near end)
+                    Auto-extend enabled
                   </p>
                 )}
                 {!allowUnratedBidder && (
@@ -837,7 +837,6 @@ export default function ProductOverview({ productId: propProductId }) {
                           color: COLORS.PEBBLE,
                         }}
                       >
-                        <span>✏️</span>
                         <span style={{ fontWeight: TYPOGRAPHY.WEIGHT_BOLD }}>
                           {formatDescriptionDate(desc.created_at)}
                         </span>
@@ -1082,26 +1081,49 @@ export default function ProductOverview({ productId: propProductId }) {
                       type="button"
                       onClick={() => {
                         requireAuth(() => {
-                          if (inWatchlist) {
-                            const userId = user.id;
-                            navigate(`/watchlists/${userId}`);
-                            return;
-                          }
-                          watchlistService.addToWatchlist(product);
-                          setInWatchlist(true);
+                          (async () => {
+                            try {
+                              const userId = user.id;
+                              const pid = product?.id;
+                              if (!userId || !pid) return;
+                              if (inWatchlist) {
+                                await watchlistService.removeFromWatchlist(
+                                  userId,
+                                  pid
+                                );
+                                setInWatchlist(false);
+                              } else {
+                                await watchlistService.addToWatchlist(
+                                  userId,
+                                  pid
+                                );
+                                setInWatchlist(true);
+                              }
+                            } catch (e) {
+                              console.error("Watchlist toggle failed:", e);
+                            }
+                          })();
                         });
                       }}
                       style={{
-                        backgroundColor: inWatchlist ? "#d1d5db" : COLORS.WHITE,
+                        backgroundColor: COLORS.WHITE,
                         color: inWatchlist ? "#1f2937" : COLORS.MIDNIGHT_ASH,
                         borderRadius: BORDER_RADIUS.FULL,
                         padding: `${SPACING.S} ${SPACING.L}`,
                         border: `1.5px solid ${COLORS.MORNING_MIST}`,
                       }}
-                      className="w-full flex items-center justify-center hover:opacity-90"
+                      className="w-full flex items-center justify-center hover:!bg-gray-50"
                     >
-                      <HeartIcon className="size-6 mr-2 inline" />
-                      {inWatchlist ? "In Watchlist" : "Add to watchlist"}
+                      {inWatchlist ? (
+                        <HeartSolid className="size-6 mr-2 inline text-red-600" />
+                      ) : (
+                        <HeartOutline className="size-6 mr-2 inline text-black" />
+                      )}
+                      {inWatchlist ? (
+                        <div className="font-semibold">In Watchlist</div>
+                      ) : (
+                        "Add to watchlist"
+                      )}
                     </button>
 
                     {buyNowPrice > 0 && (

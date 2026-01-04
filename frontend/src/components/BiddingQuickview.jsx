@@ -76,7 +76,7 @@ export default function BiddingQuickView({
     "/images/sample.jpg";
 
   useEffect(() => {
-    // Reset state when product changes or opens
+    // Reset state only when modal opens
     if (open) {
       setStep("input");
       setMaxBid("");
@@ -85,14 +85,14 @@ export default function BiddingQuickView({
       setSuccessMessage("");
       prevMinBidRef.current = null;
 
-      // Freeze current price/min bid when the modal opens
+      // Freeze current price/min bid at open-time
       const frozenCurrent = Number(liveCurrentPrice);
       setAuctionSnapshot({
         currentPrice: frozenCurrent,
         minBid: frozenCurrent + stepPrice,
       });
 
-      // Check rating eligibility
+      // Check rating eligibility once at open
       const checkEligibility = async () => {
         if (!user || !user.id) {
           setEligibility({
@@ -102,13 +102,10 @@ export default function BiddingQuickView({
           });
           return;
         }
-
         try {
           const stats = await ratingService.getUserRatingEligibility(user.id);
           const ratingPercentage = stats.rating_percentage;
           const canBid = stats.can_bid;
-
-          // Check if product allows unrated bidders
           const allowsUnrated = product?.allow_unrated_bidder || false;
 
           if (!canBid && !allowsUnrated) {
@@ -126,9 +123,7 @@ export default function BiddingQuickView({
               rating_percentage: ratingPercentage,
             });
           }
-        } catch (err) {
-          console.error("Rating check failed:", err);
-          // Default to allowed if check fails (for unrated users or errors)
+        } catch {
           setEligibility({
             allowed: true,
             message: "",
@@ -136,10 +131,9 @@ export default function BiddingQuickView({
           });
         }
       };
-
       checkEligibility();
     }
-  }, [open, product, user]);
+  }, [open]); // <-- removed product/user deps
 
   useEffect(() => {
     // Clear snapshot when closed

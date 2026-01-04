@@ -479,13 +479,13 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                     paddingRight: SPACING.M,
                     paddingTop: SPACING.M,
                     paddingBottom: SPACING.M,
-                    textAlign: "left",
+                    textAlign: "center",
                     fontSize: TYPOGRAPHY.SIZE_LABEL,
                     fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
                     color: COLORS.MIDNIGHT_ASH,
                   }}
                 >
-                  Rating Info
+                  Rating
                 </th>
               )}
               <th
@@ -523,7 +523,7 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                     paddingRight: SPACING.M,
                     paddingTop: SPACING.M,
                     paddingBottom: SPACING.M,
-                    textAlign: "right",
+                    textAlign: "center",
                     fontSize: TYPOGRAPHY.SIZE_LABEL,
                     fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
                     color: COLORS.MIDNIGHT_ASH,
@@ -620,20 +620,18 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                         paddingTop: SPACING.M,
                         paddingBottom: SPACING.M,
                         fontSize: TYPOGRAPHY.SIZE_BODY,
+                        alignItems: "center",
+                        textAlign: "center",
                       }}
                     >
                       <a
                         href={`/user/${bid.bidder_id}/ratings`}
-                        style={{
-                          color: "#2563eb",
-                          textDecoration: "underline",
-                          fontSize: TYPOGRAPHY.SIZE_LABEL,
-                        }}
+                        className="text-pebble text-xs !underline "
                         onClick={(e) => {
                           e.stopPropagation();
                         }}
                       >
-                        View Ratings
+                        View
                       </a>
                     </td>
                   )}
@@ -692,28 +690,9 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                           style={{
                             display: "flex",
                             gap: SPACING.S,
-                            justifyContent: "flex-end",
+                            justifyContent: "center",
                           }}
                         >
-                          {/* <button
-                            type="button"
-                            onClick={() => handleAcceptBid(bid.id)}
-                            disabled={!!isProcessing[bid.id]}
-                            style={{
-                              padding: "6px 12px",
-                              borderRadius: BORDER_RADIUS.FULL,
-                              border: "none",
-                              backgroundColor: "#16A34A",
-                              color: COLORS.WHITE,
-                              fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                              cursor: isProcessing[bid.id]
-                                ? "not-allowed"
-                                : "pointer",
-                              opacity: isProcessing[bid.id] ? 0.7 : 1,
-                            }}
-                          >
-                            {isProcessing[bid.id] ? "..." : "Accept"}
-                          </button> */}
                           <button
                             type="button"
                             onClick={() => handleRejectBid(bid.id)}

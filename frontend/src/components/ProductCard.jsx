@@ -218,8 +218,9 @@ const ProductCard = ({ product, onWatchlistChange }) => {
 
   return (
     <div
-      className={`product-card flex gap-4 cursor-pointer ${isNew ? "ring-2 ring-amber-400 bg-amber-50" : ""
-        }`}
+      className={`product-card flex gap-4 cursor-pointer ${
+        isNew ? "ring-2 ring-amber-400 bg-amber-50" : ""
+      }`}
       onClick={handleCardClick}
     >
       {/* Product Image */}
@@ -243,8 +244,9 @@ const ProductCard = ({ product, onWatchlistChange }) => {
         >
           <svg
             viewBox="0 0 24 24"
-            fill="none"
+            fill="currentColor"
             xmlns="http://www.w3.org/2000/svg"
+            className="text-red-600"
           >
             <path d="M7 2C3.15265 2 1 5.07874 1 8.21053C1 10.4032 2.2622 12.083 3.27074 13.1579L11.2707 21.6842C11.4598 21.8857 11.7237 22 12 22C12.2763 22 12.5402 21.8857 12.7293 21.6842L20.7293 13.1579C21.7378 12.083 23 10.4032 23 8.21053C23 5.07874 20.8473 2 17 2C16.1223 2 15.2016 2.14991 14.2134 2.68203C13.4883 3.07246 12.7609 3.65031 12 4.46722C11.2391 3.65031 10.5117 3.07246 9.7866 2.68203C8.79839 2.14991 7.87768 2 7 2Z" />
           </svg>
