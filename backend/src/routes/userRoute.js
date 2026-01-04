@@ -7,6 +7,7 @@ import {
   getUserById,
   updateRole,
   updateUser,
+  adminResetPassword,
 } from "../controllers/userController.js";
 
 const router = express.Router();
@@ -20,6 +21,9 @@ router.post("/", authorize("admin"), createUser);
 
 // Update user role
 router.patch("/:id/role", authorize("admin"), updateRole);
+
+// Admin reset user password
+router.post("/:id/reset-password", authorize("admin"), adminResetPassword);
 
 // Delete user
 router.delete("/:id", authorize("admin"), deleteUser);

@@ -17,6 +17,9 @@ const UserManagementPage = () => {
   // Removed verification menu
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [showOrderMenu, setShowOrderMenu] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [userToResetPassword, setUserToResetPassword] = useState(null);
+  const [resetPasswordResult, setResetPasswordResult] = useState(null);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -94,6 +97,33 @@ const UserManagementPage = () => {
       default:
         return "bg-gray-100 text-gray-700 border border-gray-200";
     }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    try {
+      await userService.deleteUser(userId);
+      setUserToDelete(null);
+      fetchUsers(); // Refresh the user list
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      alert(error.response?.data?.message || "Failed to delete user");
+    }
+  };
+
+  const handleResetPassword = async (userId) => {
+    try {
+      const response = await userService.adminResetPassword(userId);
+      setResetPasswordResult(response);
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      alert(error.response?.data?.message || "Failed to reset password");
+      setUserToResetPassword(null);
+    }
+  };
+
+  const closeResetPasswordModal = () => {
+    setUserToResetPassword(null);
+    setResetPasswordResult(null);
   };
 
   const formatDate = (dateString) => {
@@ -423,7 +453,16 @@ const UserManagementPage = () => {
                     >
                       Details
                     </button>
-                    <button className="!px-3 !py-1 bg-red-100 text-red-700 !border !border-red-200 text-xs rounded-[6px] hover:!bg-red-200 font-medium">
+                    <button
+                      onClick={() => setUserToResetPassword(user)}
+                      className="!px-3 !py-1 bg-yellow-100 text-yellow-700 !border !border-yellow-200 text-xs rounded-[6px] hover:!bg-yellow-200 font-medium"
+                    >
+                      Reset Password
+                    </button>
+                    <button
+                      onClick={() => setUserToDelete(user)}
+                      className="!px-3 !py-1 bg-red-100 text-red-700 !border !border-red-200 text-xs rounded-[6px] hover:!bg-red-200 font-medium"
+                    >
                       Delete
                     </button>
                   </div>
@@ -503,6 +542,137 @@ const UserManagementPage = () => {
                 Edit
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {userToDelete && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white w-full max-w-md rounded-lg shadow-lg p-6 relative">
+            <button
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+              onClick={() => setUserToDelete(null)}
+            >
+              ✕
+            </button>
+            <h2 className="text-xl font-semibold mb-4 text-red-600">
+              Delete User
+            </h2>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete user{" "}
+              <span className="font-semibold">
+                {getDisplayName(userToDelete)}
+              </span>
+              ? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setUserToDelete(null)}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteUser(userToDelete.id)}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {userToResetPassword && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white w-full max-w-md rounded-lg shadow-lg p-6 relative">
+            <button
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+              onClick={closeResetPasswordModal}
+            >
+              ✕
+            </button>
+            {!resetPasswordResult ? (
+              <>
+                <h2 className="text-xl font-semibold mb-4 text-yellow-600">
+                  Reset Password
+                </h2>
+                <p className="text-gray-700 mb-6">
+                  Are you sure you want to reset password for{" "}
+                  <span className="font-semibold">
+                    {getDisplayName(userToResetPassword)}
+                  </span>
+                  ?
+                  <br />
+                  <br />A temporary password will be generated and sent to their
+                  email address.
+                </p>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={closeResetPasswordModal}
+                    className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleResetPassword(userToResetPassword.id)}
+                    className="px-4 py-2 text-sm bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
+                  >
+                    Reset Password
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-xl font-semibold mb-4 text-green-600">
+                  Password Reset Successful
+                </h2>
+                <div className="space-y-4">
+                  <p className="text-gray-700">
+                    The password has been reset successfully for{" "}
+                    <span className="font-semibold">
+                      {getDisplayName(userToResetPassword)}
+                    </span>
+                    .
+                  </p>
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p className="text-sm font-medium text-gray-700 mb-2">
+                      Temporary Password:
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 bg-white px-3 py-2 rounded border border-gray-300 font-mono text-lg text-red-600">
+                        {resetPasswordResult.temporaryPassword}
+                      </code>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(
+                            resetPasswordResult.temporaryPassword
+                          );
+                          alert("Password copied to clipboard!");
+                        }}
+                        className="px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-sm text-blue-800">
+                      ✉️ An email notification has been sent to the user with
+                      their temporary password.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 mt-6">
+                  <button
+                    onClick={closeResetPasswordModal}
+                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

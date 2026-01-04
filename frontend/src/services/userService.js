@@ -150,6 +150,17 @@ const userService = {
       throw error;
     }
   },
+
+  // Admin reset user password
+  adminResetPassword: async (id) => {
+    try {
+      const response = await api.post(`/api/users/${id}/reset-password`);
+      return response.data;
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      throw error;
+    }
+  },
 };
 
 export default userService;

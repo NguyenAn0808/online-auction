@@ -244,3 +244,49 @@ export const updateRole = async (req, res) => {
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };
+
+export const adminResetPassword = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Find user
+    const user = await User.findById(id);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    // Generate a temporary password (8 characters: letters + numbers)
+    const crypto = await import("crypto");
+    const temporaryPassword = crypto.default
+      .randomBytes(4)
+      .toString("hex")
+      .toUpperCase();
+
+    // Hash the temporary password
+    const hashedPassword = await bcrypt.hash(temporaryPassword, saltRounds);
+
+    // Update user password
+    await User.updatePassword(id, hashedPassword);
+
+    // Send email notification to user
+    const { sendAdminPasswordResetNotification } = await import(
+      "../services/emailService.js"
+    );
+    await sendAdminPasswordResetNotification(
+      user.email,
+      user.fullName,
+      temporaryPassword
+    );
+
+    res.json({
+      success: true,
+      message: "Password reset successfully. User has been notified via email.",
+      temporaryPassword, // Return to admin for reference
+    });
+  } catch (error) {
+    console.error("Error resetting password:", error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};

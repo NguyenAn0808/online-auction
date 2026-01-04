@@ -248,3 +248,39 @@ export const sendAnswerNotification = async (
     `
   );
 };
+
+// Password reset by admin (To the user)
+export const sendAdminPasswordResetNotification = async (
+  userEmail,
+  fullName,
+  temporaryPassword
+) => {
+  const subject = "[Important] Your Password Has Been Reset";
+  const html = `
+    <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+      <h2 style="color: #e74c3c;">Password Reset Notification</h2>
+      <p>Dear <strong>${fullName}</strong>,</p>
+      <p>Your password has been reset by an administrator.</p>
+      <div style="background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 15px 0;">
+        <p style="margin: 0;"><strong>Your temporary password:</strong></p>
+        <p style="font-size: 18px; font-family: monospace; margin: 10px 0 0 0; color: #d63031;">${temporaryPassword}</p>
+      </div>
+      <p style="color: #e74c3c;"><strong>⚠️ Important Security Notice:</strong></p>
+      <ul style="color: #555;">
+        <li>Please log in and change your password immediately</li>
+        <li>Do not share this temporary password with anyone</li>
+        <li>This is a system-generated password for security purposes</li>
+      </ul>
+      <p>
+        <a href="${config.CLIENT_URL}/auth/signin" 
+           style="display: inline-block; background-color: #3498db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin-top: 10px;">
+          Log In Now
+        </a>
+      </p>
+      <p style="color: #666; font-size: 12px; margin-top: 20px;">
+        If you did not request this change, please contact support immediately.
+      </p>
+    </div>
+  `;
+  return sendEmail(userEmail, subject, html);
+};
