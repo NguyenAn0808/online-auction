@@ -149,10 +149,10 @@ class ProductModel {
         query += ` ORDER BY p.end_time ASC`;
         break;
       case "price_asc":
-        query += ` ORDER BY p.start_price ASC`;
+        query += ` ORDER BY COALESCE(p.current_price, p.start_price) ASC`;
         break;
       case "price_desc":
-        query += ` ORDER BY p.start_price DESC`;
+        query += ` ORDER BY COALESCE(p.current_price, p.start_price) DESC`;
         break;
       case "newest":
       default:
