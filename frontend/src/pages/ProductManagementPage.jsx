@@ -10,6 +10,7 @@ import { productService } from "../services/productService";
 import { useToast } from "../context/ToastContext";
 import { categoryService } from "../services/categoryService";
 import userService from "../services/userService";
+import { ArrowsUpDownIcon } from "@heroicons/react/24/solid";
 
 const ProductManagementPage = () => {
   const location = useLocation();
@@ -20,16 +21,19 @@ const ProductManagementPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Local filter states
+  // Local search + sorting states
   const [localSearch, setLocalSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
-  // sortBy possible values: end_time_desc | price_asc | price_desc | bid_asc | bid_desc
-  const [sortBy, setSortBy] = useState("end_time_desc");
-  const [filterBy, setFilterBy] = useState("all");
-  const [showSortMenu, setShowSortMenu] = useState(false);
-  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  // Split sorting into field and order
+  const [sortField, setSortField] = useState("end_time"); // end_time | start_price | current_bid
+  const [sortOrder, setSortOrder] = useState("desc"); // asc | desc
+  const [showSortMenu, setShowSortMenu] = useState(false); // for field
+  const [showFilterMenu, setShowFilterMenu] = useState(false); // for order
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
   const [sellerName, setSellerName] = useState("");
   const [sellerNames, setSellerNames] = useState({});
@@ -42,16 +46,11 @@ const ProductManagementPage = () => {
       overrides.category_id !== undefined ? overrides.category_id : categoryId;
     const nextSearch =
       overrides.search !== undefined ? overrides.search : appliedSearch;
-    const nextSort = overrides.sort !== undefined ? overrides.sort : sortBy;
-    const nextFilter =
-      overrides.filter !== undefined ? overrides.filter : filterBy;
     const nextPage =
       overrides.page !== undefined ? overrides.page : currentPage;
     const sp = new URLSearchParams();
     if (nextCategory) sp.set("category_id", nextCategory);
     if (nextSearch) sp.set("search", nextSearch);
-    if (nextSort) sp.set("sort", nextSort);
-    if (nextFilter && nextFilter !== "all") sp.set("status", nextFilter);
     if (nextPage && nextPage !== 1) sp.set("page", String(nextPage));
     navigate({ pathname: location.pathname, search: `?${sp.toString()}` });
   };
@@ -78,7 +77,7 @@ const ProductManagementPage = () => {
     fetchCategories();
   }, []);
 
-  // Fetch products (fetch all, paginate client-side)
+  // Fetch products (fetch all, then sort client-side, paginate client-side)
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -93,37 +92,32 @@ const ProductManagementPage = () => {
         if (categoryId) params.category_id = categoryId;
         if (appliedSearch) params.search = appliedSearch;
 
-        // Sorting flags (backend handles actual ordering logic)
-        switch (sortBy) {
-          case "end_time_desc":
-            params.end_time_desc = true;
-            break;
-          case "price_asc":
-            params.price_asc = true;
-            break;
-          case "price_desc":
-            params.price_desc = true;
-            break;
-          case "bid_asc":
-            params.bid_amount_asc = true;
-            break;
-          case "bid_desc":
-            params.bid_amount_desc = true;
-            break;
-          default:
-            params.end_time_desc = true;
-        }
-
-        // Status filtering
-        if (filterBy === "active") params.status = "active";
-        else if (filterBy === "ended") params.status = "ended";
-
         // Call API
         const response = await productService.getProducts(params);
         const allItems = response.data || response.items || response || [];
         const items = Array.isArray(allItems) ? allItems : [];
-        setProducts(items);
-        setTotalPages(Math.ceil(items.length / productsPerPage) || 1);
+
+        // Sort client-side based on field + order
+        const getValue = (p) => {
+          if (sortField === "end_time") {
+            const t = new Date(p?.end_time).getTime();
+            return Number.isFinite(t) ? t : 0;
+          }
+          if (sortField === "start_price") {
+            return Number(p?.start_price ?? 0);
+          }
+          // current_bid
+          return Number(p?.current_price ?? p?.start_price ?? 0);
+        };
+
+        const sorted = [...items].sort((a, b) => {
+          const va = getValue(a);
+          const vb = getValue(b);
+          return sortOrder === "asc" ? va - vb : vb - va;
+        });
+
+        setProducts(sorted);
+        setTotalPages(Math.ceil(sorted.length / productsPerPage) || 1);
         setCurrentPage(1);
       } catch (error) {
         console.error("Error fetching products list:", error);
@@ -134,7 +128,7 @@ const ProductManagementPage = () => {
       }
     };
     fetchProducts();
-  }, [categoryId, appliedSearch, sortBy, filterBy, categories]);
+  }, [categoryId, appliedSearch, sortField, sortOrder, categories]);
 
   // Helper: get thumbnail URL
   const getThumbnail = (p) => {
@@ -282,14 +276,21 @@ const ProductManagementPage = () => {
     }
   };
 
-  // Handle Delete Product
-  const handleDeleteProduct = async (productId) => {
-    if (!window.confirm("Are you sure you want to delete this product?")) {
+  // Open Delete Confirmation Modal
+  const handleDeleteProduct = (product) => {
+    setProductToDelete(product);
+    setShowDeleteModal(true);
+  };
+
+  // Confirm Delete Product
+  const confirmDeleteProduct = async () => {
+    if (!productToDelete?.id) {
+      setShowDeleteModal(false);
       return;
     }
-
     try {
-      await productService.deleteProduct(productId);
+      setDeleting(true);
+      await productService.deleteProduct(productToDelete.id);
 
       // Refresh products list (fetch all)
       const params = { limit: 1000 };
@@ -303,6 +304,8 @@ const ProductManagementPage = () => {
       setTotalPages(Math.ceil(items.length / productsPerPage) || 1);
 
       toast.success("Product deleted successfully!");
+      setShowDeleteModal(false);
+      setProductToDelete(null);
     } catch (error) {
       console.error("Failed to delete product:", error);
       toast.error(
@@ -310,6 +313,8 @@ const ProductManagementPage = () => {
           error.message ||
           "Failed to delete product"
       );
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -404,24 +409,18 @@ const ProductManagementPage = () => {
           </div>
           <div className="flex gap-3">
             <FilterDropdown
-              label="Sorting"
+              label="Sort Field"
               value={
-                sortBy === "end_time_desc"
-                  ? "End Time ↓"
-                  : sortBy === "price_asc"
-                  ? "Start Price ↑"
-                  : sortBy === "price_desc"
-                  ? "Start Price ↓"
-                  : sortBy === "bid_asc"
-                  ? "Current Bid ↑"
-                  : "Current Bid ↓"
+                sortField === "end_time"
+                  ? "End Time"
+                  : sortField === "start_price"
+                  ? "Start Price"
+                  : "Current Bid"
               }
               options={[
-                { label: "End Time Desc", value: "end_time_desc" },
-                { label: "Start Price ↑", value: "price_asc" },
-                { label: "Start Price ↓", value: "price_desc" },
-                { label: "Current Bid ↑", value: "bid_asc" },
-                { label: "Current Bid ↓", value: "bid_desc" },
+                { label: "End Time", value: "end_time" },
+                { label: "Start Price", value: "start_price" },
+                { label: "Current Bid", value: "current_bid" },
               ]}
               isOpen={showSortMenu}
               onToggle={() => {
@@ -429,26 +428,20 @@ const ProductManagementPage = () => {
                 setShowFilterMenu(false);
               }}
               onSelect={(value) => {
-                setSortBy(value);
+                setSortField(value);
                 setShowSortMenu(false);
                 setCurrentPage(1);
-                updateUrl({ sort: value, page: 1 });
+                updateUrl({ page: 1 });
               }}
             />
 
             <FilterDropdown
-              label="Filter"
-              value={
-                filterBy === "all"
-                  ? "All"
-                  : filterBy === "active"
-                  ? "Active"
-                  : "Ended"
-              }
+              Icon={ArrowsUpDownIcon}
+              label="Order"
+              value={sortOrder === "asc" ? "Asc" : "Desc"}
               options={[
-                { label: "All", value: "all" },
-                { label: "Active", value: "active" },
-                { label: "Ended", value: "ended" },
+                { label: "Asc", value: "asc" },
+                { label: "Desc", value: "desc" },
               ]}
               isOpen={showFilterMenu}
               onToggle={() => {
@@ -456,10 +449,10 @@ const ProductManagementPage = () => {
                 setShowSortMenu(false);
               }}
               onSelect={(value) => {
-                setFilterBy(value);
+                setSortOrder(value);
                 setShowFilterMenu(false);
                 setCurrentPage(1);
-                updateUrl({ filter: value, page: 1 });
+                updateUrl({ page: 1 });
               }}
             />
           </div>
@@ -541,7 +534,7 @@ const ProductManagementPage = () => {
                     Edit
                   </button>
                   <button
-                    onClick={() => handleDeleteProduct(product.id)}
+                    onClick={() => handleDeleteProduct(product)}
                     className="w-full !px-4 !py-2 bg-red-100 text-red-700 !border !border-red-200 text-sm rounded-lg hover:!bg-red-200 font-medium transition-all"
                   >
                     Remove
@@ -893,13 +886,61 @@ const ProductManagementPage = () => {
               >
                 Cancel
               </button>
-              <button className="px-6 py-2 !bg-red-600 text-white rounded-lg font-medium !hover:bg-red-700 transition-colors">
+              <button
+                onClick={() => {
+                  const p = selectedProductDetails || selectedProduct;
+                  setSelectedProduct(null);
+                  handleDeleteProduct(p);
+                }}
+                className="px-6 py-2 !bg-red-600 text-white rounded-lg font-medium !hover:bg-red-700 transition-colors"
+              >
                 Remove Product
               </button>
             </div>
           </div>
         )}
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="text-xl font-bold text-red-600">Delete Product</h4>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete the product{" "}
+              <strong>{productToDelete?.name}</strong>? This action cannot be
+              undone.
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteProduct}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Product Modal */}
       <EditProductModal

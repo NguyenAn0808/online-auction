@@ -3,10 +3,11 @@ import {
   UserIcon,
   FunnelIcon,
   ArrowsUpDownIcon,
-  ChevronDownIcon,
 } from "@heroicons/react/24/outline";
+import { FunnelIcon as FunnelSolid } from "@heroicons/react/24/solid";
 import userService from "../services/userService";
 import Pagination from "../components/Pagination";
+import FilterDropdown from "../components/FilterDropdown";
 
 const UserManagementPage = () => {
   const [users, setUsers] = useState([]);
@@ -171,7 +172,7 @@ const UserManagementPage = () => {
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-      <div className="mb-6">
+      <div className="mb-4  ">
         <h3 className="text-2xl font-bold text-gray-900 mb-1">
           User Management
         </h3>
@@ -179,247 +180,91 @@ const UserManagementPage = () => {
 
       <div className="mb-2">
         <div className="flex items-center justify-between bg-white">
-          <div className="text-lg font-semibold text-gray-900">
-            Showing {users.length} users
+          <div className="text-lg text-gray-900">
+            Showing <div className="font-bold inline">{users.length} </div>
+            users
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             {/* Role Filter */}
-            <div className="relative">
-              <button
-                onClick={() => {
-                  setShowRoleMenu(!showRoleMenu);
-                  setShowSortMenu(false);
-                  setShowOrderMenu(false);
-                }}
-                className={`group flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-gray-200 ${
-                  showRoleMenu
-                    ? "bg-whisper"
-                    : "bg-white border-gray-300 hover:bg-whisper hover:text-pebble"
-                }`}
-              >
-                <UserIcon
-                  className={`w-5 h-5 ${showRoleMenu ? "text-pebble" : ""}`}
-                />
-                <span className="font-medium text-md">
-                  {roleFilter === "all"
-                    ? "All"
-                    : roleFilter.charAt(0).toUpperCase() + roleFilter.slice(1)}
-                </span>
-                <ChevronDownIcon
-                  className={`w-4 h-4 ml-1 transition-transform ${
-                    showRoleMenu ? "rotate-180 text-pebble" : ""
-                  }`}
-                />
-              </button>
-              {showRoleMenu && (
-                <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10 divide-y">
-                  <button
-                    onClick={() => {
-                      setRoleFilter("all");
-                      setCurrentPage(1);
-                      setShowRoleMenu(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-whisper hover:text-pebble ${
-                      roleFilter === "all"
-                        ? "bg-whisper text-midnight-ash font-medium"
-                        : ""
-                    }`}
-                  >
-                    All
-                  </button>
-                  <button
-                    onClick={() => {
-                      setRoleFilter("admin");
-                      setCurrentPage(1);
-                      setShowRoleMenu(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-whisper hover:text-pebble ${
-                      roleFilter === "admin"
-                        ? "bg-whisper text-midnight-ash font-medium"
-                        : ""
-                    }`}
-                  >
-                    Admin
-                  </button>
-                  <button
-                    onClick={() => {
-                      setRoleFilter("seller");
-                      setCurrentPage(1);
-                      setShowRoleMenu(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-whisper hover:text-pebble ${
-                      roleFilter === "seller"
-                        ? "bg-whisper text-midnight-ash font-medium"
-                        : ""
-                    }`}
-                  >
-                    Seller
-                  </button>
-                  <button
-                    onClick={() => {
-                      setRoleFilter("bidder");
-                      setCurrentPage(1);
-                      setShowRoleMenu(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-whisper hover:text-pebble ${
-                      roleFilter === "bidder"
-                        ? "bg-whisper text-midnight-ash font-medium"
-                        : ""
-                    }`}
-                  >
-                    Bidder
-                  </button>
-                </div>
-              )}
-            </div>
+            <FilterDropdown
+              label="Role"
+              value={
+                roleFilter === "all"
+                  ? "All"
+                  : roleFilter.charAt(0).toUpperCase() + roleFilter.slice(1)
+              }
+              options={[
+                { label: "All", value: "all" },
+                { label: "Admin", value: "admin" },
+                { label: "Seller", value: "seller" },
+                { label: "Bidder", value: "bidder" },
+              ]}
+              isOpen={showRoleMenu}
+              onToggle={() => {
+                setShowRoleMenu(!showRoleMenu);
+                setShowSortMenu(false);
+                setShowOrderMenu(false);
+              }}
+              onSelect={(value) => {
+                setRoleFilter(value);
+                setCurrentPage(1);
+                setShowRoleMenu(false);
+              }}
+              Icon={UserIcon}
+            />
 
             {/* Sort By */}
-            <div className="relative">
-              <button
-                onClick={() => {
-                  setShowSortMenu(!showSortMenu);
-                  setShowRoleMenu(false);
-                  setShowOrderMenu(false);
-                }}
-                className={`group flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-gray-200 ${
-                  showSortMenu
-                    ? "bg-whisper"
-                    : "bg-white border-gray-300 hover:bg-whisper hover:text-pebble"
-                }`}
-              >
-                <FunnelIcon
-                  className={`w-5 h-5 ${showSortMenu ? "text-pebble" : ""}`}
-                />
-                <span className="font-medium text-md">
-                  {sortBy === "createdAt"
-                    ? "Created At"
-                    : sortBy === "updatedAt"
-                    ? "Updated At"
-                    : sortBy === "fullname"
-                    ? "Full Name"
-                    : "Email"}
-                </span>
-                <ChevronDownIcon
-                  className={`w-4 h-4 ml-1 transition-transform ${
-                    showSortMenu ? "rotate-180 text-pebble" : ""
-                  }`}
-                />
-              </button>
-              {showSortMenu && (
-                <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10 divide-y">
-                  <button
-                    onClick={() => {
-                      setSortBy("createdAt");
-                      setShowSortMenu(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-whisper hover:text-pebble ${
-                      sortBy === "createdAt"
-                        ? "bg-whisper text-midnight-ash font-medium"
-                        : ""
-                    }`}
-                  >
-                    Created At
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSortBy("updatedAt");
-                      setShowSortMenu(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-whisper hover:text-pebble ${
-                      sortBy === "updatedAt"
-                        ? "bg-whisper text-midnight-ash font-medium"
-                        : ""
-                    }`}
-                  >
-                    Updated At
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSortBy("fullname");
-                      setShowSortMenu(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-whisper hover:text-pebble ${
-                      sortBy === "fullname"
-                        ? "bg-whisper text-midnight-ash font-medium"
-                        : ""
-                    }`}
-                  >
-                    Full Name
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSortBy("email");
-                      setShowSortMenu(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-whisper hover:text-pebble ${
-                      sortBy === "email"
-                        ? "bg-whisper text-midnight-ash font-medium"
-                        : ""
-                    }`}
-                  >
-                    Email
-                  </button>
-                </div>
-              )}
-            </div>
+            <FilterDropdown
+              label="Sort"
+              value={
+                sortBy === "createdAt"
+                  ? "Created At"
+                  : sortBy === "updatedAt"
+                  ? "Updated At"
+                  : sortBy === "fullname"
+                  ? "Full Name"
+                  : "Email"
+              }
+              options={[
+                { label: "Created At", value: "createdAt" },
+                { label: "Updated At", value: "updatedAt" },
+                { label: "Full Name", value: "fullname" },
+                { label: "Email", value: "email" },
+              ]}
+              isOpen={showSortMenu}
+              onToggle={() => {
+                setShowSortMenu(!showSortMenu);
+                setShowRoleMenu(false);
+                setShowOrderMenu(false);
+              }}
+              onSelect={(value) => {
+                setSortBy(value);
+                setShowSortMenu(false);
+              }}
+              Icon={FunnelIcon}
+              ActiveIcon={FunnelSolid}
+            />
 
             {/* Order */}
-            <div className="relative">
-              <button
-                onClick={() => {
-                  setShowOrderMenu(!showOrderMenu);
-                  setShowRoleMenu(false);
-                  setShowSortMenu(false);
-                }}
-                className={`group flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-gray-200 ${
-                  showOrderMenu
-                    ? "bg-whisper"
-                    : "bg-white border-gray-300 hover:bg-whisper hover:text-pebble"
-                }`}
-              >
-                <ArrowsUpDownIcon
-                  className={`w-5 h-5 ${showOrderMenu ? "text-pebble" : ""}`}
-                />
-                <span className="font-medium text-md">
-                  {sortOrder === "asc" ? "Asc" : "Desc"}
-                </span>
-                <ChevronDownIcon
-                  className={`w-4 h-4 ml-1 transition-transform ${
-                    showOrderMenu ? "rotate-180 text-pebble" : ""
-                  }`}
-                />
-              </button>
-              {showOrderMenu && (
-                <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-lg shadow-lg z-10 divide-y">
-                  <button
-                    onClick={() => {
-                      setSortOrder("asc");
-                      setShowOrderMenu(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-whisper hover:text-pebble ${
-                      sortOrder === "asc"
-                        ? "bg-whisper text-midnight-ash font-medium"
-                        : ""
-                    }`}
-                  >
-                    Asc
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSortOrder("desc");
-                      setShowOrderMenu(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-whisper hover:text-pebble ${
-                      sortOrder === "desc"
-                        ? "bg-whisper text-midnight-ash font-medium"
-                        : ""
-                    }`}
-                  >
-                    Desc
-                  </button>
-                </div>
-              )}
-            </div>
+            <FilterDropdown
+              label="Order"
+              value={sortOrder === "asc" ? "Asc" : "Desc"}
+              options={[
+                { label: "Asc", value: "asc" },
+                { label: "Desc", value: "desc" },
+              ]}
+              isOpen={showOrderMenu}
+              onToggle={() => {
+                setShowOrderMenu(!showOrderMenu);
+                setShowRoleMenu(false);
+                setShowSortMenu(false);
+              }}
+              onSelect={(value) => {
+                setSortOrder(value);
+                setShowOrderMenu(false);
+              }}
+              Icon={ArrowsUpDownIcon}
+            />
           </div>
         </div>
       </div>

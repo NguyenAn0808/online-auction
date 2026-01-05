@@ -6,8 +6,6 @@ import {
   ShoppingBagIcon,
   CurrencyDollarIcon,
   ArrowRightStartOnRectangleIcon,
-  BookmarkSquareIcon,
-  LifebuoyIcon,
   Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
 import {
@@ -85,9 +83,9 @@ export default function FlyoutMenu({ alignRight = false }) {
       ? [
           {
             name: "Admin Panel",
-            description: "Manage users, products, and settings",
+            description: "Manage system settings",
             href: "/admin",
-            icon: LifebuoyIcon,
+            icon: Cog6ToothIcon,
           },
         ]
       : []),

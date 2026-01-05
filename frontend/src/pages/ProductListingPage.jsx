@@ -2,7 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import CategorySidebar from "../components/CategorySidebar";
-import SortBar from "../components/SortBar";
+import FilterDropdown from "../components/FilterDropdown";
+import { FunnelIcon } from "@heroicons/react/24/outline";
+import { FunnelIcon as FunnelSolid } from "@heroicons/react/24/solid";
 import ProductCard from "../components/ProductCard";
 import Pagination from "../components/Pagination";
 import { productService } from "../services/productService";
@@ -16,6 +18,7 @@ const ProductListingPage = () => {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [showSortMenu, setShowSortMenu] = useState(false);
   const productsPerPage = 5;
 
   const searchParams = new URLSearchParams(location.search);
@@ -88,7 +91,13 @@ const ProductListingPage = () => {
           : [];
 
         setProducts(items);
-        setTotalPages(response?.pagination?.totalPages || 1);
+        // Backend returns pagination { page, limit, total } — compute totalPages
+        const pagination = response?.pagination || response?.data?.pagination;
+        const totalItems = pagination?.total;
+        const limitVal = pagination?.limit || productsPerPage;
+        setTotalPages(
+          totalItems && limitVal ? Math.ceil(totalItems / limitVal) : 1
+        );
       } catch (error) {
         console.error("Error fetching products list:", error);
         setProducts([]);
@@ -114,6 +123,41 @@ const ProductListingPage = () => {
     return activeCategory ? activeCategory.name : "";
   };
 
+  const getResultsText = () => {
+    if (searchTerm) return `Results for "${searchTerm}"`;
+    const cn = getCategoryName();
+    if (cn) return `Results for ${cn}`;
+    if (categoryId) return "Results for category";
+    return "All products";
+  };
+
+  const getActiveSortLabel = () => {
+    if (sortPriceAsc) return "Price: Low → High";
+    if (sortPriceDesc) return "Price: High → Low";
+    if (sortEndTimeDesc) return "End Time";
+    return "Sort";
+  };
+
+  const handleSelectSort = (val) => {
+    const params = new URLSearchParams(location.search);
+    [
+      "price_asc",
+      "price_desc",
+      "end_time_desc",
+      "bid_amount_asc",
+      "bid_amount_desc",
+    ].forEach((p) => params.delete(p));
+
+    if (val === "price_asc") params.set("price_asc", "1");
+    else if (val === "price_desc") params.set("price_desc", "1");
+    else if (val === "end_time_desc") params.set("end_time_desc", "1");
+    // val === 'clear' means no sort params
+
+    // Reset page to 1 when sorting changes
+    params.delete("page");
+    navigate({ pathname: location.pathname, search: `?${params.toString()}` });
+  };
+
   return (
     <div className="min-h-screen bg-whisper">
       <Header />
@@ -127,8 +171,34 @@ const ProductListingPage = () => {
 
           {/* Main Content */}
           <main className="flex-1">
-            {/* Sort Bar */}
-            <SortBar categoryName={getCategoryName()} />
+            {/* Top Controls - FilterDropdown for sorting */}
+            <div className="flex items-center justify-between mb-4 bg-white border border-gray-200 rounded-lg p-4">
+              <div className="flex-1">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  {getResultsText()}
+                </h2>
+              </div>
+              <div className="flex gap-2">
+                <FilterDropdown
+                  label="Sort"
+                  value={getActiveSortLabel()}
+                  options={[
+                    { label: "Price: Low → High", value: "price_asc" },
+                    { label: "Price: High → Low", value: "price_desc" },
+                    { label: "End Time", value: "end_time_desc" },
+                    { label: "Clear", value: "clear" },
+                  ]}
+                  isOpen={showSortMenu}
+                  onToggle={() => setShowSortMenu(!showSortMenu)}
+                  onSelect={(value) => {
+                    handleSelectSort(value);
+                    setShowSortMenu(false);
+                  }}
+                  Icon={FunnelIcon}
+                  ActiveIcon={FunnelSolid}
+                />
+              </div>
+            </div>
 
             {/* Products List */}
             {loading ? (

@@ -850,7 +850,7 @@ button {
 
 .pagination-btn:hover:not(:disabled) {
   border-color: var(--midnight-ash);
-  background-color: var(--gray-100);
+  background-color: #f9fafb;
   color: var(--midnight-ash);
 }
 

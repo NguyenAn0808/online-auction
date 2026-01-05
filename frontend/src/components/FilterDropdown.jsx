@@ -1,3 +1,4 @@
+import { FunnelIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
 const FilterDropdown = ({
   label,
   value,
@@ -5,48 +6,56 @@ const FilterDropdown = ({
   isOpen,
   onToggle,
   onSelect,
-}) => (
-  <div className="relative">
-    <button
-      onClick={onToggle}
-      className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
-    >
-      <svg
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
+  Icon = FunnelIcon,
+  ActiveIcon = null,
+}) => {
+  const IconToRender = isOpen && ActiveIcon ? ActiveIcon : Icon;
+  return (
+    <div className="relative">
+      <button
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        className={`group flex items-center gap-2 px-2 py-2 border rounded-lg transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-gray-200 ${
+          isOpen
+            ? "bg-whisper"
+            : "bg-white border-gray-300 hover:bg-whisper hover:text-pebble"
+        }`}
       >
-        <path
-          d="M4 6H20M7 12H17M10 18H14"
-          stroke="#191919"
-          strokeWidth="2"
-          strokeLinecap="round"
+        <IconToRender className={`w-4 h-4 ${isOpen ? "text-pebble" : ""}`} />
+
+        <span className="font-medium text-md">
+          {/* Prefer showing value for concise button like User Management */}
+          {value || label}
+        </span>
+        <ChevronUpIcon
+          className={`w-4 h-4 transition-transform duration-200 ${
+            isOpen ? "rotate-180 text-pebble" : "text-midnight-ash"
+          }`}
         />
-      </svg>
-      <span className="font-medium text-md">
-        {label}: {value}
-      </span>
-    </button>
-    {isOpen && (
-      <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-        {options.map((option, index) => (
-          <button
-            key={index}
-            onClick={() => onSelect(option.value)}
-            className={`w-full text-left px-4 py-2 hover:bg-gray-50 ${
-              index === 0 ? "first:rounded-t-lg" : ""
-            } ${index === options.length - 1 ? "last:rounded-b-lg" : ""} ${
-              value === option.label ? "bg-blue-50 text-blue-600" : ""
-            }`}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-    )}
-  </div>
-);
+      </button>
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-10 divide-y">
+          {options.map((option, index) => {
+            const isActive =
+              value === option.label || value === option.value || false;
+            return (
+              <button
+                key={index}
+                onClick={() => onSelect(option.value)}
+                className={`w-full text-left px-2 py-2 text-md hover:bg-whisper hover:text-pebble ${
+                  index === 0 ? "first:rounded-t-lg" : ""
+                } ${index === options.length - 1 ? "last:rounded-b-lg" : ""} ${
+                  isActive ? "bg-whisper text-midnight-ash font-medium" : ""
+                }`}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default FilterDropdown;

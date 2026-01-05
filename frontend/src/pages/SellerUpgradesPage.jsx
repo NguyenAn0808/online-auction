@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
+import { FunnelIcon } from "@heroicons/react/24/outline";
+import { FunnelIcon as FunnelSolid } from "@heroicons/react/24/solid";
 import Pagination from "../components/Pagination";
 import upgradeRequestService from "../services/upgradeRequestService";
 import userService from "../services/userService";
 import { useToast } from "../context/ToastContext";
+import FilterDropdown from "../components/FilterDropdown";
 
 const SellerUpgradesPage = () => {
   const toast = useToast();
@@ -204,99 +207,40 @@ const SellerUpgradesPage = () => {
         </h3>
       </div>
 
-      <div className="mb-6 flex items-center justify-between">
-        <div className="text-md text-gray-600">
-          Showing <span className="font-semibold">{requests.length}</span>{" "}
+      <div className="mb-6 flex items-center justify-between bg-white">
+        <div className="text-lg text-gray-900">
+          Showing <div className="font-bold inline">{requests.length} </div>
           requests
         </div>
-        <div className="flex gap-3">
-          <div className="relative">
-            <button
-              onClick={() => setShowStatusMenu(!showStatusMenu)}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full hover:bg-gray-50"
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M4 6H20M7 12H17M10 18H14"
-                  stroke="#191919"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
-              <span className="font-medium text-md">
-                Status:{" "}
-                {statusFilter === "all"
-                  ? "All"
-                  : statusFilter === "pending"
-                  ? "Pending"
-                  : statusFilter === "approved"
-                  ? "Approved"
-                  : "Rejected"}
-              </span>
-            </button>
-            {showStatusMenu && (
-              <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-                <button
-                  onClick={() => {
-                    setStatusFilter("all");
-                    setShowStatusMenu(false);
-                    setCurrentPage(1);
-                  }}
-                  className={`w-full text-left px-4 py-2 hover:bg-gray-50 first:rounded-t-lg ${
-                    statusFilter === "all" ? "bg-blue-50 text-blue-600" : ""
-                  }`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => {
-                    setStatusFilter("pending");
-                    setShowStatusMenu(false);
-                    setCurrentPage(1);
-                  }}
-                  className={`w-full text-left px-4 py-2 hover:bg-gray-50 ${
-                    statusFilter === "pending" ? "bg-blue-50 text-blue-600" : ""
-                  }`}
-                >
-                  Pending
-                </button>
-                <button
-                  onClick={() => {
-                    setStatusFilter("approved");
-                    setShowStatusMenu(false);
-                    setCurrentPage(1);
-                  }}
-                  className={`w-full text-left px-4 py-2 hover:bg-gray-50 ${
-                    statusFilter === "approved"
-                      ? "bg-blue-50 text-blue-600"
-                      : ""
-                  }`}
-                >
-                  Approved
-                </button>
-                <button
-                  onClick={() => {
-                    setStatusFilter("rejected");
-                    setShowStatusMenu(false);
-                    setCurrentPage(1);
-                  }}
-                  className={`w-full text-left px-4 py-2 hover:bg-gray-50 last:rounded-b-lg ${
-                    statusFilter === "rejected"
-                      ? "bg-blue-50 text-blue-600"
-                      : ""
-                  }`}
-                >
-                  Rejected
-                </button>
-              </div>
-            )}
-          </div>
+        <div className="flex gap-2">
+          {/* Status Filter - using shared FilterDropdown */}
+          <FilterDropdown
+            label="Status"
+            value={
+              statusFilter === "all"
+                ? "All"
+                : statusFilter === "pending"
+                ? "Pending"
+                : statusFilter === "approved"
+                ? "Approved"
+                : "Rejected"
+            }
+            options={[
+              { label: "All", value: "all" },
+              { label: "Pending", value: "pending" },
+              { label: "Approved", value: "approved" },
+              { label: "Rejected", value: "rejected" },
+            ]}
+            isOpen={showStatusMenu}
+            onToggle={() => setShowStatusMenu(!showStatusMenu)}
+            onSelect={(value) => {
+              setStatusFilter(value);
+              setCurrentPage(1);
+              setShowStatusMenu(false);
+            }}
+            Icon={FunnelIcon}
+            ActiveIcon={FunnelSolid}
+          />
         </div>
       </div>
 
@@ -347,8 +291,14 @@ const SellerUpgradesPage = () => {
                   </td>
                   <td className="px-3 py-2">
                     {request.status === "pending" ? (
-                      <span className={`text-xs ${getRemainingDaysColor(getRemainingDays(request.created_at))}`}>
-                        {getRemainingDaysText(getRemainingDays(request.created_at))}
+                      <span
+                        className={`text-xs ${getRemainingDaysColor(
+                          getRemainingDays(request.created_at)
+                        )}`}
+                      >
+                        {getRemainingDaysText(
+                          getRemainingDays(request.created_at)
+                        )}
                       </span>
                     ) : (
                       <span className="text-xs text-gray-400">-</span>
@@ -364,10 +314,10 @@ const SellerUpgradesPage = () => {
                     </span>
                   </td>
                   <td className="px-3 py-2">
-                    <div className="flex items-center gap-2 justify-start">
+                    <div className="flex items-center gap-2 justify-center">
                       <button
                         onClick={() => setSelectedRequest(request)}
-                        className="px-3 py-1 !bg-blue-600 text-white border border-blue-700 rounded-md text-xs font-medium !hover:bg-blue-700 shadow-sm"
+                        className="!px-3 !py-1 btn-secondary rounded-md !text-xs !font-medium"
                       >
                         Details
                       </button>
@@ -491,14 +441,20 @@ const SellerUpgradesPage = () => {
                         <span className="font-medium text-gray-700">
                           Remaining:
                         </span>
-                        <p className={getRemainingDaysColor(getRemainingDays(selectedRequest.created_at))}>
-                          {getRemainingDaysText(getRemainingDays(selectedRequest.created_at))}
+                        <p
+                          className={getRemainingDaysColor(
+                            getRemainingDays(selectedRequest.created_at)
+                          )}
+                        >
+                          {getRemainingDaysText(
+                            getRemainingDays(selectedRequest.created_at)
+                          )}
                         </p>
                       </div>
                     )}
                     <div>
                       <span className="font-medium text-gray-700">Status:</span>
-                      <p>
+                      <p className="mt-1">
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(
                             selectedRequest.status

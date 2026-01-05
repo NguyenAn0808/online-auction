@@ -67,7 +67,7 @@ const ListingForm = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-  const [currency, setCurrency] = useState("VND"); // VND or USD
+  // Currency fixed to VND; remove toggle
 
   const {
     register,
@@ -184,7 +184,7 @@ const ListingForm = () => {
         buy_now_price: data.buy_now_enabled ? data.buy_now_price : null,
         allow_unrated_bidder: !!data.allow_unrated_bidder,
         auto_extend: !!data.auto_extend,
-        currency_code: currency,
+        currency_code: "VND",
         end_time: endTime,
       };
 
@@ -592,11 +592,7 @@ const ListingForm = () => {
         <section className="bg-white rounded-lg border border-gray-200 p-6">
           <h2 className="text-xl font-bold mb-4">PRICING</h2>
 
-          {/* Inline currency toggle (shared across all price inputs) */}
-          <p className="text-xs text-gray-500 mb-4">
-            Currency: {currency === "USD" ? "US Dollar" : "Vietnamese Đồng"} –
-            click the symbol to change.
-          </p>
+          {/* Currency fixed to VND */}
 
           <div className="space-y-4">
             {/* Starting Bid */}
@@ -608,21 +604,11 @@ const ListingForm = () => {
                 Starting bid
               </label>
               <div className="relative">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCurrency(currency === "USD" ? "VND" : "USD")
-                  }
-                  className="absolute left-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-semibold rounded border border-gray-300 bg-white hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  title="Toggle currency"
-                >
-                  {currency === "USD" ? "USD" : "VND"}
-                </button>
                 <input
                   id="start_price"
                   type="number"
-                  step={currency === "USD" ? "0.01" : "1"}
-                  className="w-full border border-gray-300 rounded-lg pl-16 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  step="1"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   {...register("start_price", {
                     setValueAs: (v) => {
                       if (v === "" || v === null || v === undefined)
@@ -664,22 +650,12 @@ const ListingForm = () => {
                 </label>
               </div>
               <div className="relative">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCurrency(currency === "USD" ? "VND" : "USD")
-                  }
-                  className="absolute left-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-semibold rounded border border-gray-300 bg-white hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  title="Toggle currency"
-                >
-                  {currency === "USD" ? "USD" : "VND"}
-                </button>
                 <input
                   id="buy_now_price"
                   type="number"
-                  step={currency === "USD" ? "0.01" : "1"}
+                  step="1"
                   disabled={!watch("buy_now_enabled")}
-                  className="w-full border border-gray-300 rounded-lg pl-16 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   {...register("buy_now_price", {
                     setValueAs: (v) => {
                       if (v === "" || v === null || v === undefined)
@@ -706,21 +682,11 @@ const ListingForm = () => {
                 Minimum bid increment
               </label>
               <div className="relative">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCurrency(currency === "USD" ? "VND" : "USD")
-                  }
-                  className="absolute left-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-semibold rounded border border-gray-300 bg-white hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  title="Toggle currency"
-                >
-                  {currency === "USD" ? "USD" : "VND"}
-                </button>
                 <input
                   id="step_price"
                   type="number"
-                  step={currency === "USD" ? "0.01" : "1"}
-                  className="w-full border border-gray-300 rounded-lg pl-16 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  step="1"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   {...register("step_price", {
                     setValueAs: (v) => {
                       if (v === "" || v === null || v === undefined)

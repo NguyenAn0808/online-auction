@@ -294,16 +294,13 @@ export default function BiddingQuickView({
                       <h2 className="text-2xl font-bold text-gray-900">
                         {product.name}
                       </h2>
-                      <p className="mt-1 text-lg text-gray-700">
-                        Current: {currency.format(snapshotCurrentPrice)}
-                      </p>
+                      {product.end_time && (
+                        <div className="text-sm text-gray-500 mt-1">
+                          Ends:{" "}
+                          {new Date(product.end_time).toLocaleString("vi-VN")}
+                        </div>
+                      )}
                     </div>
-                    {product.end_time && (
-                      <div className="text-sm text-gray-500">
-                        Ends:{" "}
-                        {new Date(product.end_time).toLocaleString("vi-VN")}
-                      </div>
-                    )}
                   </div>
 
                   {/* Auto-bid explanation */}
@@ -318,7 +315,10 @@ export default function BiddingQuickView({
                   </div>
 
                   {/* Suggested bid */}
-                  <div className="mt-4 text-sm text-gray-600 flex items-center justify-between">
+                  <div className="mt-4 text-lg text-gray-700 font-medium">
+                    Current: {currency.format(snapshotCurrentPrice)}
+                  </div>
+                  <div className=" text-sm text-gray-600 flex items-center justify-between">
                     <div>
                       Minimum bid:{" "}
                       <span className="font-medium text-gray-900">
@@ -344,7 +344,7 @@ export default function BiddingQuickView({
                           marginLeft: SPACING.M,
                           opacity: eligibility.allowed ? 1 : 0.5,
                         }}
-                        className="hover:opacity-90 transition-all"
+                        className="hover:!bg-gray-50 transition-all"
                       >
                         Use minimum
                       </button>
@@ -386,7 +386,7 @@ export default function BiddingQuickView({
                   )}
 
                   {step === "input" ? (
-                    <form onSubmit={handleSubmit} className="mt-6" noValidate>
+                    <form onSubmit={handleSubmit} className="mt-2" noValidate>
                       <label className="block text-sm font-medium text-gray-700">
                         Your maximum bid (VND)
                       </label>
@@ -401,7 +401,7 @@ export default function BiddingQuickView({
                             onChange={(e) => setMaxBid(e.target.value)}
                             onWheel={(e) => e.currentTarget.blur()}
                             placeholder={String(minBid)}
-                            className={`w-full rounded-md border px-3 py-2 text-lg focus:ring-2 focus:ring-indigo-500 ${
+                            className={`w-full rounded-md border px-3 py-2 text-lg ${
                               !eligibility.allowed || isSubmitting
                                 ? "opacity-50 cursor-not-allowed"
                                 : ""
