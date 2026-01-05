@@ -1,11 +1,16 @@
 import { useState, useEffect } from "react";
+import {
+  UserIcon,
+  FunnelIcon,
+  ArrowsUpDownIcon,
+  ChevronDownIcon,
+} from "@heroicons/react/24/outline";
 import userService from "../services/userService";
 import Pagination from "../components/Pagination";
 
 const UserManagementPage = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [sortBy, setSortBy] = useState("createdAt");
@@ -34,7 +39,6 @@ const UserManagementPage = () => {
         limit: itemsPerPage,
         sortBy,
         sortOrder,
-        search: searchQuery,
       };
 
       // Add filters only if not "all"
@@ -66,14 +70,7 @@ const UserManagementPage = () => {
     }
   };
 
-  const handleSearch = () => {
-    setCurrentPage(1);
-    fetchUsers();
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") handleSearch();
-  };
+  // Removed search handlers
 
   const handlePageChange = (page) => setCurrentPage(page);
 
@@ -180,28 +177,10 @@ const UserManagementPage = () => {
         </h3>
       </div>
 
-      <div className="mb-6 space-y-4">
-        <div className="flex gap-3">
-          <input
-            type="text"
-            placeholder="Search by name, email, address..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyPress={handleKeyPress}
-            className="flex-1 pl-4 pr-4 py-2.5 border border-gray-300 hover:border-gray-400 rounded-full focus:outline-none focus:ring-2 focus:ring-gray-400 bg-gray-50 transition-all"
-          />
-          <button
-            onClick={handleSearch}
-            className="px-6 py-2.5 !bg-blue-600 text-white rounded-full font-medium text-sm"
-          >
-            Search
-          </button>
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="text-md text-gray-600">
-            Showing{" "}
-            <span className="font-semibold text-gray-900">{users.length}</span>{" "}
-            users
+      <div className="mb-2">
+        <div className="flex items-center justify-between bg-white">
+          <div className="text-lg font-semibold text-gray-900">
+            Showing {users.length} users
           </div>
           <div className="flex gap-3">
             {/* Role Filter */}
@@ -212,14 +191,25 @@ const UserManagementPage = () => {
                   setShowSortMenu(false);
                   setShowOrderMenu(false);
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
+                className={`group flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-gray-200 ${
+                  showRoleMenu
+                    ? "bg-whisper"
+                    : "bg-white border-gray-300 hover:bg-whisper hover:text-pebble"
+                }`}
               >
+                <UserIcon
+                  className={`w-5 h-5 ${showRoleMenu ? "text-pebble" : ""}`}
+                />
                 <span className="font-medium text-md">
-                  Role:{" "}
                   {roleFilter === "all"
                     ? "All"
                     : roleFilter.charAt(0).toUpperCase() + roleFilter.slice(1)}
                 </span>
+                <ChevronDownIcon
+                  className={`w-4 h-4 ml-1 transition-transform ${
+                    showRoleMenu ? "rotate-180 text-pebble" : ""
+                  }`}
+                />
               </button>
               {showRoleMenu && (
                 <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10 divide-y">
@@ -229,9 +219,9 @@ const UserManagementPage = () => {
                       setCurrentPage(1);
                       setShowRoleMenu(false);
                     }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-gray-50 ${
+                    className={`w-full text-left px-4 py-2 text-md hover:bg-whisper hover:text-pebble ${
                       roleFilter === "all"
-                        ? "bg-blue-50 text-blue-700 font-medium"
+                        ? "bg-whisper text-midnight-ash font-medium"
                         : ""
                     }`}
                   >
@@ -243,9 +233,9 @@ const UserManagementPage = () => {
                       setCurrentPage(1);
                       setShowRoleMenu(false);
                     }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-gray-50 ${
+                    className={`w-full text-left px-4 py-2 text-md hover:bg-whisper hover:text-pebble ${
                       roleFilter === "admin"
-                        ? "bg-blue-50 text-blue-700 font-medium"
+                        ? "bg-whisper text-midnight-ash font-medium"
                         : ""
                     }`}
                   >
@@ -257,9 +247,9 @@ const UserManagementPage = () => {
                       setCurrentPage(1);
                       setShowRoleMenu(false);
                     }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-gray-50 ${
+                    className={`w-full text-left px-4 py-2 text-md hover:bg-whisper hover:text-pebble ${
                       roleFilter === "seller"
-                        ? "bg-blue-50 text-blue-700 font-medium"
+                        ? "bg-whisper text-midnight-ash font-medium"
                         : ""
                     }`}
                   >
@@ -271,9 +261,9 @@ const UserManagementPage = () => {
                       setCurrentPage(1);
                       setShowRoleMenu(false);
                     }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-gray-50 ${
+                    className={`w-full text-left px-4 py-2 text-md hover:bg-whisper hover:text-pebble ${
                       roleFilter === "bidder"
-                        ? "bg-blue-50 text-blue-700 font-medium"
+                        ? "bg-whisper text-midnight-ash font-medium"
                         : ""
                     }`}
                   >
@@ -291,10 +281,16 @@ const UserManagementPage = () => {
                   setShowRoleMenu(false);
                   setShowOrderMenu(false);
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
+                className={`group flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-gray-200 ${
+                  showSortMenu
+                    ? "bg-whisper"
+                    : "bg-white border-gray-300 hover:bg-whisper hover:text-pebble"
+                }`}
               >
+                <FunnelIcon
+                  className={`w-5 h-5 ${showSortMenu ? "text-pebble" : ""}`}
+                />
                 <span className="font-medium text-md">
-                  Sort:{" "}
                   {sortBy === "createdAt"
                     ? "Created At"
                     : sortBy === "updatedAt"
@@ -303,6 +299,11 @@ const UserManagementPage = () => {
                     ? "Full Name"
                     : "Email"}
                 </span>
+                <ChevronDownIcon
+                  className={`w-4 h-4 ml-1 transition-transform ${
+                    showSortMenu ? "rotate-180 text-pebble" : ""
+                  }`}
+                />
               </button>
               {showSortMenu && (
                 <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10 divide-y">
@@ -311,9 +312,9 @@ const UserManagementPage = () => {
                       setSortBy("createdAt");
                       setShowSortMenu(false);
                     }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-gray-50 ${
+                    className={`w-full text-left px-4 py-2 text-md hover:bg-whisper hover:text-pebble ${
                       sortBy === "createdAt"
-                        ? "bg-blue-50 text-blue-700 font-medium"
+                        ? "bg-whisper text-midnight-ash font-medium"
                         : ""
                     }`}
                   >
@@ -324,9 +325,9 @@ const UserManagementPage = () => {
                       setSortBy("updatedAt");
                       setShowSortMenu(false);
                     }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-gray-50 ${
+                    className={`w-full text-left px-4 py-2 text-md hover:bg-whisper hover:text-pebble ${
                       sortBy === "updatedAt"
-                        ? "bg-blue-50 text-blue-700 font-medium"
+                        ? "bg-whisper text-midnight-ash font-medium"
                         : ""
                     }`}
                   >
@@ -337,9 +338,9 @@ const UserManagementPage = () => {
                       setSortBy("fullname");
                       setShowSortMenu(false);
                     }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-gray-50 ${
+                    className={`w-full text-left px-4 py-2 text-md hover:bg-whisper hover:text-pebble ${
                       sortBy === "fullname"
-                        ? "bg-blue-50 text-blue-700 font-medium"
+                        ? "bg-whisper text-midnight-ash font-medium"
                         : ""
                     }`}
                   >
@@ -350,9 +351,9 @@ const UserManagementPage = () => {
                       setSortBy("email");
                       setShowSortMenu(false);
                     }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-gray-50 ${
+                    className={`w-full text-left px-4 py-2 text-md hover:bg-whisper hover:text-pebble ${
                       sortBy === "email"
-                        ? "bg-blue-50 text-blue-700 font-medium"
+                        ? "bg-whisper text-midnight-ash font-medium"
                         : ""
                     }`}
                   >
@@ -370,11 +371,23 @@ const UserManagementPage = () => {
                   setShowRoleMenu(false);
                   setShowSortMenu(false);
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
+                className={`group flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-gray-200 ${
+                  showOrderMenu
+                    ? "bg-whisper"
+                    : "bg-white border-gray-300 hover:bg-whisper hover:text-pebble"
+                }`}
               >
+                <ArrowsUpDownIcon
+                  className={`w-5 h-5 ${showOrderMenu ? "text-pebble" : ""}`}
+                />
                 <span className="font-medium text-md">
-                  Order: {sortOrder === "asc" ? "Asc" : "Desc"}
+                  {sortOrder === "asc" ? "Asc" : "Desc"}
                 </span>
+                <ChevronDownIcon
+                  className={`w-4 h-4 ml-1 transition-transform ${
+                    showOrderMenu ? "rotate-180 text-pebble" : ""
+                  }`}
+                />
               </button>
               {showOrderMenu && (
                 <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded-lg shadow-lg z-10 divide-y">
@@ -383,9 +396,9 @@ const UserManagementPage = () => {
                       setSortOrder("asc");
                       setShowOrderMenu(false);
                     }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-gray-50 ${
+                    className={`w-full text-left px-4 py-2 text-md hover:bg-whisper hover:text-pebble ${
                       sortOrder === "asc"
-                        ? "bg-blue-50 text-blue-700 font-medium"
+                        ? "bg-whisper text-midnight-ash font-medium"
                         : ""
                     }`}
                   >
@@ -396,9 +409,9 @@ const UserManagementPage = () => {
                       setSortOrder("desc");
                       setShowOrderMenu(false);
                     }}
-                    className={`w-full text-left px-4 py-2 text-md hover:bg-gray-50 ${
+                    className={`w-full text-left px-4 py-2 text-md hover:bg-whisper hover:text-pebble ${
                       sortOrder === "desc"
-                        ? "bg-blue-50 text-blue-700 font-medium"
+                        ? "bg-whisper text-midnight-ash font-medium"
                         : ""
                     }`}
                   >
@@ -658,8 +671,8 @@ const UserManagementPage = () => {
                   </div>
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <p className="text-sm text-blue-800">
-                      ✉️ An email notification has been sent to the user with
-                      their temporary password.
+                      An email notification has been sent to the user with their
+                      temporary password.
                     </p>
                   </div>
                 </div>

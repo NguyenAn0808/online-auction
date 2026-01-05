@@ -100,71 +100,10 @@ const SortBar = ({ categoryName = "" }) => {
               <SortOption label="Price: Low → High" param="price_asc" />
               <SortOption label="Price: High → Low" param="price_desc" />
               <SortOption label="End Time" param="end_time_desc" />
-
-              {/* Future sort options */}
-              {/*
-              <SortOption label="Bid Amount: High → Low" param="bid_amount_desc" />
-              <SortOption label="Bid Amount: Low → High" param="bid_amount_asc" />
-              */}
-
               <ClearSortOption />
             </div>
           )}
         </div>
-
-        {/* ===== FILTER BUTTON (DISABLED) ===== */}
-        {/*
-        <div className="relative">
-          <button
-            onClick={() => {
-              setShowFilterMenu((v) => !v);
-              setShowSortMenu(false);
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M4 6H20M7 12H17M10 18H14"
-                stroke="#191919"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-            <span className="font-medium">Filter by</span>
-          </button>
-
-          {showFilterMenu && (
-            <div
-              ref={filterRef}
-              className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-10 p-4"
-            >
-              <h4 className="font-semibold mb-3">Price Range</h4>
-              <div className="space-y-2 mb-4">
-                <input type="number" placeholder="Min price" />
-                <input type="number" placeholder="Max price" />
-              </div>
-
-              <h4 className="font-semibold mb-2">Status</h4>
-              <div className="space-y-2 mb-4">
-                <label>
-                  <input type="checkbox" /> Active auctions
-                </label>
-                <label>
-                  <input type="checkbox" /> Buy Now available
-                </label>
-              </div>
-
-              <button>Apply Filters</button>
-            </div>
-          )}
-        </div>
-        */}
       </div>
     </div>
   );

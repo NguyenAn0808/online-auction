@@ -15,6 +15,7 @@ const CategoryManagementPage = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [editWarning, setEditWarning] = useState("");
   const itemsPerPage = 10;
 
   const fetchCategories = useCallback(async () => {
@@ -89,10 +90,14 @@ const CategoryManagementPage = () => {
     setSelectedCategory(category);
     setFormData({
       name: category.name,
-      parent_id: category.parent_id || "",
+      parent_id:
+        category.parent_id !== undefined && category.parent_id !== null
+          ? String(category.parent_id)
+          : "",
     });
     setError("");
     setSuccess("");
+    setEditWarning("");
     setShowEditModal(true);
   };
 
@@ -142,6 +147,17 @@ const CategoryManagementPage = () => {
       return;
     }
 
+    // Prevent converting an existing child category to top-level (None)
+    if (
+      selectedCategory?.parent_id &&
+      (formData.parent_id === "" || formData.parent_id === null)
+    ) {
+      setEditWarning(
+        "Không thể chuyển danh mục con thành danh mục cha. Vui lòng xoá danh mục hiện tại và tạo danh mục mới ở cấp cao nhất."
+      );
+      return;
+    }
+
     setSubmitting(true);
     try {
       await categoryService.updateCategory(selectedCategory.id, {
@@ -178,10 +194,12 @@ const CategoryManagementPage = () => {
 
   // Get parent categories (excluding current category when editing)
   const getAvailableParentCategories = () => {
+    const topLevel = categories.filter((cat) => !cat.parent_id);
     if (showEditModal && selectedCategory) {
-      return categories.filter((cat) => cat.id !== selectedCategory.id);
+      const selectedId = selectedCategory.id || selectedCategory._id;
+      return topLevel.filter((cat) => (cat.id || cat._id) !== selectedId);
     }
-    return categories;
+    return topLevel;
   };
 
   if (loading) {
@@ -325,7 +343,7 @@ const CategoryManagementPage = () => {
 
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Parent Category (Optional)
+                  Top-level Category (Optional)
                 </label>
                 <select
                   value={formData.parent_id}
@@ -335,8 +353,11 @@ const CategoryManagementPage = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-midnight-ash focus:border-transparent"
                 >
                   <option value="">None (Top Level)</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
+                  {getAvailableParentCategories().map((cat) => (
+                    <option
+                      key={cat.id || cat._id}
+                      value={String(cat.id || cat._id)}
+                    >
                       {cat.name}
                     </option>
                   ))}
@@ -372,7 +393,10 @@ const CategoryManagementPage = () => {
             <div className="flex justify-between items-center mb-4">
               <h4 className="text-xl font-bold">Edit Category</h4>
               <button
-                onClick={() => setShowEditModal(false)}
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditWarning("");
+                }}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <XMarkIcon className="h-6 w-6" />
@@ -398,28 +422,56 @@ const CategoryManagementPage = () => {
 
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Parent Category (Optional)
+                  Top-level Category (Optional)
                 </label>
                 <select
                   value={formData.parent_id}
-                  onChange={(e) =>
-                    setFormData({ ...formData, parent_id: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (selectedCategory?.parent_id && value === "") {
+                      setEditWarning(
+                        <>
+                          Cannot change a child category to a top-level
+                          category. Please{" "}
+                          <span className="font-bold">
+                            delete the current category and create a new
+                            top-level category
+                          </span>{" "}
+                          instead.
+                        </>
+                      );
+
+                      return;
+                    }
+                    setEditWarning("");
+                    setFormData({ ...formData, parent_id: value });
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-midnight-ash focus:border-transparent"
                 >
                   <option value="">None (Top Level)</option>
                   {getAvailableParentCategories().map((cat) => (
-                    <option key={cat.id} value={cat.id}>
+                    <option
+                      key={cat.id || cat._id}
+                      value={String(cat.id || cat._id)}
+                    >
                       {cat.name}
                     </option>
                   ))}
                 </select>
+                {editWarning && (
+                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-sm">
+                    {editWarning}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setShowEditModal(false)}
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditWarning("");
+                  }}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
                   disabled={submitting}
                 >
@@ -440,7 +492,7 @@ const CategoryManagementPage = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
               <h4 className="text-xl font-bold text-red-600">

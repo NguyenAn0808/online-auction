@@ -151,7 +151,7 @@ button {
 }
 
 .btn-secondary:hover {
-  background-color: var(--morning-mist);
+  background-color: #f9fafb;
 }
 
 /* Outline Button */
@@ -851,6 +851,7 @@ button {
 .pagination-btn:hover:not(:disabled) {
   border-color: var(--midnight-ash);
   background-color: var(--gray-100);
+  color: var(--midnight-ash);
 }
 
 .pagination-btn-active {
