@@ -235,8 +235,13 @@ export default function BidHistory({ isSeller = false, productId = null }) {
     return [...filtered].sort((a, b) => b.amount - a.amount);
   }, [localBids, blocklist]);
 
+  // Prefer highest bidder from API over local sorting
+  const highestBidderIdFromApi =
+    productInfo?.price_holder || productInfo?.highest_bidder_id || null;
   const highest = sorted[0];
-  const isCurrentUserHighest = highest && highest.bidder_id === currentUserId;
+  const isCurrentUserHighest = highestBidderIdFromApi
+    ? highestBidderIdFromApi === currentUserId
+    : highest && highest.bidder_id === currentUserId;
 
   const getBidderRatingText = (bidderId) => {
     const summary = bidderRatings?.[bidderId];
@@ -536,14 +541,17 @@ export default function BidHistory({ isSeller = false, productId = null }) {
           </thead>
           <tbody>
             {sorted.map((bid, idx) => {
-              const isHighest = idx === 0;
+              // Mark highest via API when available; fall back to first row
+              const isApiHighest =
+                highestBidderIdFromApi &&
+                bid.bidder_id === highestBidderIdFromApi;
+              const isHighest =
+                isApiHighest || (!highestBidderIdFromApi && idx === 0);
               return (
                 <tr
                   key={bid.id}
                   style={{
-                    backgroundColor: isHighest
-                      ? COLORS.SOFT_CLOUD
-                      : COLORS.WHITE,
+                    backgroundColor: COLORS.WHITE,
                     borderBottom: `1px solid ${COLORS.MORNING_MIST}`,
                     transition: "background-color 0.2s ease",
                   }}
@@ -551,9 +559,7 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                     e.currentTarget.style.backgroundColor = COLORS.SOFT_CLOUD;
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = isHighest
-                      ? COLORS.SOFT_CLOUD
-                      : COLORS.WHITE;
+                    e.currentTarget.style.backgroundColor = COLORS.WHITE;
                   }}
                 >
                   <td
