@@ -37,33 +37,34 @@ export const verifyRecaptcha = async (token) => {
       }
     );
 
-    const { success, score, action, "error-codes": errorCodes } = response.data;
+    const { success, "error-codes": errorCodes } = response.data;
 
-    if (!success) {
-      console.error("reCAPTCHA verification failed:", errorCodes);
-      return {
-        success: false,
-        error: "reCAPTCHA verification failed",
-        errorCodes,
-      };
-    }
+    // if (!success) {
+    //   return {
+    //     success: false,
+    //     error: "reCAPTCHA verification failed",
+    //     errorCodes,
+    //   };
+    // }
 
-    // For reCAPTCHA v3, check score (0.0 to 1.0)
-    if (score !== undefined && score < 0.5) {
-      console.warn(`Low reCAPTCHA score: ${score} for action: ${action}`);
-      return {
-        success: false,
-        error: "Suspicious activity detected",
-        score,
-        action,
-      };
-    }
+    return { success: true };
 
-    return {
-      success: true,
-      score,
-      action,
-    };
+    //   // For reCAPTCHA v3, check score (0.0 to 1.0)
+    //   if (score !== undefined && score < 0.5) {
+    //     console.warn(`Low reCAPTCHA score: ${score} for action: ${action}`);
+    //     return {
+    //       success: false,
+    //       error: "Suspicious activity detected",
+    //       score,
+    //       action,
+    //     };
+    //   }
+
+    //   return {
+    //     success: true,
+    //     score,
+    //     action,
+    //   };
   } catch (error) {
     console.error("Error verifying reCAPTCHA:", error.message);
     return {

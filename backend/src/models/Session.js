@@ -11,7 +11,7 @@ class Session {
       const createTableQuery = `
         CREATE TABLE IF NOT EXISTS sessions (
           id SERIAL PRIMARY KEY,
-          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           refresh_token TEXT NOT NULL UNIQUE,
           expires_at TIMESTAMP NOT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -131,19 +131,6 @@ class Session {
       WHERE refresh_token = $1
       RETURNING id
     `;
-    const result = await pool.query(query, [refreshToken]);
-    return result.rows[0] || null;
-  }
-
-  // Find by refresh token
-  static async findByRefreshToken(refreshToken) {
-    const query = `
-      SELECT id, user_id as "userId", refresh_token as "refreshToken",
-             expires_at as "expiresAt", created_at as "createdAt", updated_at as "updatedAt"
-      FROM sessions
-      WHERE refresh_token = $1 AND expires_at > NOW()
-    `;
-
     const result = await pool.query(query, [refreshToken]);
     return result.rows[0] || null;
   }

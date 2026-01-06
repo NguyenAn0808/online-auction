@@ -9,7 +9,8 @@ class OTP {
     try {
       const createTableQuery = `
         CREATE TABLE IF NOT EXISTS otps (
-        id SERIAL PRIMARY KEY,
+          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, 
           email VARCHAR(255) NOT NULL,
           otp_code VARCHAR(6) NOT NULL,
           purpose VARCHAR(50) NOT NULL default 'signup',
@@ -45,13 +46,19 @@ class OTP {
   }
 
   // Create new OTP
-  static async create(email, otpCode, purpose = "signup", expiresAt) {
+  static async create(userId, email, otpCode, purpose = "signup", expiresAt) {
     const query = `
-    INSERT INTO otps (email, otp_code, purpose, expires_at) 
-    VALUES ($1, $2, $3, $4) 
-    RETURNING id, email, otp_code as "otpCode", purpose, attempts, 
+    INSERT INTO otps (user_id, email, otp_code, purpose, expires_at) 
+    VALUES ($1, $2, $3, $4, $5) 
+    RETURNING id, user_id as "userId", email, otp_code as "otpCode", purpose, attempts, 
     expires_at as "expiresAt", created_at as "createdAt", verified`;
-    const values = [email.toLowerCase().trim(), otpCode, purpose, expiresAt];
+    const values = [
+      userId,
+      email.toLowerCase().trim(),
+      otpCode,
+      purpose,
+      expiresAt,
+    ];
 
     try {
       const result = await pool.query(query, values);
@@ -65,7 +72,7 @@ class OTP {
   // Find active OTP by email and purpose
   static async findActiveOTP(email, purpose = "signup") {
     const query = `
-      SELECT id, email, otp_code as "otpCode", purpose, attempts,
+      SELECT id, user_id as "userId", email, otp_code as "otpCode", purpose, attempts,
              expires_at as "expiresAt", created_at as "createdAt", verified
       FROM otps
       WHERE email = $1 AND purpose = $2 AND expires_at > NOW() AND verified = FALSE
@@ -80,7 +87,7 @@ class OTP {
   // Find verified OTP (for password reset flow)
   static async findVerifiedOTP(email, purpose = "password-reset") {
     const query = `
-      SELECT id, email, otp_code as "otpCode", purpose, attempts,
+      SELECT id, user_id as "userId", email, otp_code as "otpCode", purpose, attempts,
              expires_at as "expiresAt", created_at as "createdAt", verified
       FROM otps
       WHERE email = $1 AND purpose = $2 AND expires_at > NOW() AND verified = TRUE
@@ -95,7 +102,7 @@ class OTP {
   // Find most recent OTP (active or expired) to check cooldown
   static async findRecentOTP(email, purpose = "signup") {
     const query = `
-      SELECT id, email, otp_code as "otpCode", purpose, attempts,
+      SELECT id, user_id as "userId", email, otp_code as "otpCode", purpose, attempts,
              expires_at as "expiresAt", created_at as "createdAt", verified
       FROM otps
       WHERE email = $1 AND purpose = $2
@@ -143,18 +150,36 @@ class OTP {
     await pool.query(query, [email.toLowerCase(), purpose]);
   }
 
-  // find recent OTP
+  // Find recent OTP to check cooldown (interval in milliseconds)
+  // Consolidated duplicate methods into one logic
   static async findRecentOTP(email, purpose = "signup", interval = 0) {
-    const query = `
-      SELECT id, email, otp_code as "otpCode", purpose, attempts,
-             expires_at as "expiresAt", created_at as "createdAt", verified
-      FROM otps
-      WHERE email = $1 AND purpose = $2 AND created_at > NOW() - INTERVAL '${interval} milliseconds'
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
+    let query;
+    let params;
 
-    const result = await pool.query(query, [email.toLowerCase(), purpose]);
+    if (interval > 0) {
+      // Check for OTPs created within the last X milliseconds (Rate limiting)
+      query = `
+        SELECT id, created_at as "createdAt"
+        FROM otps
+        WHERE email = $1 AND purpose = $2 
+        AND created_at > NOW() - ($3 || ' milliseconds')::INTERVAL
+        ORDER BY created_at DESC
+        LIMIT 1
+      `;
+      params = [email.toLowerCase(), purpose, interval];
+    } else {
+      // Just get the most recent one regardless of time
+      query = `
+        SELECT id, created_at as "createdAt"
+        FROM otps
+        WHERE email = $1 AND purpose = $2
+        ORDER BY created_at DESC
+        LIMIT 1
+      `;
+      params = [email.toLowerCase(), purpose];
+    }
+
+    const result = await pool.query(query, params);
     return result.rows[0] || null;
   }
 }

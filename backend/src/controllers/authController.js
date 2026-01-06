@@ -8,7 +8,7 @@ import config from "../config/settings.js";
 import { sendOTPEmail } from "../services/emailService.js";
 import { verifyRecaptcha } from "../utils/recaptcha.js";
 
-const ACCESS_TOKEN_TTL = "15m";
+const ACCESS_TOKEN_TTL = "30d";
 const REFRESH_TOKEN_TTL = 7 * 24 * 3600 * 1000; // 7 days
 const OTP_EXPIRY_MINUTES = 10;
 const MAX_OTP_ATTEMPTS = 5;
@@ -20,40 +20,30 @@ const generateOTP = () => {
 
 export const signUp = async (req, res) => {
   try {
-    const {
-      username,
-      password,
-      email,
-      fullName,
-      phone,
-      address,
-      birthdate,
-      recaptchaToken,
-    } = req.body;
+    const { password, email, fullName, address, recaptchaToken } = req.body;
 
     // Validation
-    if (!username || !password || !email || !fullName) {
+    if (!password || !email || !fullName) {
       return res.status(400).json({
         success: false,
         message: "Missing required fields",
       });
     }
 
-    // Verify reCAPTCHA (optional in development)
-    // if (config.RECAPTCHA_SECRET_KEY && recaptchaToken) {
-    //   const recaptchaResult = await verifyRecaptcha(recaptchaToken);
+    if (config.RECAPTCHA_SECRET_KEY && recaptchaToken) {
+      const recaptchaResult = await verifyRecaptcha(recaptchaToken);
 
-    //   if (!recaptchaResult.success) {
-    //     return res.status(400).json({
-    //       success: false,
-    //       message: recaptchaResult.error || "reCAPTCHA verification failed",
-    //     });
-    //   }
+      if (!recaptchaResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: recaptchaResult.error || "reCAPTCHA verification failed",
+        });
+      }
 
-    //   console.log(
-    //     `✅ reCAPTCHA verified - Score: ${recaptchaResult.score || "N/A"}`
-    //   );
-    // }
+      console.log(
+        `✅ reCAPTCHA verified - Score: ${recaptchaResult.score || "N/A"}`
+      );
+    }
 
     // Email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -73,15 +63,7 @@ export const signUp = async (req, res) => {
     }
 
     // Check if user exists
-    const duplicate_username = await User.findByUsername(username);
     const duplicate_email = await User.findByEmail(email);
-
-    if (duplicate_username) {
-      return res.status(409).json({
-        success: false,
-        message: "Username already taken",
-      });
-    }
 
     if (duplicate_email) {
       return res.status(409).json({
@@ -93,50 +75,57 @@ export const signUp = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10); // salt = 10
 
-    // Create user with is_verified = false
-    const newUser = await User.create({
-      username,
-      hashedPassword,
-      email,
-      phone,
-      fullName,
-      address,
-      birthdate,
-      role: "bidder",
-      isVerified: false,
-    });
-
-    // Generate OTP
-    const otpCode = generateOTP();
-    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000); // 10 minutes from now
-
-    // Delete any existing OTPs for this email
-    await OTP.deleteByEmail(email, "signup");
-
-    // Create new OTP
-    await OTP.create(email, otpCode, "signup", expiresAt);
-
-    // Send OTP email
+    let newUser;
     try {
+      // Create user with is_verified = false
+      newUser = await User.create({
+        hashedPassword,
+        email,
+        fullName,
+        address,
+        role: "bidder",
+        isVerified: false,
+      });
+
+      // Generate OTP
+      const otpCode = generateOTP();
+      const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000); // 10 minutes from now
+
+      // Delete any existing OTPs for this email
+      await OTP.deleteByEmail(email, "signup");
+
+      // Create new OTP
+      await OTP.create(newUser.id, email, otpCode, "signup", expiresAt);
+
+      // Send OTP email
       await sendOTPEmail(email, otpCode, fullName, "signup");
-    } catch (emailError) {
-      console.error("Error sending OTP email:", emailError);
-      // Delete the user since we couldn't send the verification email
-      await User.deleteById(newUser.id);
+
+      return res.status(200).json({
+        success: true,
+        message: "OTP has been sent to your email",
+        data: {
+          email,
+          expiresIn: `${OTP_EXPIRY_MINUTES} minutes`,
+        },
+      });
+    } catch (signupError) {
+      console.error("Error during signup process:", signupError);
+
+      // Rollback: Delete the user if it was created
+      if (newUser && newUser.id) {
+        try {
+          await User.deleteById(newUser.id);
+          console.log(`Rolled back user creation for ${email}`);
+        } catch (deleteError) {
+          console.error("Error rolling back user creation:", deleteError);
+        }
+      }
+
       return res.status(500).json({
         success: false,
-        message: "Failed to send OTP email",
+        message: "Failed to complete signup process. Please try again.",
       });
     }
-
-    return res.status(200).json({
-      success: true,
-      message: "OTP has been sent to your email",
-      data: {
-        email,
-        expiresIn: `${OTP_EXPIRY_MINUTES} minutes`,
-      },
-    });
   } catch (error) {
     console.error("Error in sendVerifyOTP:", error);
     return res.status(500).json({
@@ -210,7 +199,6 @@ export const verifyOTP = async (req, res) => {
       data: {
         user: {
           id: verifiedUser.id,
-          username: verifiedUser.username,
           email: verifiedUser.email,
           fullName: verifiedUser.fullName,
           role: verifiedUser.role,
@@ -266,7 +254,13 @@ export const resendOTP = async (req, res) => {
 
     // Delete old OTP and create new one atomically
     await OTP.deleteByEmail(email, purpose);
-    const newOTP = await OTP.create(email, otpCode, purpose, expiresAt);
+    const newOTP = await OTP.create(
+      user.id,
+      email,
+      otpCode,
+      purpose,
+      expiresAt
+    );
 
     // Send OTP email
     try {
@@ -305,21 +299,21 @@ export const resendOTP = async (req, res) => {
 export const signIn = async (req, res) => {
   try {
     // Get input
-    const { username, password } = req.body;
+    const { login, password } = req.body; // Login by email
 
-    if (!username || !password) {
+    if (!login || !password) {
       return res.status(400).json({
         success: false,
-        message: "Missing username or password",
+        message: "Missing email or password",
       });
     }
 
-    const user = await User.findByUsername(username);
+    const user = await User.findByEmail(login);
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "Invalid username or password",
+        message: "Invalid email or password",
       });
     }
 
@@ -337,13 +331,13 @@ export const signIn = async (req, res) => {
     if (!passwordCorrect) {
       return res.status(401).json({
         success: false,
-        message: "Invalid username or password",
+        message: "Invalid email or password",
       });
     }
 
     // Create access token (JWT)
     const accessToken = jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
+      { id: user.id, email: user.email, role: user.role },
       config.ACCESS_TOKEN_SECRET,
       { expiresIn: ACCESS_TOKEN_TTL }
     );
@@ -372,10 +366,10 @@ export const signIn = async (req, res) => {
       data: {
         user: {
           id: user.id,
-          username: user.username,
           email: user.email,
           fullName: user.fullName,
           role: user.role,
+          hasPassword: true, // User logged in with password
         },
         accessToken,
       },
@@ -433,7 +427,7 @@ export const signOut = async (req, res) => {
 export const changePassword = async (req, res) => {
   try {
     // User is authenticated via authMiddleware
-    const userId = req.user?.id;
+    const userId = req.user.id;
 
     if (!userId) {
       return res.status(401).json({
@@ -443,8 +437,7 @@ export const changePassword = async (req, res) => {
     }
 
     // Fetch user from DB
-    const user = await User.findByUsername(req.user.username);
-
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -452,14 +445,15 @@ export const changePassword = async (req, res) => {
       });
     }
 
-    // Block OAuth users from changing password (check early)
-    const isOAuthUser = !user.hashedPassword || user.hashedPassword === "";
+    const dbPassword = user.hashedPassword;
 
+    // Block OAuth users
+    const isOAuthUser = !dbPassword || dbPassword === "";
     if (isOAuthUser) {
       return res.status(403).json({
         success: false,
         message:
-          "You signed up with Google/Facebook. Password changes are not available for social login accounts. Manage your password through your Google/Facebook account.",
+          "Password changes are not available for social login accounts.",
       });
     }
 
@@ -480,18 +474,8 @@ export const changePassword = async (req, res) => {
       });
     }
 
-    if (newPassword === currentPassword) {
-      return res.status(400).json({
-        success: false,
-        message: "New password must be different from current password",
-      });
-    }
-
     // Verify current password
-    const passwordCorrect = await bcrypt.compare(
-      currentPassword,
-      user.hashedPassword
-    );
+    const passwordCorrect = await bcrypt.compare(currentPassword, dbPassword);
 
     if (!passwordCorrect) {
       return res.status(401).json({
@@ -500,13 +484,21 @@ export const changePassword = async (req, res) => {
       });
     }
 
+    if (newPassword === currentPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be different from current password",
+      });
+    }
     // Hash new password
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
 
     // Update password in DB
     await User.updatePassword(userId, hashedNewPassword);
 
-    await Session.deleteAllByUserId(userId);
+    if (Session && Session.deleteAllByUserId) {
+      await Session.deleteAllByUserId(userId);
+    }
 
     res.status(200).json({
       success: true,
@@ -548,11 +540,11 @@ export const forgotPassword = async (req, res) => {
     await OTP.deleteByEmail(email, "password-reset");
 
     // Create new OTP
-    await OTP.create(email, otpCode, "password-reset", expiresAt);
+    await OTP.create(user.id, email, otpCode, "password-reset", expiresAt);
 
     // Send OTP email
     try {
-      await sendOTPEmail(email, otpCode, user.fullName);
+      await sendOTPEmail(email, otpCode, user.fullName, "password-reset");
     } catch (emailError) {
       console.error("Error sending OTP email:", emailError);
       return res.status(500).json({
@@ -580,10 +572,17 @@ export const forgotPassword = async (req, res) => {
 export const resetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
-    if (!email || !otp || !newPassword) {
+    if (!otp) {
       return res.status(400).json({
         success: false,
-        message: "Email, OTP, and new password are required",
+        message: "OTP code is required",
+      });
+    }
+
+    if (!newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password is required",
       });
     }
 
@@ -710,10 +709,18 @@ export const refreshToken = async (req, res) => {
       return res.status(403).json({ message: "Refresh token has expired" });
     }
 
+    const user = await User.findById(session.userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
     // Create new access token
     const accessToken = jwt.sign(
       {
-        user_id: session.userId,
+        id: user.id,
+        email: user.email,
+        role: user.role,
       },
       config.ACCESS_TOKEN_SECRET,
       { expiresIn: ACCESS_TOKEN_TTL }
@@ -734,21 +741,15 @@ export const googleOAuthCallback = async (req, res) => {
   try {
     const user = req.user;
 
-    console.log("Google OAuth callback - user:", user); // Debug log
-
     if (!user) {
-      console.error("Google OAuth - req.user is undefined");
       return res.status(401).json({
         success: false,
         message: "OAuth authentication failed",
       });
     }
-
-    console.log("Creating session for user:", user.id); // Debug log
-
     // Generate tokens
     const accessToken = jwt.sign(
-      { userId: user.id, username: user.username, role: user.role },
+      { id: user.id, email: user.email, role: user.role },
       config.ACCESS_TOKEN_SECRET,
       { expiresIn: ACCESS_TOKEN_TTL }
     );
@@ -767,19 +768,24 @@ export const googleOAuthCallback = async (req, res) => {
       maxAge: REFRESH_TOKEN_TTL,
     });
 
-    return res.status(200).json({
-      success: true,
-      message: "Google login successful",
-      accessToken,
-      user: {
+    const hasPassword = !!(
+      user.hashedPassword && user.hashedPassword.length > 0
+    );
+
+    // Redirect to frontend with tokens in URL (will be removed after storing)
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const redirectUrl = `${frontendUrl}/auth/callback?accessToken=${accessToken}&user=${encodeURIComponent(
+      JSON.stringify({
         id: user.id,
-        username: user.username,
         email: user.email,
         fullName: user.fullName,
         role: user.role,
         isVerified: user.isVerified,
-      },
-    });
+        hasPassword: hasPassword,
+      })
+    )}`;
+
+    return res.redirect(redirectUrl);
   } catch (error) {
     console.error("Error in Google OAuth callback:", error);
     return res.status(500).json({
@@ -803,7 +809,7 @@ export const facebookOAuthCallback = async (req, res) => {
 
     // Generate tokens
     const accessToken = jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
+      { id: user.id, email: user.email, role: user.role },
       config.ACCESS_TOKEN_SECRET,
       { expiresIn: ACCESS_TOKEN_TTL }
     );
@@ -822,19 +828,19 @@ export const facebookOAuthCallback = async (req, res) => {
       maxAge: REFRESH_TOKEN_TTL,
     });
 
-    return res.status(200).json({
-      success: true,
-      message: "Facebook login successful",
-      accessToken,
-      user: {
+    // Redirect to frontend with tokens in URL (will be removed after storing)
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const redirectUrl = `${frontendUrl}/auth/callback?accessToken=${accessToken}&user=${encodeURIComponent(
+      JSON.stringify({
         id: user.id,
-        username: user.username,
         email: user.email,
         fullName: user.fullName,
         role: user.role,
         isVerified: user.isVerified,
-      },
-    });
+      })
+    )}`;
+
+    return res.redirect(redirectUrl);
   } catch (error) {
     console.error("Error in Facebook OAuth callback:", error);
     return res.status(500).json({

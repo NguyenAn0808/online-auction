@@ -1,0 +1,541 @@
+import { useState, useEffect } from "react";
+import {
+  UserIcon,
+  FunnelIcon,
+  ArrowsUpDownIcon,
+} from "@heroicons/react/24/outline";
+import { FunnelIcon as FunnelSolid } from "@heroicons/react/24/solid";
+import userService from "../services/userService";
+import Pagination from "../components/Pagination";
+import FilterDropdown from "../components/FilterDropdown";
+
+const UserManagementPage = () => {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [roleFilter, setRoleFilter] = useState("all");
+  // Removed verification filter
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showRoleMenu, setShowRoleMenu] = useState(false);
+  // Removed verification menu
+  const [showSortMenu, setShowSortMenu] = useState(false);
+  const [showOrderMenu, setShowOrderMenu] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [userToResetPassword, setUserToResetPassword] = useState(null);
+  const [resetPasswordResult, setResetPasswordResult] = useState(null);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    fetchUsers();
+  }, [currentPage, sortBy, sortOrder, roleFilter]);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        page: currentPage,
+        limit: itemsPerPage,
+        sortBy,
+        sortOrder,
+      };
+
+      // Add filters only if not "all"
+      if (roleFilter !== "all") {
+        params.role = roleFilter;
+      }
+
+      const response = await userService.getAllUsers(params);
+      const normalized = Array.isArray(response.data)
+        ? response.data.map((u) => ({
+            ...u,
+            fullname:
+              u.fullname ||
+              u.full_name ||
+              u.fullName ||
+              [u.first_name, u.last_name].filter(Boolean).join(" ") ||
+              u.username ||
+              "Unknown",
+          }))
+        : [];
+      setUsers(normalized);
+      setTotalPages(response.pagination.totalPages);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      setUsers([]);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Removed search handlers
+
+  const handlePageChange = (page) => setCurrentPage(page);
+
+  const toggleSort = (field) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortOrder("asc");
+    }
+  };
+
+  const getRoleBadgeColor = (role) => {
+    switch (role) {
+      case "admin":
+        return "bg-red-100 text-red-700 border border-red-200";
+      case "seller":
+        return "bg-blue-100 text-blue-700 border border-blue-200";
+      case "bidder":
+        return "bg-green-100 text-green-700 border border-green-200";
+      default:
+        return "bg-gray-100 text-gray-700 border border-gray-200";
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    try {
+      await userService.deleteUser(userId);
+      setUserToDelete(null);
+      fetchUsers(); // Refresh the user list
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      alert(error.response?.data?.message || "Failed to delete user");
+    }
+  };
+
+  const handleResetPassword = async (userId) => {
+    try {
+      const response = await userService.adminResetPassword(userId);
+      setResetPasswordResult(response);
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      alert(error.response?.data?.message || "Failed to reset password");
+      setUserToResetPassword(null);
+    }
+  };
+
+  const closeResetPasswordModal = () => {
+    setUserToResetPassword(null);
+    setResetPasswordResult(null);
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString("en-GB", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+  };
+
+  const getDisplayName = (user) =>
+    user.fullname ||
+    user.full_name ||
+    user.fullName ||
+    [user.first_name, user.last_name].filter(Boolean).join(" ") ||
+    user.username ||
+    "Unknown";
+
+  const headerCell = (label, field, extraClass = "") => (
+    <th
+      onClick={() => toggleSort(field)}
+      className={`px-3 py-2 text-left text-sm font-semibold text-gray-700 cursor-pointer select-none group ${extraClass}`}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {sortBy === field && (
+          <span className="text-xs text-gray-500">
+            {sortOrder === "asc" ? "▲" : "▼"}
+          </span>
+        )}
+        {sortBy !== field && (
+          <span className="opacity-0 group-hover:opacity-30 text-xs">▲</span>
+        )}
+      </span>
+    </th>
+  );
+
+  if (loading && users.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4 mx-auto"></div>
+          <p className="text-gray-500 text-sm">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+      <div className="mb-4  ">
+        <h3 className="text-2xl font-bold text-gray-900 mb-1">
+          User Management
+        </h3>
+      </div>
+
+      <div className="mb-2">
+        <div className="flex items-center justify-between bg-white">
+          <div className="text-lg text-gray-900">
+            Showing <div className="font-bold inline">{users.length} </div>
+            users
+          </div>
+          <div className="flex gap-2">
+            {/* Role Filter */}
+            <FilterDropdown
+              label="Role"
+              value={
+                roleFilter === "all"
+                  ? "All"
+                  : roleFilter.charAt(0).toUpperCase() + roleFilter.slice(1)
+              }
+              options={[
+                { label: "All", value: "all" },
+                { label: "Admin", value: "admin" },
+                { label: "Seller", value: "seller" },
+                { label: "Bidder", value: "bidder" },
+              ]}
+              isOpen={showRoleMenu}
+              onToggle={() => {
+                setShowRoleMenu(!showRoleMenu);
+                setShowSortMenu(false);
+                setShowOrderMenu(false);
+              }}
+              onSelect={(value) => {
+                setRoleFilter(value);
+                setCurrentPage(1);
+                setShowRoleMenu(false);
+              }}
+              Icon={UserIcon}
+            />
+
+            {/* Sort By */}
+            <FilterDropdown
+              label="Sort"
+              value={
+                sortBy === "createdAt"
+                  ? "Created At"
+                  : sortBy === "updatedAt"
+                  ? "Updated At"
+                  : sortBy === "fullname"
+                  ? "Full Name"
+                  : "Email"
+              }
+              options={[
+                { label: "Created At", value: "createdAt" },
+                { label: "Updated At", value: "updatedAt" },
+                { label: "Full Name", value: "fullname" },
+                { label: "Email", value: "email" },
+              ]}
+              isOpen={showSortMenu}
+              onToggle={() => {
+                setShowSortMenu(!showSortMenu);
+                setShowRoleMenu(false);
+                setShowOrderMenu(false);
+              }}
+              onSelect={(value) => {
+                setSortBy(value);
+                setShowSortMenu(false);
+              }}
+              Icon={FunnelIcon}
+              ActiveIcon={FunnelSolid}
+            />
+
+            {/* Order */}
+            <FilterDropdown
+              label="Order"
+              value={sortOrder === "asc" ? "Asc" : "Desc"}
+              options={[
+                { label: "Asc", value: "asc" },
+                { label: "Desc", value: "desc" },
+              ]}
+              isOpen={showOrderMenu}
+              onToggle={() => {
+                setShowOrderMenu(!showOrderMenu);
+                setShowRoleMenu(false);
+                setShowSortMenu(false);
+              }}
+              onSelect={(value) => {
+                setSortOrder(value);
+                setShowOrderMenu(false);
+              }}
+              Icon={ArrowsUpDownIcon}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto border border-gray-200 rounded-lg">
+        <table className="min-w-full divide-y divide-gray-200 text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-3 py-2 text-left text-sm font-semibold text-gray-700">
+                #
+              </th>
+              {headerCell("Full Name", "fullname")}
+              {headerCell("Email", "email")}
+              {headerCell("Role", "role")}
+              <th className="px-3 py-2 text-center text-sm font-semibold text-gray-700">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {users.map((user, idx) => (
+              <tr key={user.id} className="hover:bg-gray-50">
+                <td className="px-3 py-2 text-gray-500">
+                  {(currentPage - 1) * itemsPerPage + idx + 1}
+                </td>
+                <td className="px-3 py-2 font-medium text-gray-900">
+                  {getDisplayName(user)}
+                </td>
+                <td className="px-3 py-2 text-gray-700">{user.email}</td>
+                <td className="px-3 py-2">
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(
+                      user.role
+                    )}`}
+                  >
+                    {user.role}
+                  </span>
+                </td>
+                <td className="px-3 py-2">
+                  <div className="flex items-center gap-2 justify-center">
+                    <button
+                      onClick={() => setSelectedUser(user)}
+                      className="!px-3 !py-1 btn-secondary !text-xs font-medium hover:bg-gray-100"
+                    >
+                      Details
+                    </button>
+                    <button
+                      onClick={() => setUserToResetPassword(user)}
+                      className="!px-3 !py-1 bg-yellow-100 text-yellow-700 !border !border-yellow-200 text-xs rounded-[6px] hover:!bg-yellow-200 font-medium"
+                    >
+                      Reset Password
+                    </button>
+                    <button
+                      onClick={() => setUserToDelete(user)}
+                      className="!px-3 !py-1 bg-red-100 text-red-700 !border !border-red-200 text-xs rounded-[6px] hover:!bg-red-200 font-medium"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {users.length === 0 && (
+              <tr>
+                <td
+                  colSpan={9}
+                  className="px-3 py-8 text-center text-gray-500 text-sm"
+                >
+                  No users found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {totalPages > 1 && (
+        <div className="mt-6">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
+        </div>
+      )}
+
+      {selectedUser && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white w-full max-w-lg rounded-lg shadow-lg p-6 relative">
+            <button
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+              onClick={() => setSelectedUser(null)}
+            >
+              ✕
+            </button>
+            <h2 className="text-xl font-semibold mb-4">User Details</h2>
+            <div className="space-y-3 text-sm">
+              <div>
+                <span className="font-medium">Full Name:</span>{" "}
+                {getDisplayName(selectedUser)}
+              </div>
+              <div>
+                <span className="font-medium">Email:</span> {selectedUser.email}
+              </div>
+              <div>
+                <span className="font-medium">Role:</span> {selectedUser.role}
+              </div>
+              <div>
+                <span className="font-medium">Birthdate:</span>{" "}
+                {formatDate(selectedUser.birthdate)}
+              </div>
+              <div>
+                <span className="font-medium">Address:</span>{" "}
+                {selectedUser.address}
+              </div>
+              <div>
+                <span className="font-medium">Created At:</span>{" "}
+                {formatDate(selectedUser.createdAt)}
+              </div>
+              <div>
+                <span className="font-medium">Updated At:</span>{" "}
+                {formatDate(selectedUser.updatedAt)}
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setSelectedUser(null)}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Close
+              </button>
+              <button className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {userToDelete && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white w-full max-w-md rounded-lg shadow-lg p-6 relative">
+            <button
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+              onClick={() => setUserToDelete(null)}
+            >
+              ✕
+            </button>
+            <h2 className="text-xl font-semibold mb-4 text-red-600">
+              Delete User
+            </h2>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete user{" "}
+              <span className="font-semibold">
+                {getDisplayName(userToDelete)}
+              </span>
+              ? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setUserToDelete(null)}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteUser(userToDelete.id)}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-md hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {userToResetPassword && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white w-full max-w-md rounded-lg shadow-lg p-6 relative">
+            <button
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+              onClick={closeResetPasswordModal}
+            >
+              ✕
+            </button>
+            {!resetPasswordResult ? (
+              <>
+                <h2 className="text-xl font-semibold mb-4 text-yellow-600">
+                  Reset Password
+                </h2>
+                <p className="text-gray-700 mb-6">
+                  Are you sure you want to reset password for{" "}
+                  <span className="font-semibold">
+                    {getDisplayName(userToResetPassword)}
+                  </span>
+                  ?
+                  <br />
+                  <br />A temporary password will be generated and sent to their
+                  email address.
+                </p>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={closeResetPasswordModal}
+                    className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleResetPassword(userToResetPassword.id)}
+                    className="px-4 py-2 text-sm bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
+                  >
+                    Reset Password
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-xl font-semibold mb-4 text-green-600">
+                  Password Reset Successful
+                </h2>
+                <div className="space-y-4">
+                  <p className="text-gray-700">
+                    The password has been reset successfully for{" "}
+                    <span className="font-semibold">
+                      {getDisplayName(userToResetPassword)}
+                    </span>
+                    .
+                  </p>
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p className="text-sm font-medium text-gray-700 mb-2">
+                      Temporary Password:
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 bg-white px-3 py-2 rounded border border-gray-300 font-mono text-lg text-red-600">
+                        {resetPasswordResult.temporaryPassword}
+                      </code>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(
+                            resetPasswordResult.temporaryPassword
+                          );
+                          alert("Password copied to clipboard!");
+                        }}
+                        className="px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-sm text-blue-800">
+                      An email notification has been sent to the user with their
+                      temporary password.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 mt-6">
+                  <button
+                    onClick={closeResetPasswordModal}
+                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default UserManagementPage;

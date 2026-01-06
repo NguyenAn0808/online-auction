@@ -26,7 +26,7 @@ if (config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET) {
       {
         clientID: config.GOOGLE_CLIENT_ID,
         clientSecret: config.GOOGLE_CLIENT_SECRET,
-        callbackURL: "/api/auth/google/callback",
+        callbackURL: "http://localhost:8000/api/auth/google/callback",
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
@@ -42,6 +42,10 @@ if (config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET) {
             if (!user.googleId) {
               await User.updateSocialId(user.id, "google", googleId);
               user.googleId = googleId;
+            }
+            if (!user.isVerified) {
+              await User.updateVerificationStatus(user.id, true);
+              user.isVerified = true;
             }
             return done(null, user);
           }
@@ -74,7 +78,7 @@ if (config.FACEBOOK_APP_ID && config.FACEBOOK_APP_SECRET) {
       {
         clientID: config.FACEBOOK_APP_ID,
         clientSecret: config.FACEBOOK_APP_SECRET,
-        callbackURL: "/api/auth/facebook/callback",
+        callbackURL: "http://localhost:8000/api/auth/facebook/callback",
         profileFields: ["id", "displayName", "emails", "photos"],
       },
       async (accessToken, refreshToken, profile, done) => {

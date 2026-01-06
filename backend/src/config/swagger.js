@@ -1,6 +1,9 @@
 import { Sign } from "crypto";
 import { format } from "path";
 import swaggerJsdoc from "swagger-jsdoc";
+import config from "./settings.js";
+import { type } from "os";
+import { confirmReceipt } from "../controllers/orderController.js";
 
 const options = {
   definition: {
@@ -16,8 +19,7 @@ const options = {
     },
     servers: [
       {
-        url: "http://localhost:8000",
-        description: "Local server",
+        url: config.CLIENT_URL,
       },
     ],
     components: {
@@ -30,6 +32,113 @@ const options = {
         },
       },
       schemas: {
+        Category: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            name: { type: "string" },
+            parent_id: { type: "string", nullable: true },
+            created_at: { type: "string", format: "date-time" },
+            updated_at: { type: "string", format: "date-time" },
+          },
+          required: ["name"],
+        },
+        CategoryResponse: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            data: { $ref: "#/components/schemas/Category" },
+            message: { type: "string" },
+          },
+        },
+        CategoryListResponse: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            data: {
+              type: "array",
+              items: { $ref: "#/components/schemas/Category" },
+            },
+            count: { type: "integer" },
+          },
+        },
+        ErrorResponse: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            message: { type: "string" },
+            error: { type: "string" },
+          },
+        },
+        Product: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            seller_id: { type: "string", format: "uuid" },
+            category_id: { type: "string", format: "uuid" },
+            name: { type: "string" },
+            description: { type: "string" },
+            start_price: { type: "number" },
+            step_price: { type: "number" },
+            buy_now_price: { type: "number" },
+            start_time: { type: "string", format: "date-time" },
+            end_time: { type: "string", format: "date-time" },
+            status: { type: "string", enum: ["active", "ended", "deleted"] },
+            allow_unrated_bidder: { type: "boolean" },
+            auto_extend: { type: "boolean" },
+            created_at: { type: "string", format: "date-time" },
+            updated_at: { type: "string", format: "date-time" },
+            category_name: { type: "string" },
+          },
+          required: [
+            "seller_id",
+            "category_id",
+            "name",
+            "description",
+            "start_price",
+            "step_price",
+            "end_time",
+            "auto_extend",
+          ],
+        },
+        ProductResponse: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            data: { $ref: "#/components/schemas/Product" },
+            message: { type: "string" },
+          },
+        },
+        ProductListResponse: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            items: {
+              type: "array",
+              items: { $ref: "#/components/schemas/Product" },
+            },
+            pagination: {
+              type: "object",
+              properties: {
+                page: { type: "integer" },
+                limit: { type: "integer" },
+                total: { type: "integer" },
+              },
+            },
+          },
+        },
+        ProductImage: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            product_id: { type: "string", format: "uuid" },
+            image_url: { type: "string" },
+            is_thumbnail: { type: "boolean" },
+            position: { type: "integer" },
+            created_at: { type: "string", format: "date-time" },
+          },
+          required: ["product_id", "image_url"],
+        },
         // Request schemas
         SignupRequest: {
           type: "object",
@@ -63,7 +172,8 @@ const options = {
             },
             recaptchaToken: {
               type: "string",
-              description: "reCAPTCHA token from frontend (required if reCAPTCHA is enabled)",
+              description:
+                "reCAPTCHA token from frontend (required if reCAPTCHA is enabled)",
               example: "03AGdBq24PBCd...",
             },
           },
@@ -89,6 +199,70 @@ const options = {
           properties: {
             currentPassword: { type: "string", format: "password" },
             newPassword: { type: "string", format: "password", minLength: 6 },
+          },
+        },
+        CreateOrderRequest: {
+          type: "object",
+          required: ["productId", "shippingAddress", "image"],
+          properties: {
+            productId: {
+              type: "string",
+              format: "uuid",
+              description: "ID of the product to create order for",
+            },
+            shippingAddress: {
+              type: "string",
+              description: "Shipping address for the order",
+            },
+            image: {
+              type: "string",
+              format: "binary",
+              description: "Payment proof image (PNG, JPG, JPEG, WebP)",
+            },
+          },
+        },
+        ConfirmShippingRequest: {
+          type: "object",
+          required: ["shippingCode", "image"],
+          properties: {
+            shippingCode: {
+              type: "string",
+              description: "Shipping tracking code",
+            },
+            image: {
+              type: "string",
+              format: "binary",
+              description: "Shipping proof image (PNG, JPG, JPEG, WebP)",
+            },
+          },
+        },
+        confirmReceiptRequest: {
+          type: "object",
+          required: [],
+          properties: {},
+        },
+        ConfirmRatingRequest: {
+          type: "object",
+          required: ["score", "comment"],
+          properties: {
+            score: {
+              type: "integer",
+              enum: [1, -1],
+              description: "1 for Like (positive), -1 for Dislike (negative)",
+              example: 1
+            },
+            comment: { 
+              type: "string",
+              description: "Optional comment about the transaction",
+              example: "Great seller, fast shipping!"
+            },
+          },
+        },
+        ConfirmCancelRequest: {
+          type: "object",
+          required: ["reason"],
+          properties: {
+            reason: { type: "string" },
           },
         },
         ForgotPasswordRequest: {
@@ -146,6 +320,54 @@ const options = {
             newPassword: { type: "string", format: "password", minLength: 6 },
           },
         },
+        AnswerRequest: {
+          type: "object",
+          required: ["answerText"],
+          properties: {
+            answerText: { type: "string" },
+          },
+        },
+        QuestionRequest: {
+          type: "object",
+          required: ["questionText"],
+          properties: {
+            questionText: { type: "string" },
+          },
+        },
+        AnswerResponse: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            question_id: { type: "string", format: "uuid" },
+            userId: {
+              type: "integer",
+              description: "The ID of the seller who answered",
+            },
+            answer_text: { type: "string" },
+            created_at: { type: "string", format: "date-time" },
+            updatedAt: {
+              type: "string",
+              format: "date-time",
+            },
+          },
+        },
+        QuestionResponse: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            product_id: { type: "string", format: "uuid" },
+            userId: {
+              type: "integer",
+              description: "The ID of the user who asked the question",
+            },
+            question_text: { type: "string" },
+            created_at: { type: "string", format: "date-time" },
+            updatedAt: {
+              type: "string",
+              format: "date-time",
+            },
+          },
+        },
         SignUpResponse: {
           type: "object",
           properties: {
@@ -201,12 +423,14 @@ const options = {
           properties: {
             success: { type: "boolean" },
             message: { type: "string" },
-          },
-          data: {
-            type: "object",
-            email: { type: "string", format: "email" },
-            expiresIn: { type: "string" },
-            purpose: { type: "string" },
+            data: {
+              type: "object",
+              properties: {
+                email: { type: "string", format: "email" },
+                expiresIn: { type: "string" },
+                purpose: { type: "string" },
+              },
+            },
           },
         },
         ResetPasswordResponse: {
@@ -248,7 +472,8 @@ const options = {
           type: "object",
           properties: {
             id: {
-              type: "integer",
+              type: "string",
+              format: "uuid",
             },
             username: {
               type: "string",
@@ -264,6 +489,23 @@ const options = {
               type: "string",
               enum: ["bidder", "seller", "admin"],
             },
+          },
+        },
+        OrderResponse: {
+          type: "object",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            productId: { type: "string", format: "uuid" },
+            buyerId: { type: "string", format: "uuid" },
+            sellerId: { type: "string", format: "uuid" },
+            finalPrice: { type: "number" },
+            proofImage: { type: "string" },
+            address: { type: "string" },
+            status: { type: "string" },
+            shippingCode: { type: "string", nullable: true },
+            shippingImage: { type: "string", nullable: true },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
           },
         },
         Error: {
@@ -293,8 +535,35 @@ const options = {
         },
       },
     },
-    security: [],
+    tags: [
+      {
+        name: "Authentication",
+        description: "User authentication endpoints",
+      },
+      {
+        name: "Categories",
+        description: "Operations related to categories",
+      },
+      {
+        name: "Products",
+        description: "Operations related to products",
+      },
+      {
+        name: "Product Images",
+        description: "Operations related to product images",
+      },
+      {
+        name: "Q&A",
+        description: "Operations related to questions and answers",
+      },
+      {
+        name: "Orders",
+        description: "Operations related to orders",
+      },
+    ],
   },
+
+  // Point to source files for JSDoc annotations
   apis: ["./src/routes/*.js", "./src/controllers/*.js"],
 };
 
