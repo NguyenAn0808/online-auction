@@ -170,6 +170,7 @@ function maskName(fullName, userId, bidderUserData) {
 export default function BidHistory({ isSeller = false, productId = null }) {
   const { user } = useAuth();
   const toast = useToast();
+  const TIME_COL_WIDTH = 170;
   const [modalState, setModalState] = useState({
     open: false,
     title: "",
@@ -377,34 +378,6 @@ export default function BidHistory({ isSeller = false, productId = null }) {
     }
   };
 
-  const handleUnblockBidder = async (bidderId) => {
-    const confirmed = await showConfirm(
-      "Confirm unblock",
-      "Unblock this bidder for this product?"
-    );
-    if (!confirmed) return;
-    try {
-      setIsProcessing((prev) => ({ ...prev, [bidderId]: true }));
-      await productService.unblockBidder(productId, bidderId);
-
-      // Update local additions state for instant UI feedback
-      setLocalBlocklistAdditions((prev) =>
-        prev.filter((b) => b.bidder_id !== bidderId)
-      );
-
-      // Force refresh of history and product info
-      refresh();
-
-      toast.success("Bidder unblocked and bids restored successfully!");
-    } catch (error) {
-      const msg = error?.message || "Failed to unblock bidder";
-      toast.error(msg);
-      showModal("Failed to unblock bidder", msg);
-    } finally {
-      setIsProcessing((prev) => ({ ...prev, [bidderId]: false }));
-    }
-  };
-
   return (
     <>
       <div
@@ -561,6 +534,8 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                   paddingTop: SPACING.M,
                   paddingBottom: SPACING.M,
                   textAlign: "left",
+                  width: TIME_COL_WIDTH,
+                  whiteSpace: "nowrap",
                   fontSize: TYPOGRAPHY.SIZE_LABEL,
                   fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
                   color: COLORS.MIDNIGHT_ASH,
@@ -719,6 +694,8 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                       paddingRight: SPACING.M,
                       paddingTop: SPACING.M,
                       paddingBottom: SPACING.M,
+                      width: TIME_COL_WIDTH,
+                      whiteSpace: "nowrap",
                       fontSize: TYPOGRAPHY.SIZE_LABEL,
                       color: COLORS.PEBBLE,
                     }}
@@ -855,26 +832,14 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                         paddingTop: SPACING.M,
                         paddingBottom: SPACING.M,
                         textAlign: "left",
+                        width: TIME_COL_WIDTH,
+                        whiteSpace: "nowrap",
                         fontSize: TYPOGRAPHY.SIZE_LABEL,
                         fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
                         color: COLORS.MIDNIGHT_ASH,
                       }}
                     >
-                      Blocked On
-                    </th>
-                    <th
-                      style={{
-                        paddingLeft: SPACING.M,
-                        paddingRight: SPACING.M,
-                        paddingTop: SPACING.M,
-                        paddingBottom: SPACING.M,
-                        textAlign: "center",
-                        fontSize: TYPOGRAPHY.SIZE_LABEL,
-                        fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                        color: COLORS.MIDNIGHT_ASH,
-                      }}
-                    >
-                      Actions
+                      Time
                     </th>
                   </tr>
                 </thead>
@@ -882,7 +847,7 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                   {blocklist.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={3}
+                        colSpan={2}
                         style={{
                           paddingTop: SPACING.M,
                           paddingBottom: SPACING.M,
@@ -940,6 +905,8 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                               paddingRight: SPACING.M,
                               paddingTop: SPACING.M,
                               paddingBottom: SPACING.M,
+                              width: TIME_COL_WIDTH,
+                              whiteSpace: "nowrap",
                               fontSize: TYPOGRAPHY.SIZE_LABEL,
                               color: COLORS.PEBBLE,
                             }}
@@ -947,43 +914,6 @@ export default function BidHistory({ isSeller = false, productId = null }) {
                             {blocked.blocked_at
                               ? formatDateTime(blocked.blocked_at)
                               : "-"}
-                          </td>
-                          <td
-                            style={{
-                              paddingLeft: SPACING.M,
-                              paddingRight: SPACING.M,
-                              paddingTop: SPACING.M,
-                              paddingBottom: SPACING.M,
-                              fontSize: TYPOGRAPHY.SIZE_LABEL,
-                              textAlign: "center",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleUnblockBidder(blocked.bidder_id)
-                              }
-                              disabled={!!isProcessing[blocked.bidder_id]}
-                              style={{
-                                padding: "6px 12px",
-                                borderRadius: BORDER_RADIUS.FULL,
-                                border: "none",
-                                backgroundColor: "#059669",
-                                color: COLORS.WHITE,
-                                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                                cursor: isProcessing[blocked.bidder_id]
-                                  ? "not-allowed"
-                                  : "pointer",
-                                opacity: isProcessing[blocked.bidder_id]
-                                  ? 0.7
-                                  : 1,
-                              }}
-                            >
-                              {isProcessing[blocked.bidder_id]
-                                ? "..."
-                                : "Unblock"}
-                            </button>
                           </td>
                         </tr>
                       );
