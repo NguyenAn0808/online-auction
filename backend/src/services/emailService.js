@@ -92,7 +92,8 @@ export const sendOutbidEmailToPreviousBidder = async (
   email,
   fullName,
   productName,
-  newAmount
+  newAmount,
+  productId
 ) => {
   const subject = `[Alert] You have been outbid on ${productName}`;
   const html = `
@@ -105,7 +106,7 @@ export const sendOutbidEmailToPreviousBidder = async (
       ).toLocaleString()}</strong></p>
       <p><a href="${
         config.CLIENT_URL
-      }/products/${productName}" style="background-color: #c0392b; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">Bid Again Now</a></p>
+      }/products/${productId}" style="background-color: #c0392b; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">Bid Again Now</a></p>
     </div>
   `;
   return sendEmail(email, subject, html);
@@ -247,6 +248,34 @@ export const sendAnswerNotification = async (
       </div>
     `
   );
+};
+
+// Product description updated (To all current bidders)
+export const sendDescriptionUpdateNotification = async (
+  bidderEmail,
+  bidderName,
+  productName,
+  productId
+) => {
+  const productUrl = `${config.CLIENT_URL}/products/${productId}`;
+  const subject = `[Update] Product description updated for ${productName}`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #3498db; border-radius: 8px;">
+      <h2 style="color: #2980b9;">📝 Product Description Updated</h2>
+      <p>Hello <strong>${bidderName}</strong>,</p>
+      <p>The seller has updated the description for <strong>${productName}</strong>, a product you are currently bidding on.</p>
+      <p>We recommend reviewing the updated description to stay informed about the product details.</p>
+      <p>
+        <a href="${productUrl}" 
+           style="display: inline-block; background-color: #3498db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin-top: 10px;">
+          View Updated Product
+        </a>
+      </p>
+      <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+      <p style="font-size: 12px; color: #777;">Online Auction System</p>
+    </div>
+  `;
+  return sendEmail(bidderEmail, subject, html);
 };
 
 // Password reset by admin (To the user)

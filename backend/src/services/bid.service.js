@@ -264,7 +264,8 @@ class BidService {
               previousBidder.email,
               previousBidder.fullName,
               product.name,
-              winningAmount
+              winningAmount,
+              product.id
             );
           }
         }

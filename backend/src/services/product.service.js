@@ -255,12 +255,7 @@ class ProductService {
       };
     }
 
-    if (
-      !start_price ||
-      !step_price ||
-      !end_time ||
-      auto_extend === undefined
-    ) {
+    if (!start_price || !step_price || !end_time || auto_extend === undefined) {
       return {
         success: false,
         message:
@@ -369,7 +364,10 @@ class ProductService {
     try {
       const result = await withTransaction(async (client) => {
         // Create product
-        const product = await ProductModel.createWithClient(productData, client);
+        const product = await ProductModel.createWithClient(
+          productData,
+          client
+        );
 
         // Create image records
         const images = [];
@@ -472,7 +470,12 @@ class ProductService {
    * @param {string} authorRole - Author's role (seller, admin)
    * @returns {Promise<{success: boolean, data?: Object, message?: string}>}
    */
-  static async appendDescription(productId, content, authorId, authorRole = "seller") {
+  static async appendDescription(
+    productId,
+    content,
+    authorId,
+    authorRole = "seller"
+  ) {
     try {
       // Validate product exists
       const product = await ProductModel.findById(productId);
@@ -520,6 +523,25 @@ class ProductService {
 
       // Get author name for response
       const author = await User.findById(authorId);
+
+      // Send email notification to all current bidders (async, non-blocking)
+      (async () => {
+        try {
+          const bidders = await Bid.getUniqueBiddersWithEmail(productId);
+          for (const bidder of bidders) {
+            if (bidder.email) {
+              await EmailService.sendDescriptionUpdateNotification(
+                bidder.email,
+                bidder.full_name,
+                product.name,
+                productId
+              );
+            }
+          }
+        } catch (error) {
+          console.error("❌ Error sending description update emails:", error);
+        }
+      })();
 
       return {
         success: true,

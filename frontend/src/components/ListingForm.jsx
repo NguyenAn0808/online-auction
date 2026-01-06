@@ -545,7 +545,10 @@ const ListingForm = () => {
         <section className="bg-white rounded-lg border border-gray-200 p-6">
           <h2 className="text-xl font-bold mb-4">DESCRIPTION</h2>
           <Editor
-            apiKey={import.meta.env.VITE_TINYMCE_API_KEY || ""}
+            apiKey={
+              import.meta.env.VITE_TINYMCE_API_KEY ||
+              "fg1y693xrdhtvilhk9rorpv3qhahvdspyp8z2yhc7xs56f6v"
+            }
             value={watch("description") || ""}
             onEditorChange={(content) => {
               setValue("description", content);

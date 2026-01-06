@@ -29,7 +29,12 @@ class Bid {
       VALUES ($1, $2, $3, $4, 'accepted')
       RETURNING *
     `;
-    const result = await pool.query(query, [product_id, bidder_id, amount, max_bid]);
+    const result = await pool.query(query, [
+      product_id,
+      bidder_id,
+      amount,
+      max_bid,
+    ]);
     return result.rows[0];
   }
 
@@ -155,6 +160,21 @@ class Bid {
       WHERE product_id = $1 AND bidder_id = $2 AND status = 'rejected'
     `;
     await pool.query(query, [product_id, bidder_id]);
+  }
+
+  // Get all unique bidders with their email for a product
+  static async getUniqueBiddersWithEmail(product_id) {
+    const query = `
+      SELECT DISTINCT u.id, u.email, u.full_name
+      FROM bids b
+      JOIN users u ON b.bidder_id = u.id
+      LEFT JOIN blocked_bidders bb ON b.product_id = bb.product_id AND b.bidder_id = bb.user_id
+      WHERE b.product_id = $1 
+        AND b.status != 'rejected'
+        AND bb.user_id IS NULL
+    `;
+    const result = await pool.query(query, [product_id]);
+    return result.rows;
   }
 }
 

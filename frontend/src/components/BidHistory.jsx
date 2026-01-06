@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useEffect, useState, useCallback } from "react";
-import Notification from "./Notification";
 import productService from "../services/productService";
 import userService from "../services/userService";
 import ratingService from "../services/ratingService";
@@ -419,33 +418,29 @@ export default function BidHistory({ isSeller = false, productId = null }) {
             gap: SPACING.M,
           }}
         >
-          {isCurrentUserHighest ? (
-            <Notification />
-          ) : (
-            <div
+          <div
+            style={{
+              fontSize: TYPOGRAPHY.SIZE_LABEL,
+              color: COLORS.PEBBLE,
+            }}
+          >
+            Current high:{" "}
+            <span
               style={{
-                fontSize: TYPOGRAPHY.SIZE_LABEL,
-                color: COLORS.PEBBLE,
+                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                color: COLORS.MIDNIGHT_ASH,
               }}
             >
-              Current high:{" "}
-              <span
-                style={{
-                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                  color: COLORS.MIDNIGHT_ASH,
-                }}
-              >
-                {productInfo?.current_price ? (
-                  <span>
-                    {Number(productInfo.current_price).toLocaleString("vi-VN")}{" "}
-                    VND
-                  </span>
-                ) : (
-                  <span>{highest?.amount?.toFixed(2)} VND</span>
-                )}
-              </span>
-            </div>
-          )}
+              {productInfo?.current_price ? (
+                <span>
+                  {Number(productInfo.current_price).toLocaleString("vi-VN")}{" "}
+                  VND
+                </span>
+              ) : (
+                <span>{highest?.amount?.toFixed(2)} VND</span>
+              )}
+            </span>
+          </div>
         </div>
       </div>
 
