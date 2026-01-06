@@ -56,11 +56,16 @@ export default function BiddingQuickView({
 
   const stepPrice = Number(product?.step_price || 0);
 
+  // Check if product has received any bids
+  const hasBids = Number(product?.bid_count || 0) > 0;
+
   // Stable snapshot values used by the UI/validation
   const snapshotCurrentPrice =
     auctionSnapshot?.currentPrice ?? Number(liveCurrentPrice);
+  // For products with no bids, minimum is start_price; otherwise current + step
   const snapshotMinBid =
-    auctionSnapshot?.minBid ?? snapshotCurrentPrice + stepPrice;
+    auctionSnapshot?.minBid ??
+    (hasBids ? snapshotCurrentPrice + stepPrice : snapshotCurrentPrice);
 
   // Min bid shown/used throughout the UI should be stable
   const minBid = snapshotMinBid;
@@ -85,11 +90,15 @@ export default function BiddingQuickView({
       setSuccessMessage("");
       prevMinBidRef.current = null;
 
+      // Check if product has received any bids
+      const productHasBids = Number(product?.bid_count || 0) > 0;
+
       // Freeze current price/min bid at open-time
       const frozenCurrent = Number(liveCurrentPrice);
       setAuctionSnapshot({
         currentPrice: frozenCurrent,
-        minBid: frozenCurrent + stepPrice,
+        // For products with no bids, minimum is start_price; otherwise current + step
+        minBid: productHasBids ? frozenCurrent + stepPrice : frozenCurrent,
       });
 
       // Check rating eligibility once at open
@@ -188,9 +197,13 @@ export default function BiddingQuickView({
 
   const handleRefreshPrice = () => {
     const refreshedCurrent = Number(liveCurrentPrice);
+    // When refreshing, if price changed from start_price, it means there are bids now
+    const productHasBids =
+      Number(product?.bid_count || 0) > 0 ||
+      refreshedCurrent > Number(product?.start_price || 0);
     setAuctionSnapshot({
       currentPrice: refreshedCurrent,
-      minBid: refreshedCurrent + stepPrice,
+      minBid: productHasBids ? refreshedCurrent + stepPrice : refreshedCurrent,
     });
     // keep user input as-is; validation will re-run against new minBid
   };
@@ -351,7 +364,7 @@ export default function BiddingQuickView({
                     </div>
                   </div>
 
-                  {isLivePriceHigher && (
+                  {/* {isLivePriceHigher && (
                     <div className="mt-4 text-sm text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-100">
                       <div className="flex items-center justify-between gap-3">
                         <p>
@@ -383,7 +396,7 @@ export default function BiddingQuickView({
                         {currency.format(Number(liveCurrentPrice) + stepPrice)}.
                       </p>
                     </div>
-                  )}
+                  )} */}
 
                   {step === "input" ? (
                     <form onSubmit={handleSubmit} className="mt-2" noValidate>
@@ -492,7 +505,7 @@ export default function BiddingQuickView({
                         </p>
                       </div>
 
-                      {isLivePriceHigher && (
+                      {/* {isLivePriceHigher && (
                         <div className="mt-3 text-sm text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-100">
                           <div className="flex items-center justify-between gap-3">
                             <p>
@@ -529,7 +542,7 @@ export default function BiddingQuickView({
                             .
                           </p>
                         </div>
-                      )}
+                      )} */}
 
                       {error && (
                         <p className="mt-2 text-sm text-red-600">{error}</p>

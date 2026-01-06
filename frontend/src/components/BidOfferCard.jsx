@@ -30,6 +30,7 @@ export default function BidOfferCard({
   isWinning,
   endTime,
   type,
+  orderStep,
   onAction,
   onFeedback,
 }) {
@@ -92,7 +93,11 @@ export default function BidOfferCard({
       case "lost":
         return { label: "View Item", primary: false };
       case "won":
-        return { label: "Leave Feedback", primary: true };
+        // Show "Go to Transaction" until step 3 is finished, then show "Feedback"
+        return {
+          label: orderStep >= 3 ? "Feedback" : "Go to Transaction",
+          primary: true,
+        };
       default:
         return { label: "View", primary: true };
     }
