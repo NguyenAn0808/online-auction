@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useState, useCallback } from "react";
+import { useMemo, useEffect, useState, useCallback, useRef } from "react";
 import productService from "../services/productService";
 import userService from "../services/userService";
 import ratingService from "../services/ratingService";
@@ -95,8 +95,11 @@ function useBids(productId) {
               const userData = await userService.getUserById(bidderId);
               bidderInfoMap[bidderId] = userData;
             } catch (err) {
-              console.error(`Failed to load bidder info for ${bidderId}:`, err);
               bidderInfoMap[bidderId] = null;
+              showModal(
+                "Failed to load bidder info",
+                `Bidder ${bidderId}: ${err?.message || "Unknown error"}`
+              );
             }
             try {
               const summary = await ratingService.getUserRatingEligibility(
@@ -104,11 +107,11 @@ function useBids(productId) {
               );
               bidderRatingsMap[bidderId] = summary;
             } catch (err) {
-              console.error(
-                `Failed to load bidder rating for ${bidderId}:`,
-                err
-              );
               bidderRatingsMap[bidderId] = null;
+              showModal(
+                "Failed to load bidder rating",
+                `Bidder ${bidderId}: ${err?.message || "Unknown error"}`
+              );
             }
           })
         );
@@ -116,8 +119,11 @@ function useBids(productId) {
         setBidderInfo(bidderInfoMap);
         setBidderRatings(bidderRatingsMap);
       } catch (error) {
-        console.error("Error fetching bid history:", error);
         setBids([]);
+        showModal(
+          "Error fetching bid history",
+          error?.message || "Unknown error"
+        );
       } finally {
         setLoading(false);
       }
@@ -164,6 +170,44 @@ function maskName(fullName, userId, bidderUserData) {
 export default function BidHistory({ isSeller = false, productId = null }) {
   const { user } = useAuth();
   const toast = useToast();
+  const [modalState, setModalState] = useState({
+    open: false,
+    title: "",
+    message: "",
+  });
+  const showModal = useCallback((title, message) => {
+    setModalState({ open: true, title, message });
+  }, []);
+  const hideModal = useCallback(() => {
+    setModalState({ open: false, title: "", message: "" });
+  }, []);
+  // Confirmation modal state and helpers
+  const [confirmState, setConfirmState] = useState({
+    open: false,
+    title: "",
+    message: "",
+  });
+  const confirmResolveRef = useRef(null);
+  const showConfirm = useCallback((title, message) => {
+    return new Promise((resolve) => {
+      confirmResolveRef.current = resolve;
+      setConfirmState({ open: true, title, message });
+    });
+  }, []);
+  const confirmYes = useCallback(() => {
+    setConfirmState({ open: false, title: "", message: "" });
+    if (confirmResolveRef.current) {
+      confirmResolveRef.current(true);
+      confirmResolveRef.current = null;
+    }
+  }, []);
+  const confirmNo = useCallback(() => {
+    setConfirmState({ open: false, title: "", message: "" });
+    if (confirmResolveRef.current) {
+      confirmResolveRef.current(false);
+      confirmResolveRef.current = null;
+    }
+  }, []);
   const [
     localBids,
     setLocalBids,
@@ -274,21 +318,23 @@ export default function BidHistory({ isSeller = false, productId = null }) {
       );
       toast.success("Bid accepted successfully!");
     } catch (error) {
-      console.error("Failed to accept bid:", error);
-      toast.error(error?.response?.data?.message || "Failed to accept bid");
+      const msg =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to accept bid";
+      toast.error(msg);
+      showModal("Failed to accept bid", msg);
     } finally {
       setIsProcessing((prev) => ({ ...prev, [bidId]: false }));
     }
   };
 
   const handleRejectBid = async (bidId) => {
-    if (
-      !confirm(
-        "Reject all bids from this bidder and block them from this product?"
-      )
-    ) {
-      return;
-    }
+    const confirmed = await showConfirm(
+      "Confirm reject & block",
+      "Reject all bids from this bidder and block them from this product?"
+    );
+    if (!confirmed) return;
     try {
       setIsProcessing((prev) => ({ ...prev, [bidId]: true }));
 
@@ -323,31 +369,37 @@ export default function BidHistory({ isSeller = false, productId = null }) {
         "Bidder rejected and blocked. Product price and winner updated."
       );
     } catch (error) {
-      console.error("Failed to reject bid:", error);
-      toast.error(error?.message || "Failed to reject bid");
+      const msg = error?.message || "Failed to reject bid";
+      toast.error(msg);
+      showModal("Failed to reject bid", msg);
     } finally {
       setIsProcessing((prev) => ({ ...prev, [bidId]: false }));
     }
   };
 
   const handleUnblockBidder = async (bidderId) => {
-    if (!confirm("Unblock this bidder for this product?")) {
-      return;
-    }
+    const confirmed = await showConfirm(
+      "Confirm unblock",
+      "Unblock this bidder for this product?"
+    );
+    if (!confirmed) return;
     try {
       setIsProcessing((prev) => ({ ...prev, [bidderId]: true }));
       await productService.unblockBidder(productId, bidderId);
 
-      // Update local state
-      setBlocklist((prev) => prev.filter((b) => b.bidder_id !== bidderId));
+      // Update local additions state for instant UI feedback
+      setLocalBlocklistAdditions((prev) =>
+        prev.filter((b) => b.bidder_id !== bidderId)
+      );
 
       // Force refresh of history and product info
       refresh();
 
       toast.success("Bidder unblocked and bids restored successfully!");
     } catch (error) {
-      console.error("Failed to unblock bidder:", error);
-      toast.error(error?.message || "Failed to unblock bidder");
+      const msg = error?.message || "Failed to unblock bidder";
+      toast.error(msg);
+      showModal("Failed to unblock bidder", msg);
     } finally {
       setIsProcessing((prev) => ({ ...prev, [bidderId]: false }));
     }
@@ -768,65 +820,334 @@ export default function BidHistory({ isSeller = false, productId = null }) {
           </div>
 
           {showBlocklist && (
-            <div
-              style={{
-                display: "grid",
-                gap: SPACING.S,
-                backgroundColor: COLORS.SOFT_CLOUD,
-                borderRadius: BORDER_RADIUS.MD,
-              }}
-            >
-              {blocklist.length === 0 ? (
-                <span
-                  style={{
-                    color: COLORS.PEBBLE,
-                    fontSize: TYPOGRAPHY.SIZE_LABEL,
-                  }}
-                >
-                  No blocked bidders
-                </span>
-              ) : (
-                blocklist.map((blocked) => (
-                  <div
-                    key={blocked.bidder_id}
+            <div style={{ overflowX: "auto" }}>
+              <table
+                style={{
+                  minWidth: "100%",
+                  borderCollapse: "collapse",
+                }}
+              >
+                <thead>
+                  <tr
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      backgroundColor: COLORS.WHITE,
-                      borderRadius: BORDER_RADIUS.SM,
-                      boxShadow: SHADOWS.XS,
+                      backgroundColor: COLORS.SOFT_CLOUD,
+                      borderBottom: `1px solid ${COLORS.MORNING_MIST}`,
                     }}
                   >
-                    <div>
-                      <div
+                    <th
+                      style={{
+                        paddingTop: SPACING.M,
+                        paddingBottom: SPACING.M,
+                        paddingLeft: SPACING.M,
+                        paddingRight: SPACING.M,
+                        textAlign: "left",
+                        fontSize: TYPOGRAPHY.SIZE_LABEL,
+                        fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                        color: COLORS.MIDNIGHT_ASH,
+                      }}
+                    >
+                      Bidder
+                    </th>
+                    <th
+                      style={{
+                        paddingLeft: SPACING.M,
+                        paddingRight: SPACING.M,
+                        paddingTop: SPACING.M,
+                        paddingBottom: SPACING.M,
+                        textAlign: "left",
+                        fontSize: TYPOGRAPHY.SIZE_LABEL,
+                        fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                        color: COLORS.MIDNIGHT_ASH,
+                      }}
+                    >
+                      Blocked On
+                    </th>
+                    <th
+                      style={{
+                        paddingLeft: SPACING.M,
+                        paddingRight: SPACING.M,
+                        paddingTop: SPACING.M,
+                        paddingBottom: SPACING.M,
+                        textAlign: "center",
+                        fontSize: TYPOGRAPHY.SIZE_LABEL,
+                        fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                        color: COLORS.MIDNIGHT_ASH,
+                      }}
+                    >
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {blocklist.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={3}
                         style={{
-                          fontSize: TYPOGRAPHY.SIZE_BODY,
-                          color: COLORS.MIDNIGHT_ASH,
-                          fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
-                        }}
-                      >
-                        {maskName(
-                          null,
-                          blocked.bidder_id,
-                          bidderInfo[blocked.bidder_id]
-                        )}
-                      </div>
-                      <div
-                        style={{
+                          paddingTop: SPACING.M,
+                          paddingBottom: SPACING.M,
+                          paddingLeft: SPACING.M,
+                          paddingRight: SPACING.M,
                           fontSize: TYPOGRAPHY.SIZE_LABEL,
                           color: COLORS.PEBBLE,
+                          textAlign: "center",
                         }}
                       >
-                        Blocked on{" "}
-                        {new Date(blocked.blocked_at).toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
+                        No blocked bidders
+                      </td>
+                    </tr>
+                  ) : (
+                    blocklist.map((blocked) => {
+                      const fullName =
+                        bidderInfo[blocked.bidder_id]?.full_name ||
+                        bidderInfo[blocked.bidder_id]?.fullName ||
+                        blocked.name ||
+                        blocked.bidder_id ||
+                        "-";
+                      return (
+                        <tr
+                          key={blocked.bidder_id}
+                          style={{
+                            backgroundColor: COLORS.WHITE,
+                            borderBottom: `1px solid ${COLORS.MORNING_MIST}`,
+                            transition: "background-color 0.2s ease",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor =
+                              COLORS.SOFT_CLOUD;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor =
+                              COLORS.WHITE;
+                          }}
+                        >
+                          <td
+                            style={{
+                              paddingTop: SPACING.M,
+                              paddingBottom: SPACING.M,
+                              paddingLeft: SPACING.M,
+                              paddingRight: SPACING.M,
+                              fontSize: TYPOGRAPHY.SIZE_BODY,
+                              color: COLORS.MIDNIGHT_ASH,
+                              fontWeight: TYPOGRAPHY.WEIGHT_MEDIUM,
+                            }}
+                          >
+                            {fullName}
+                          </td>
+                          <td
+                            style={{
+                              paddingLeft: SPACING.M,
+                              paddingRight: SPACING.M,
+                              paddingTop: SPACING.M,
+                              paddingBottom: SPACING.M,
+                              fontSize: TYPOGRAPHY.SIZE_LABEL,
+                              color: COLORS.PEBBLE,
+                            }}
+                          >
+                            {blocked.blocked_at
+                              ? formatDateTime(blocked.blocked_at)
+                              : "-"}
+                          </td>
+                          <td
+                            style={{
+                              paddingLeft: SPACING.M,
+                              paddingRight: SPACING.M,
+                              paddingTop: SPACING.M,
+                              paddingBottom: SPACING.M,
+                              fontSize: TYPOGRAPHY.SIZE_LABEL,
+                              textAlign: "center",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleUnblockBidder(blocked.bidder_id)
+                              }
+                              disabled={!!isProcessing[blocked.bidder_id]}
+                              style={{
+                                padding: "6px 12px",
+                                borderRadius: BORDER_RADIUS.FULL,
+                                border: "none",
+                                backgroundColor: "#059669",
+                                color: COLORS.WHITE,
+                                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                                cursor: isProcessing[blocked.bidder_id]
+                                  ? "not-allowed"
+                                  : "pointer",
+                                opacity: isProcessing[blocked.bidder_id]
+                                  ? 0.7
+                                  : 1,
+                              }}
+                            >
+                              {isProcessing[blocked.bidder_id]
+                                ? "..."
+                                : "Unblock"}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
           )}
+        </div>
+      )}
+      {confirmState.open && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundColor: "rgba(0,0,0,0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: COLORS.WHITE,
+              borderRadius: BORDER_RADIUS.MD,
+              boxShadow: SHADOWS.MD,
+              minWidth: 320,
+              maxWidth: 560,
+              padding: SPACING.L,
+            }}
+          >
+            <h4
+              style={{
+                margin: 0,
+                marginBottom: SPACING.S,
+                fontSize: TYPOGRAPHY.SIZE_HEADING_XS,
+                color: COLORS.MIDNIGHT_ASH,
+                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+              }}
+            >
+              {confirmState.title}
+            </h4>
+            <p
+              style={{
+                margin: 0,
+                marginBottom: SPACING.M,
+                fontSize: TYPOGRAPHY.SIZE_BODY,
+                color: COLORS.MIDNIGHT_ASH,
+              }}
+            >
+              {confirmState.message}
+            </p>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: SPACING.S,
+              }}
+            >
+              <button
+                type="button"
+                onClick={confirmNo}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: BORDER_RADIUS.FULL,
+                  border: `1px solid ${COLORS.MORNING_MIST}`,
+                  backgroundColor: COLORS.WHITE,
+                  color: COLORS.MIDNIGHT_ASH,
+                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmYes}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: BORDER_RADIUS.FULL,
+                  border: "none",
+                  backgroundColor: "#DC2626",
+                  color: COLORS.WHITE,
+                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                  cursor: "pointer",
+                }}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {modalState.open && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundColor: "rgba(0,0,0,0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={hideModal}
+        >
+          <div
+            style={{
+              backgroundColor: COLORS.WHITE,
+              borderRadius: BORDER_RADIUS.MD,
+              boxShadow: SHADOWS.MD,
+              minWidth: 320,
+              maxWidth: 560,
+              padding: SPACING.L,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h4
+              style={{
+                margin: 0,
+                marginBottom: SPACING.S,
+                fontSize: TYPOGRAPHY.SIZE_HEADING_XS,
+                color: COLORS.MIDNIGHT_ASH,
+                fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+              }}
+            >
+              {modalState.title}
+            </h4>
+            <p
+              style={{
+                margin: 0,
+                marginBottom: SPACING.M,
+                fontSize: TYPOGRAPHY.SIZE_BODY,
+                color: COLORS.MIDNIGHT_ASH,
+              }}
+            >
+              {modalState.message}
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                onClick={hideModal}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: BORDER_RADIUS.FULL,
+                  border: "none",
+                  backgroundColor: COLORS.MIDNIGHT_ASH,
+                  color: COLORS.WHITE,
+                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
+                  cursor: "pointer",
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>

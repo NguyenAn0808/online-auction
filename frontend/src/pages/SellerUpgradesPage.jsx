@@ -466,6 +466,15 @@ const SellerUpgradesPage = () => {
                     </div>
                   </div>
 
+                  <div className="pt-4 border-t">
+                    <span className="font-medium text-gray-700">
+                      Reason for becoming a seller:
+                    </span>
+                    <p className="text-gray-900 mt-1 whitespace-pre-wrap break-words">
+                      {selectedRequest.reason || "-"}
+                    </p>
+                  </div>
+
                   <div>
                     <span className="font-medium text-gray-700">
                       Current Role:

@@ -19,14 +19,11 @@ export default function SellingRequestPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState([]);
   const [requestStatus, setRequestStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [errors, setErrors] = useState({
     reason: "",
-    contact: "",
-    documents: "",
   });
 
   useEffect(() => {
@@ -44,67 +41,19 @@ export default function SellingRequestPage() {
         setRequestStatus(null);
       }
     } catch (err) {
-      console.error("Error fetching status:", err);
       // If 404 or error, assume no request exists
       setRequestStatus(null);
     } finally {
       setLoading(false);
     }
   }
-
-  function handleFileChange(e) {
-    const files = Array.from(e.target.files || []);
-    setSelectedFiles(files);
-    if (errors.documents) {
-      setErrors((prev) => ({ ...prev, documents: "" }));
-    }
-  }
-
-  function validateForm(reason, contact, files) {
-    const newErrors = { reason: "", contact: "", documents: "" };
+  function validateForm(reason) {
+    const newErrors = { reason: "" };
     let isValid = true;
 
     if (!reason || reason.length < 20) {
       newErrors.reason = "Reason must be at least 20 characters long.";
       isValid = false;
-    }
-
-    if (!contact) {
-      newErrors.contact = "Contact information is required.";
-      isValid = false;
-    } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      const phoneRegex = /^[\d\s()+-]{10,}$/;
-      if (!emailRegex.test(contact) && !phoneRegex.test(contact)) {
-        newErrors.contact = "Please enter a valid email or phone number.";
-        isValid = false;
-      }
-    }
-
-    if (files.length === 0) {
-      newErrors.documents = "At least one document is required.";
-      isValid = false;
-    } else {
-      const maxSize = 5 * 1024 * 1024;
-      const allowedTypes = [
-        "application/pdf",
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-      ];
-
-      for (const file of files) {
-        if (file.size > maxSize) {
-          newErrors.documents = `File "${file.name}" exceeds 5MB limit.`;
-          isValid = false;
-          break;
-        }
-        if (!allowedTypes.includes(file.type)) {
-          newErrors.documents = `File "${file.name}" is not a valid type. Only PDF, JPEG, and PNG are allowed.`;
-          isValid = false;
-          break;
-        }
-      }
     }
 
     setErrors(newErrors);
@@ -115,17 +64,12 @@ export default function SellingRequestPage() {
     e.preventDefault();
     const form = e.target;
     const reason = form.reason.value.trim();
-    const contact = form.contact.value.trim();
-    const files = Array.from(form["documents"].files || []);
-
-    if (!validateForm(reason, contact, files)) {
+    if (!validateForm(reason)) {
       return;
     }
 
     const fd = new FormData();
     fd.append("reason", reason);
-    fd.append("contact", contact);
-    for (const f of files) fd.append("documents", f);
 
     try {
       setSubmitting(true);
@@ -135,12 +79,11 @@ export default function SellingRequestPage() {
         },
       });
       form.reset();
-      setSelectedFiles([]);
       setShowSuccessDialog(true);
     } catch (err) {
       const errorMsg =
         err.response?.data?.message || "Failed to submit request";
-      setErrors((prev) => ({ ...prev, documents: errorMsg }));
+      setErrors((prev) => ({ ...prev, reason: errorMsg }));
     } finally {
       setSubmitting(false);
     }
@@ -148,8 +91,7 @@ export default function SellingRequestPage() {
 
   function handleReapply() {
     setRequestStatus(null);
-    setSelectedFiles([]);
-    setErrors({ reason: "", contact: "", documents: "" });
+    setErrors({ reason: "" });
   }
 
   if (loading) {
@@ -179,7 +121,7 @@ export default function SellingRequestPage() {
 
       <div
         style={{ maxWidth: "1400px", margin: "0 auto", padding: SPACING.M }}
-        className="mx-auto px-4 sm:px-6 lg:px-8 mt-6"
+        className="mx-auto px-4 sm:px-6 lg:px-8 mt-6 py-4"
       >
         <div className="lg:flex lg:space-x-6">
           {/* Sidebar */}
@@ -247,7 +189,7 @@ export default function SellingRequestPage() {
                     }}
                   >
                     We have received your request. Our team is currently
-                    reviewing your documents. This process usually takes 24-48
+                    reviewing your request. This process usually takes 24-48
                     hours.
                   </p>
                 </div>
@@ -474,187 +416,6 @@ export default function SellingRequestPage() {
                             }}
                           >
                             {errors.reason}
-                          </p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label
-                          style={{
-                            display: "block",
-                            fontSize: TYPOGRAPHY.SIZE_LABEL_LARGE,
-                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                            color: COLORS.MIDNIGHT_ASH,
-                            marginBottom: SPACING.S,
-                          }}
-                        >
-                          Contact Info{" "}
-                          <span style={{ color: "#DC2626" }}>*</span>
-                        </label>
-                        <input
-                          name="contact"
-                          type="text"
-                          style={{
-                            display: "block",
-                            width: "100%",
-                            borderRadius: BORDER_RADIUS.MEDIUM,
-                            backgroundColor: COLORS.WHITE,
-                            padding: `${SPACING.S} ${SPACING.M}`,
-                            color: COLORS.MIDNIGHT_ASH,
-                            border: `1.5px solid ${
-                              errors.contact ? "#DC2626" : COLORS.MORNING_MIST
-                            }`,
-                            fontSize: TYPOGRAPHY.SIZE_BODY,
-                            fontFamily: "inherit",
-                          }}
-                          placeholder="your.email@example.com or phone number"
-                          onChange={() =>
-                            errors.contact &&
-                            setErrors((prev) => ({ ...prev, contact: "" }))
-                          }
-                        />
-                        {errors.contact && (
-                          <p
-                            style={{
-                              color: "#DC2626",
-                              fontSize: TYPOGRAPHY.SIZE_LABEL,
-                              marginTop: SPACING.XS,
-                            }}
-                          >
-                            {errors.contact}
-                          </p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label
-                          style={{
-                            display: "block",
-                            fontSize: TYPOGRAPHY.SIZE_LABEL_LARGE,
-                            fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                            color: COLORS.MIDNIGHT_ASH,
-                            marginBottom: SPACING.S,
-                          }}
-                        >
-                          Supporting documents (ID, samples){" "}
-                          <span style={{ color: "#DC2626" }}>*</span>
-                        </label>
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "center",
-                            borderRadius: BORDER_RADIUS.MEDIUM,
-                            border: `2px dashed ${
-                              errors.documents ? "#DC2626" : COLORS.MORNING_MIST
-                            }`,
-                            padding: SPACING.XL,
-                            backgroundColor: COLORS.WHITE,
-                          }}
-                        >
-                          <div style={{ textAlign: "center" }}>
-                            <svg
-                              style={{
-                                margin: "0 auto",
-                                height: "48px",
-                                width: "48px",
-                                color: COLORS.PEBBLE,
-                              }}
-                              stroke="currentColor"
-                              fill="none"
-                              viewBox="0 0 48 48"
-                              aria-hidden="true"
-                            >
-                              <path
-                                d="M28 8H12a4 4 0 00-4 4v20a4 4 0 004 4h24a4 4 0 004-4V20m-8-12v12m0 0l-3-3m3 3l3-3"
-                                strokeWidth={2}
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                            <div
-                              style={{
-                                marginTop: SPACING.M,
-                                display: "flex",
-                                fontSize: TYPOGRAPHY.SIZE_BODY,
-                                color: COLORS.PEBBLE,
-                                justifyContent: "center",
-                              }}
-                            >
-                              <label
-                                htmlFor="documents-upload"
-                                style={{
-                                  position: "relative",
-                                  cursor: "pointer",
-                                  borderRadius: BORDER_RADIUS.MEDIUM,
-                                  backgroundColor: COLORS.WHITE,
-                                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                                  color: COLORS.MIDNIGHT_ASH,
-                                }}
-                                className="hover:text-blue-600"
-                              >
-                                <span>Upload files</span>
-                                <input
-                                  id="documents-upload"
-                                  name="documents"
-                                  type="file"
-                                  multiple
-                                  accept="image/*,.pdf"
-                                  onChange={handleFileChange}
-                                  style={{ display: "none" }}
-                                />
-                              </label>
-                              <p style={{ paddingLeft: SPACING.S }}>
-                                or drag and drop
-                              </p>
-                            </div>
-                            <p
-                              style={{
-                                fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                color: COLORS.PEBBLE,
-                                marginTop: SPACING.S,
-                              }}
-                            >
-                              PNG, JPG, PDF up to 5MB each
-                            </p>
-                            {selectedFiles.length > 0 && (
-                              <div
-                                style={{
-                                  marginTop: SPACING.M,
-                                  fontSize: TYPOGRAPHY.SIZE_LABEL_LARGE,
-                                  color: COLORS.MIDNIGHT_ASH,
-                                  fontWeight: TYPOGRAPHY.WEIGHT_SEMIBOLD,
-                                }}
-                              >
-                                {selectedFiles.length} file(s) selected:
-                                <ul
-                                  style={{
-                                    marginTop: SPACING.S,
-                                    fontSize: TYPOGRAPHY.SIZE_LABEL,
-                                    color: COLORS.PEBBLE,
-                                    listStyle: "none",
-                                    padding: 0,
-                                  }}
-                                >
-                                  {selectedFiles.map((file, idx) => (
-                                    <li key={idx}>
-                                      {file.name} (
-                                      {Math.round(file.size / 1024)} KB)
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        {errors.documents && (
-                          <p
-                            style={{
-                              color: "#DC2626",
-                              fontSize: TYPOGRAPHY.SIZE_LABEL,
-                              marginTop: SPACING.XS,
-                            }}
-                          >
-                            {errors.documents}
                           </p>
                         )}
                       </div>
