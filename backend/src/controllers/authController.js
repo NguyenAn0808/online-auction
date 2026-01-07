@@ -828,6 +828,10 @@ export const facebookOAuthCallback = async (req, res) => {
       maxAge: REFRESH_TOKEN_TTL,
     });
 
+    const hasPassword = !!(
+      user.hashedPassword && user.hashedPassword.length > 0
+    );
+
     // Redirect to frontend with tokens in URL (will be removed after storing)
     const frontendUrl = process.env.CLIENT_URL || "http://localhost:5173";
     const redirectUrl = `${frontendUrl}/auth/callback?accessToken=${accessToken}&user=${encodeURIComponent(
@@ -837,6 +841,7 @@ export const facebookOAuthCallback = async (req, res) => {
         fullName: user.fullName,
         role: user.role,
         isVerified: user.isVerified,
+        hasPassword: hasPassword,
       })
     )}`;
 
