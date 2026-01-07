@@ -59,7 +59,6 @@ export default function Login() {
     const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"; // Fallback to local API port if needed
     const map = {
       google: "google",
-      facebook: "facebook",
     };
     const p = map[provider] || provider;
     window.location.href = `${base}/api/auth/${p}`;
@@ -169,7 +168,7 @@ export default function Login() {
                 </div>
               </div>
 
-              <div className="mt-6 grid grid-cols-2 gap-4">
+              <div className="mt-6">
                 <button
                   onClick={() => oauth("google")}
                   className="flex w-full items-center justify-center gap-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-midnight-ash ring-1 ring-gray-300 ring-inset hover:bg-gray-50 focus-visible:ring-transparent"
@@ -182,21 +181,6 @@ export default function Login() {
                   />
                   <span className="flex-1 text-center text-gray-700">
                     Google
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => oauth("facebook")}
-                  className="flex w-full items-center justify-center gap-3 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-gray-300 ring-inset hover:bg-gray-50 focus-visible:ring-transparent"
-                  type="button"
-                >
-                  <img
-                    src="https://www.svgrepo.com/show/448224/facebook.svg"
-                    alt="Facebook"
-                    className=" w-5 h-5"
-                  />
-                  <span className="flex-1 text-center text-gray-700">
-                    Facebook
                   </span>
                 </button>
               </div>
