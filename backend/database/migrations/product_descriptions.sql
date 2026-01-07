@@ -39,6 +39,8 @@ DECLARE
     seller_3 uuid := gen_random_uuid();
     seller_4 uuid := gen_random_uuid();
     seller_5 uuid := gen_random_uuid();
+    admin_1 uuid := gen_random_uuid();
+    bidder_1 uuid := gen_random_uuid();
 
     -- Product IDs
     -- BAGS (1-5)
@@ -94,11 +96,15 @@ BEGIN
     -- 2. INSERT SELLERS (Added avatar_url)
     ---------------------------------------------------------------------------
     INSERT INTO public.users (id, full_name, email, hashed_password, address, role, is_verified, rating_points) VALUES
-    (seller_1, 'Sarah Chen', 'sarah.c@example.com', 'hashed_pass_123', '123 Market St, San Francisco, CA', 'seller', true, 150),
-    (seller_2, 'Marcus Rodriguez', 'm.rodriguez@example.com', 'hashed_pass_123', '456 Broadway, New York, NY', 'seller', true, 89),
-    (seller_3, 'Emma Wilson', 'emma.w@example.com', 'hashed_pass_123', '789 Oxford St, London, UK', 'seller', true, 210),
-    (seller_4, 'David Kim', 'kim.david@example.com', 'hashed_pass_123', '321 Gangnam, Seoul, KR', 'seller', true, 45),
-    (seller_5, 'James Carter', 'j.carter@example.com', 'hashed_pass_123', '654 Main St, Austin, TX', 'seller', true, 300);
+    (seller_1, 'Sarah Chen', 'sarah.c@example.com', '$2b$10$CdCNoevW7279p/qNvNqPOuvyskUODBgx.ffEbAJyVAbBYhQXV6wty', '123 Market St, San Francisco, CA', 'seller', true, 150),
+    (seller_2, 'Marcus Rodriguez', 'm.rodriguez@example.com', '$2b$10$CdCNoevW7279p/qNvNqPOuvyskUODBgx.ffEbAJyVAbBYhQXV6wty', '456 Broadway, New York, NY', 'seller', true, 89),
+    (seller_3, 'Emma Wilson', 'emma.w@example.com', '$2b$10$CdCNoevW7279p/qNvNqPOuvyskUODBgx.ffEbAJyVAbBYhQXV6wty', '789 Oxford St, London, UK', 'seller', true, 210),
+    (seller_4, 'David Kim', 'kim.david@example.com', '$2b$10$CdCNoevW7279p/qNvNqPOuvyskUODBgx.ffEbAJyVAbBYhQXV6wty', '321 Gangnam, Seoul, KR', 'seller', true, 45),
+    (seller_5, 'James Carter', 'j.carter@example.com', '$2b$10$CdCNoevW7279p/qNvNqPOuvyskUODBgx.ffEbAJyVAbBYhQXV6wty', '654 Main St, Austin, TX', 'seller', true, 300),
+    (admin_1, 'Admin User', 'admin@example.com', '$2b$10$CdCNoevW7279p/qNvNqPOuvyskUODBgx.ffEbAJyVAbBYhQXV6wty', '123 Admin St', 'admin', true, 100),
+    (bidder_1, 'Bidder anhnguyen', 'anhnguyen@example.com', '$2b$10$CdCNoevW7279p/qNvNqPOuvyskUODBgx.ffEbAJyVAbBYhQXV6wty', '789 Bidder Blvd', 'bidder', true, 10);
+
+
 
     ---------------------------------------------------------------------------
     -- 3. INSERT PRODUCTS & IMAGES (Batch 1: BAGS)
