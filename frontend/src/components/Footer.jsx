@@ -15,7 +15,7 @@ const Footer = () => {
     try {
       // Try multiple API endpoints in order
       const apiUrls = [
-        import.meta.env.VITE_API_URL || null,
+        import.meta.env.VITE_API_BASE_URL || null,
         "http://localhost:8000",
         window.location.origin,
       ].filter(Boolean);
