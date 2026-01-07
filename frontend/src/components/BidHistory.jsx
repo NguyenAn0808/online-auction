@@ -264,12 +264,9 @@ export default function BidHistory({ isSeller = false, productId = null }) {
     }
   }, [realtimeBids, localBids, refresh]);
 
-  if (!user) {
-    return null;
-  }
-  // Use user data from context
-  const currentUserId = user.id;
-  const currentUserName = user.fullName || user.username || "You";
+  // Allow guests to view bid history, but with limited functionality
+  const currentUserId = user?.id || null;
+  const currentUserName = user?.fullName || user?.username || "You";
 
   // compute list excluding blocked bidders
   const sorted = useMemo(() => {
@@ -283,9 +280,10 @@ export default function BidHistory({ isSeller = false, productId = null }) {
   const highestBidderIdFromApi =
     productInfo?.price_holder || productInfo?.highest_bidder_id || null;
   const highest = sorted[0];
-  const isCurrentUserHighest = highestBidderIdFromApi
-    ? highestBidderIdFromApi === currentUserId
-    : highest && highest.bidder_id === currentUserId;
+  const isCurrentUserHighest =
+    currentUserId && highestBidderIdFromApi
+      ? highestBidderIdFromApi === currentUserId
+      : highest && currentUserId && highest.bidder_id === currentUserId;
 
   const getBidderRatingText = (bidderId) => {
     const summary = bidderRatings?.[bidderId];

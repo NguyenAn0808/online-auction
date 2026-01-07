@@ -86,17 +86,15 @@ const ProductDetails = () => {
             <SellerFeedback />
           </div> */}
 
-          {/* Bid History Section */}
-          {user && (
-            <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-24 lg:max-w-7xl lg:px-8">
-              <BidHistory
-                productId={productId}
-                isSeller={user && product && user.id === product.seller_id}
-              />
-            </div>
-          )}
+          {/* Bid History Section - Visible to everyone, seller controls only for logged-in sellers */}
+          <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-24 lg:max-w-7xl lg:px-8">
+            <BidHistory
+              productId={productId}
+              isSeller={user && product && user.id === product.seller_id}
+            />
+          </div>
 
-          {/* Questions History Section */}
+          {/* Questions History Section - Visible to everyone, posting questions requires auth */}
           <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-24 lg:max-w-7xl lg:px-8">
             <QuestionsHistory productId={productId} product={product} />
           </div>

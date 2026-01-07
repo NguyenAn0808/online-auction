@@ -12,6 +12,11 @@ import {
 
 const router = express.Router();
 
+// Public routes - no authentication required
+// Get specific user (for viewing seller profiles)
+router.get("/:id", getUserById);
+
+// Protected routes - authentication required
 router.use(authenticate);
 
 router.get("/", authorize("admin"), getAllUsers);
@@ -28,10 +33,7 @@ router.post("/:id/reset-password", authorize("admin"), adminResetPassword);
 // Delete user
 router.delete("/:id", authorize("admin"), deleteUser);
 
-// Get specific user
-router.get("/:id", getUserById);
-
-// Update specific user details
+// Update specific user details (user must be authenticated)
 router.put("/:id", updateUser);
 
 export default router;

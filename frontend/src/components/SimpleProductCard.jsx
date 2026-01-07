@@ -40,7 +40,9 @@ const SimpleProductCard = ({ product }) => {
     }
   }, [productId, user?.id]);
 
-  const handleCardClick = () => {
+  const handleCardClick = (e) => {
+    // Don't navigate - just let the card be clickable via child elements
+    // The actual navigation is handled by wrapping in a Link or direct navigation
     if (productId) {
       navigate(`/products/${productId}`);
     }
@@ -48,6 +50,7 @@ const SimpleProductCard = ({ product }) => {
 
   const handleWatchlistClick = async (e) => {
     e.stopPropagation();
+    e.preventDefault(); // Also prevent any default behavior
 
     if (!user) {
       setShowLoginDialog(true);
@@ -86,6 +89,7 @@ const SimpleProductCard = ({ product }) => {
           />
           {/* Watchlist Button */}
           <button
+            type="button"
             onClick={handleWatchlistClick}
             className={`btn-watchlist ${isWatchlist ? "active" : ""}`}
             aria-label="Add to watchlist"

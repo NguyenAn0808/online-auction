@@ -174,7 +174,7 @@ const ProductCard = ({ product, onWatchlistChange }) => {
     return end - now <= 3 * 24 * 60 * 60 * 1000;
   })();
 
-  const handleCardClick = () => {
+const handleCardClick = () => {
     if (productId) {
       navigate(`/products/${productId}`);
     }
@@ -199,6 +199,7 @@ const ProductCard = ({ product, onWatchlistChange }) => {
 
   const handleWatchlistClick = async (e) => {
     e.stopPropagation();
+    e.preventDefault();
 
     requireAuth(async () => {
       try {
@@ -238,6 +239,7 @@ const ProductCard = ({ product, onWatchlistChange }) => {
         )}
         {/* Watchlist Button */}
         <button
+          type="button"
           onClick={handleWatchlistClick}
           className={`btn-watchlist ${isWatchlist ? "active" : ""}`}
           aria-label="Add to watchlist"

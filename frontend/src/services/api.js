@@ -84,7 +84,12 @@ api.interceptors.response.use(
           errorCode === "UNAUTHORIZED" ||
           errorMessage?.toLowerCase().includes("token") ||
           errorMessage?.toLowerCase().includes("unauthorized");
-        if (isTokenError) {
+        
+        // Only redirect if user was actually logged in (had a token)
+        // If guest user (no token), let the error propagate normally
+        const hadToken = !!localStorage.getItem("access_token");
+        
+        if (isTokenError && hadToken) {
           clearAccessToken();
           localStorage.removeItem("user");
           if (window.location.pathname !== "/auth/signin") {
