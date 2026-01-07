@@ -70,9 +70,9 @@ Open your browser and go to: http://localhost:5173
 
 6. SAMPLE ACCOUNTS (from seed_data.sql)
 ---------------------------------------
-Password for all accounts: password123
+Password for all accounts: Password123
 
 - Admin:   admin@example.com
 - Seller:  seller@example.com
-- Bidder 1: alice@example.com
-- Bidder 2: bob@example.com
+- Bidder 1: anhnguyen@example.com
+- Bidder 2: nguyenan@example.com

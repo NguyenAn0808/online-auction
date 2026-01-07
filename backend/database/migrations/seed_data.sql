@@ -7,14 +7,14 @@
 -- 1. USERS
 -- Password for all: "password123" (hashed bcrypt example)
 -- $2b$10$YourHashedPasswordHere... (using a placeholder hash for example)
--- Let's assume a valid bcrypt hash for 'password123' is: $2b$10$EixZaYVK1fsbw1ZfbX3OXePaWrn9.0p/AbkRg.9r.2eL.W5q.Nu6e
+-- Let's assume a valid bcrypt hash for 'Password123' is: $2b$10$EixZaYVK1fsbw1ZfbX3OXePaWrn9.0p/AbkRg.9r.2eL.W5q.Nu6e
 
 INSERT INTO users (id, full_name, email, hashed_password, role, is_verified, address, phone, rating_points)
 VALUES 
-  ('00000000-0000-0000-0000-000000000001', 'Admin User', 'admin@example.com', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWrn9.0p/AbkRg.9r.2eL.W5q.Nu6e', 'admin', true, '123 Admin St', '1234567890', 100),
-  ('00000000-0000-0000-0000-000000000002', 'Seller John', 'seller@example.com', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWrn9.0p/AbkRg.9r.2eL.W5q.Nu6e', 'seller', true, '456 Seller Ave', '0987654321', 50),
-  ('00000000-0000-0000-0000-000000000003', 'Bidder Alice', 'alice@example.com', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWrn9.0p/AbkRg.9r.2eL.W5q.Nu6e', 'bidder', true, '789 Bidder Blvd', '1112223333', 10),
-  ('00000000-0000-0000-0000-000000000004', 'Bidder Bob', 'bob@example.com', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWrn9.0p/AbkRg.9r.2eL.W5q.Nu6e', 'bidder', true, '321 Buyer Ln', '4445556666', 0)
+  ('00000000-0000-0000-0000-000000000001', 'Admin User', 'admin@example.com', '$2b$10$CdCNoevW7279p/qNvNqPOuvyskUODBgx.ffEbAJyVAbBYhQXV6wty', 'admin', true, '123 Admin St', '1234567890', 100),
+  ('00000000-0000-0000-0000-000000000002', 'Seller John', 'seller@example.com', '$2b$10$CdCNoevW7279p/qNvNqPOuvyskUODBgx.ffEbAJyVAbBYhQXV6wty', 'seller', true, '456 Seller Ave', '0987654321', 50),
+  ('00000000-0000-0000-0000-000000000003', 'Bidder anhnguyen', 'anhnguyen@example.com', '$2b$10$CdCNoevW7279p/qNvNqPOuvyskUODBgx.ffEbAJyVAbBYhQXV6wty', 'bidder', true, '789 Bidder Blvd', '1112223333', 10),
+  ('00000000-0000-0000-0000-000000000004', 'Bidder nguyenan', 'nguyenan@example.com', '$2b$10$CdCNoevW7279p/qNvNqPOuvyskUODBgx.ffEbAJyVAbBYhQXV6wty', 'bidder', true, '321 Buyer Ln', '4445556666', 0)
 ON CONFLICT (id) DO NOTHING;
 
 -- 2. CATEGORIES
@@ -45,7 +45,7 @@ ON CONFLICT (id) DO NOTHING;
 -- 4. PRODUCT IMAGES
 INSERT INTO product_images (product_id, image_url, is_thumbnail, position)
 VALUES 
-  ('20000000-0000-0000-0000-000000000001', 'https://images.unsplash.com/photo-1517336714731-489689fd1ca4?auto=format&fit=crop&w=800&q=80', true, 0),
+  ('20000000-0000-0000-0000-000000000001', 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=800&q=80', true, 0),
   ('20000000-0000-0000-0000-000000000002', 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?auto=format&fit=crop&w=800&q=80', true, 0),
   ('20000000-0000-0000-0000-000000000003', 'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?auto=format&fit=crop&w=800&q=80', true, 0)
 ON CONFLICT DO NOTHING;
@@ -57,7 +57,7 @@ VALUES
   (gen_random_uuid(), '20000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000004', 2050.00, 2200.00, 'accepted', NOW() - INTERVAL '2 days'),
   (gen_random_uuid(), '20000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000003', 2100.00, 2500.00, 'accepted', NOW() - INTERVAL '1 day'),
 
-  -- Bids on Rolex (Winner is Alice)
+  -- Bids on Rolex (Winner is anhnguyen)
   (gen_random_uuid(), '20000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000004', 8500.00, 9000.00, 'accepted', NOW() - INTERVAL '4 days'),
   (gen_random_uuid(), '20000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000003', 9500.00, 10000.00, 'accepted', NOW() - INTERVAL '2 days')
 ON CONFLICT DO NOTHING;
@@ -72,10 +72,10 @@ ON CONFLICT (product_id) DO NOTHING;
 -- 7. RATINGS
 INSERT INTO ratings (product_id, reviewer_id, target_user_id, score, comment)
 VALUES 
-  -- Alice rates Seller John
+  -- anhnguyen rates Seller John
   ('20000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000002', 1, 'Great seller, item exactly as described!'),
   
-  -- Seller John rates Alice
+  -- Seller John rates anhnguyen
   ('20000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000003', 1, 'Fast payment, recommended buyer.')
 ON CONFLICT DO NOTHING;
 
@@ -99,5 +99,5 @@ ON CONFLICT DO NOTHING;
 -- 10. UPGRADE REQUESTS
 INSERT INTO upgrade_requests (user_id, reason, contact, status)
 VALUES 
-  ('00000000-0000-0000-0000-000000000004', 'I want to sell my collection of vintage cameras.', 'bob@example.com', 'pending')
+  ('00000000-0000-0000-0000-000000000004', 'I want to sell my collection of vintage cameras.', 'nguyenan@example.com', 'pending')
 ON CONFLICT DO NOTHING;
