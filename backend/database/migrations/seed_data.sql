@@ -35,7 +35,7 @@ VALUES
   -- Active MacBook Pro
   ('20000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 'Rolex', 'Rolex Watch', 2000.00, 50.00, 3000.00, 2100.00, '00000000-0000-0000-0000-000000000003', NOW(), NOW() + INTERVAL '3 days', 'active', true),
   
-  -- Ended Rolex (Sold to Alice)
+  -- Ended Rolex (Sold to anhnguyen)
   ('20000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000003', 'Rolex Submariner', 'Classic diver watch in excellent condition.', 8000.00, 100.00, 12000.00, 9500.00, '00000000-0000-0000-0000-000000000003', NOW() - INTERVAL '5 days', NOW() - INTERVAL '1 day', 'ended', false),
 
    -- Active Gaming PC
