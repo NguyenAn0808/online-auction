@@ -773,7 +773,7 @@ export const googleOAuthCallback = async (req, res) => {
     );
 
     // Redirect to frontend with tokens in URL (will be removed after storing)
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const frontendUrl = process.env.CLIENT_URL || "http://localhost:5173";
     const redirectUrl = `${frontendUrl}/auth/callback?accessToken=${accessToken}&user=${encodeURIComponent(
       JSON.stringify({
         id: user.id,
@@ -829,7 +829,7 @@ export const facebookOAuthCallback = async (req, res) => {
     });
 
     // Redirect to frontend with tokens in URL (will be removed after storing)
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const frontendUrl = process.env.CLIENT_URL || "http://localhost:5173";
     const redirectUrl = `${frontendUrl}/auth/callback?accessToken=${accessToken}&user=${encodeURIComponent(
       JSON.stringify({
         id: user.id,
