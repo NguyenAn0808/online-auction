@@ -764,7 +764,7 @@ export const googleOAuthCallback = async (req, res) => {
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: config.nodeEnv === "production",
-      sameSite: "strict",
+      sameSite: config.nodeEnv === "production" ? "none" : "lax",
       maxAge: REFRESH_TOKEN_TTL,
     });
 
@@ -824,7 +824,7 @@ export const facebookOAuthCallback = async (req, res) => {
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: config.nodeEnv === "production",
-      sameSite: "strict",
+      sameSite: config.nodeEnv === "production" ? "none" : "lax",
       maxAge: REFRESH_TOKEN_TTL,
     });
 
