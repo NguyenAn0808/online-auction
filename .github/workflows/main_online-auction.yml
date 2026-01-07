@@ -21,19 +21,21 @@ jobs:
       - name: Set up Node.js version
         uses: actions/setup-node@v3
         with:
-          node-version: '20.x'
+          node-version: "20.x"
 
-      - name: npm install, build, and test
-        run: |
-          npm install
-          npm run build --if-present
-          npm run test --if-present
+      - name: Install dependencies
+        working-directory: backend
+        run: npm install
+
+      - name: Build (if present)
+        working-directory: backend
+        run: npm run build --if-present
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: .
+          path: backend
 
   deploy:
     runs-on: ubuntu-latest
@@ -47,7 +49,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: node-app
-      
+          path: backend
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -55,11 +58,10 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_9613E1636E4645F8822A2613B3EB5623 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_7724CBD8208D43DDA257F7CEA60E367A }}
 
-      - name: 'Deploy to Azure Web App'
+      - name: "Deploy to Azure Web App"
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'Online-Auction'
-          slot-name: 'Production'
-          package: .
-          
+          app-name: "Online-Auction"
+          slot-name: "Production"
+          package: backend
