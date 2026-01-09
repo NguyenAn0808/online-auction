@@ -12,10 +12,10 @@ const pool = new Pool({
   },
   // Force IPv4 to avoid IPv6 timeout issues
   host: undefined, // Let connection string handle host
-  connectionTimeoutMillis: 10000, // 10 seconds timeout
-  idleTimeoutMillis: 30000, // Keep connections alive longer
+  connectionTimeoutMillis: 60000, // 60 seconds - allow time for pooler warmup
+  idleTimeoutMillis: 60000, // Keep connections alive longer
   max: 10, // Reduced for session pooler - Supabase pooler handles the pooling
-  min: 2, // Maintain minimum connections to avoid cold starts
+  min: 3, // Maintain minimum connections to avoid cold starts
   keepAlive: true, // Keep TCP connections alive
   keepAliveInitialDelayMillis: 10000, // Send keepalive packets
 });
