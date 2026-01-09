@@ -80,14 +80,27 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Health check endpoint
-app.get("/health", async (req, res) => {
+// Health check endpoint - lightweight for Azure Always On
+app.get("/health", (req, res) => {
+  // Don't test connection on every health check to avoid overwhelming the pool
+  // Azure App Service pings this frequently with Always On enabled
+  res.status(200).json({
+    status: "ok",
+    environment: config.nodeEnv,
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Detailed health check with database verification (use this manually for diagnostics)
+app.get("/health/db", async (req, res) => {
   try {
     const dbConnected = await testConnection();
     res.status(200).json({
       status: "ok",
       environment: config.nodeEnv,
       database: dbConnected ? "connected" : "disconnected",
+      uptime: process.uptime(),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

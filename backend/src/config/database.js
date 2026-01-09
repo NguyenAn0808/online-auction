@@ -13,8 +13,11 @@ const pool = new Pool({
   // Force IPv4 to avoid IPv6 timeout issues
   host: undefined, // Let connection string handle host
   connectionTimeoutMillis: 10000, // 10 seconds timeout
-  idleTimeoutMillis: 30000,
-  max: 20, // Maximum pool size
+  idleTimeoutMillis: 30000, // Keep connections alive longer
+  max: 10, // Reduced for session pooler - Supabase pooler handles the pooling
+  min: 2, // Maintain minimum connections to avoid cold starts
+  keepAlive: true, // Keep TCP connections alive
+  keepAliveInitialDelayMillis: 10000, // Send keepalive packets
 });
 
 export const testConnection = async () => {
